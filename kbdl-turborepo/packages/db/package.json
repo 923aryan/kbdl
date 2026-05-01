@@ -1,0 +1,34 @@
+{
+  "name": "@repo/db",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    "./server": "./src/server/index.ts",
+    "./shared": "./src/shared/index.ts",
+    "./*": "./*"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "push": "prisma db push"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@repo/validator": "workspace:^",
+    "dotenv": "^17.4.2",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/pg": "^8.20.0",
+    "prisma": "^7.8.0",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*"
+  }
+}

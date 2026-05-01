@@ -33,7 +33,20 @@ This Turborepo has some additional tools already setup for you:
 - [Prettier](https://prettier.io) for code formatting
 
 ### Build
+```sh
+cd my-turborepo
+To run:
+pnpm dev
+To lint:
+pnpm lint 
 
+imp:
+at root level: pnpm add @repo/[target] --workspace --filter @repo/[current]
+
+after every udpate on tables:
+npx prisma migrate dev --name <descriptive_name>
+npx prisma generate (for ts)
+```
 To build all apps and packages, run the following command:
 
 With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):

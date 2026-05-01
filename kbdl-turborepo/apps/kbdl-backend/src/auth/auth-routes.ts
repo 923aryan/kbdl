@@ -1,0 +1,34 @@
+import { Router } from "express";
+import {
+  employerTokenRefresh,
+  logout,
+  registerOrg,
+  registerUser,
+  sendEmployerOtp,
+  sendUserOtp,
+  userTokenRefresh,
+  verifyEmployerOtp,
+  verifyUserOtp
+} from "./auth-controller";
+
+const authRouter: Router = Router();
+
+// --- Registration Routes ---
+authRouter.post("/register/user", registerUser);
+authRouter.post("/register/employer", registerOrg);
+
+// --- User Auth Routes (Phone OTP) ---
+authRouter.post("/user/send-otp", sendUserOtp);
+authRouter.post("/user/verify-otp", verifyUserOtp);
+authRouter.post("/user/token-refresh", userTokenRefresh);
+
+// --- Employer Auth Routes (Email OTP) ---
+authRouter.post("/employer/send-otp", sendEmployerOtp);
+authRouter.post("/employer/verify-otp", verifyEmployerOtp);
+authRouter.post("/employer/token-refresh", employerTokenRefresh);
+
+// --- Shared Routes ---
+// Handles clearing cookies for both Users and Employers on the web
+authRouter.post("/logout", logout);
+
+export default authRouter;

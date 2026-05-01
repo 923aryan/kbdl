@@ -1,0 +1,19 @@
+{
+  "name": "@repo/types",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "dependencies": {
+    "zod": "^4.3.6",
+    "@repo/db": "workspace:*",
+    "@repo/validator": "workspace:*"
+  },
+  "exports": {
+    ".": "./index.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

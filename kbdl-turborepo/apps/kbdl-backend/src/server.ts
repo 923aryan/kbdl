@@ -1,22 +1,73 @@
-import cors from "cors";
-import dotenv from "dotenv";
+import { prisma } from "@repo/db/server";
+import { env } from "@repo/validator/server";
+import cookieParser from "cookie-parser";
+import cors from 'cors';
+import "dotenv/config";
 import express, { Request, Response } from "express";
-
-dotenv.config();
-
+import redis from "./config/redis";
+import { errorHandler } from "./utils/send-error";
+import { sendSuccess } from "./utils/send-success";
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+const PORT = env.PORT;
+
 app.use(express.json());
+app.use(cookieParser());
+const corsOptions = {
+  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
 
-// Basic Route
-app.get("/", (req: Request, res: Response) => {
-  res.json({ message: "Kaam Badlo API is running..." });
+app.use(cors(corsOptions));
+// app.use(morgan("combined"));
+// app.use("/api/v1/auth", authRouter);
+
+app.get("/health", (_req: Request, res: Response) => {
+  sendSuccess<null>(res, "Server is running", null, 200);
+});
+app.use(errorHandler);
+
+async function bootstrap() {
+  try {
+    await prisma.$connect();
+    console.log("Database connected");
+
+    await redis.ping();
+    console.log("✅ Redis PING successful");
+
+    const server = app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+    const shutdown = async (signal: string) => {
+      console.log(`Received ${signal}. Shutting down...`);
+
+      server.close(async () => {
+        await prisma.$disconnect();
+        console.log("✅ Database disconnected");
+        process.exit(0);
+      });
+    };
+
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+  } catch (error) {
+    console.error("Startup error:", error);
+    process.exit(1);
+  }
+}
+
+bootstrap();
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  process.exit(1);
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Backend is running on http://localhost:${PORT}`);
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+  process.exit(1);
 });
