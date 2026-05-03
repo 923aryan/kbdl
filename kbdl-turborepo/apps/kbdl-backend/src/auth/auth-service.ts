@@ -4,8 +4,10 @@ import * as https from "https";
 import jwt from "jsonwebtoken";
 import {
   EmployerRegisterPayload,
-  UserRegisterPayload
+  UserRegisterPayload,
+  UserVerifyRegisterPayload
 } from "../../../../packages/types/request-response/auth-type";
+import { resendClient } from "../config/resend";
 import { AppError } from "../utils/api-error";
 
 const generateOtp = (): string => {
@@ -60,64 +62,25 @@ const sendSmsViaMsg91 = (phone: string, otp: string): Promise<void> => {
   });
 };
 
-const sendEmailViaMsg91 = (email: string, otp: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const options = {
-      method: 'POST',
-      hostname: 'control.msg91.com',
-      path: '/api/v5/email/send',
-      headers: {
-        accept: 'application/json',
-        authkey: env.MSG91_AUTH_KEY as string,
-        'content-type': 'application/json'
-      }
-    };
-
-    const req = https.request(options, function (res) {
-      const chunks: any[] = [];
-      res.on('data', function (chunk) { chunks.push(chunk); });
-      res.on('end', function () {
-        const body = Buffer.concat(chunks).toString();
-        try {
-          const response = JSON.parse(body);
-          if (response.hasError) {
-            return reject(new Error(response.message || "Failed to send email"));
-          }
-          resolve();
-        } catch (e) {
-          resolve();
-        }
-      });
+const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
+  try {
+    const { data, error } = await resendClient.emails.send({
+      from: 'Kaam Badlo <itsupport@kaambadlo.com>',
+      to: email,
+      subject: 'Your Verification Code',
+      html: `<p>Your OTP for logging in is: <strong>${otp}</strong></p><p>Please do not share this code with anyone.</p>`,
     });
 
-    req.on('error', (e) => reject(e));
+    if (error) {
+      throw new Error(error.message);
+    }
 
-    const postData = JSON.stringify({
-      recipients: [
-        {
-          to: [
-            {
-              email: email
-            }
-          ],
-          variables: {
-            OTP: otp
-          }
-        }
-      ],
-      from: {
-        name: env.MSG91_EMAIL_FROM_NAME as string || "Admin",
-        email: env.MSG91_EMAIL_FROM_EMAIL as string
-      },
-      domain: env.MSG91_EMAIL_DOMAIN as string,
-      template_id: env.MSG91_EMAIL_TEMPLATE_ID as string
-    });
+    console.log(`OTP email sent successfully to ${email}. ID: ${data?.id}`);
 
-    req.write(postData);
-    req.end();
-  });
+  } catch (error: any) {
+    throw new Error(`Failed to send OTP email: ${error.message}`);
+  }
 };
-
 export const registerOrgService = async (
   payload: EmployerRegisterPayload
 ): Promise<Employer> => {
@@ -143,32 +106,66 @@ export const registerOrgService = async (
   return newEmployer;
 };
 
+
+// 1. Step One: Send OTP for Registration
 export const registerUserService = async (
   payload: UserRegisterPayload
-): Promise<User> => {
-  const existingUser = await prisma.user.findUnique({
-    where: { phone_no: payload.phone_no },
-  });
+): Promise<null> => {
+  const { phone_no, name, preferences } = payload;
 
+  // 1. Check if user already exists
+  const existingUser = await prisma.user.findUnique({ where: { phone_no } });
   if (existingUser) {
-    throw new AppError(409, "USER_EXISTS", "User with this phone number already exists");
+    throw new AppError(409, "USER_EXISTS", "User already exists. Please login.");
   }
 
+  const otp = "123456"; // TODO: generateOtp()
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+  // 2. Temporarily save details WITH the OTP
+  await prisma.otpVerification.upsert({
+    where: { phone_no },
+    update: { otp, expires_at: expiresAt, name, preferences: preferences },
+    create: { phone_no, otp, expires_at: expiresAt, name, preferences: preferences },
+  });
+
+  // TODO: sendSmsViaMsg91(phone_no, otp);
+  return null;
+};
+
+// 2. Step Two: Verify OTP and Create User
+export const verifyRegistrationOtpService = async (
+  payload: UserVerifyRegisterPayload
+): Promise<{ accessToken: string; user: User; refreshToken: string }> => {
+  const { phone_no, otp } = payload;
+
+  const otpRecord = await prisma.otpVerification.findUnique({ where: { phone_no: phone_no } });
+
+  if (!otpRecord || otpRecord.otp !== otp || new Date() > otpRecord.expires_at) {
+    throw new AppError(400, "INVALID_OR_EXPIRED_OTP", "Invalid or expired OTP");
+  }
+
+  // 3. OTP is valid! NOW create the actual user.
   const newUser = await prisma.user.create({
     data: {
-      name: payload.name,
-      phone_no: payload.phone_no,
-      karigari_id: payload.karigari_id,
-      default_address: payload.default_address,
-      skills: payload.skills,
-      experience: payload.experience,
-      city: payload.city,
-      area: payload.area,
-      extra_shift: payload.extra_shift,
+      phone_no: phone_no,
+      name: otpRecord.name,
+      preferences: otpRecord.preferences as any,
     },
   });
 
-  return newUser;
+  await prisma.otpVerification.delete({ where: { phone_no: phone_no } });
+
+  // 4. Generate JWTs
+  const accessToken = jwt.sign({ userId: newUser.id, role: "USER" }, env.JWT_ACCESS_SECRET);
+  const refreshToken = jwt.sign({ userId: newUser.id, role: "USER" }, env.JWT_REFRESH_SECRET);
+
+  const finalUser = await prisma.user.update({
+    where: { id: newUser.id },
+    data: { refresh_token: refreshToken },
+  });
+
+  return { accessToken, user: finalUser, refreshToken };
 };
 
 export const sendUserOtpService = async (
@@ -265,7 +262,7 @@ export const sendEmployerOtpService = async (
     create: { email: email, otp, expires_at: expiresAt },
   });
   // TODO: remove this in prod
-  // await sendEmailViaMsg91(email, otp);
+  // await sendOtpEmail(email, otp);
 
   return null;
 };

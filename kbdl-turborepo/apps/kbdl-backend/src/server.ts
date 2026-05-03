@@ -4,6 +4,8 @@ import cookieParser from "cookie-parser";
 import cors from 'cors';
 import "dotenv/config";
 import express, { Request, Response } from "express";
+import morgan from "morgan";
+import authRouter from "./auth/auth-routes";
 import redis from "./config/redis";
 import { errorHandler } from "./utils/send-error";
 import { sendSuccess } from "./utils/send-success";
@@ -14,7 +16,7 @@ const PORT = env.PORT;
 app.use(express.json());
 app.use(cookieParser());
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175"],
+  origin: ["http://localhost:3000", "http://localhost:3002", "http://localhost:3001"],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
@@ -22,8 +24,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// app.use(morgan("combined"));
-// app.use("/api/v1/auth", authRouter);
+app.use(morgan("combined"));
+app.use("/api/v1/auth", authRouter);
 
 app.get("/health", (_req: Request, res: Response) => {
   sendSuccess<null>(res, "Server is running", null, 200);

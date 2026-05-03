@@ -5,7 +5,8 @@ import {
   employerVerifyOtpSchema,
   userRegisterSchema,
   userSendOtpSchema,
-  userVerifyOtpSchema
+  userVerifyOtpSchema,
+  userVerifyRegisterSchema
 } from "@repo/validator/shared";
 import { Request, Response } from "express";
 import {
@@ -15,15 +16,15 @@ import {
   EmpployerSendOTPRequest,
   EmpployerVerifyOTPRequest,
   TokenRefreshResponse,
-  UserRegisterResponse,
-  UserReigsterRequest,
+  UserRegisterRequest,
   UserSendOTPRequest,
-  UserVerifyOTPRequest
+  UserVerifyOTPRequest,
+  UserVerifyRegisterRequest
 } from "../../../../packages/types/request-response/auth-type";
 import { AppError } from "../utils/api-error";
 import { sendSuccess } from "../utils/send-success";
 import { validate } from "../utils/validate";
-import { generateRefreshTokenService, registerOrgService, registerUserService, sendEmployerOtpService, sendUserOtpService, verifyEmployerOtpService, verifyUserOtpService } from "./auth-service";
+import { generateRefreshTokenService, registerOrgService, registerUserService, sendEmployerOtpService, sendUserOtpService, verifyEmployerOtpService, verifyRegistrationOtpService, verifyUserOtpService } from "./auth-service";
 
 
 
@@ -34,9 +35,17 @@ const registerOrg = async (req: Request, res: Response) => {
 };
 
 const registerUser = async (req: Request, res: Response) => {
-  const registerInput: UserReigsterRequest = validate(userRegisterSchema, req);
-  const user: UserRegisterResponse = await registerUserService(registerInput.body);
-  sendSuccess(res, "User Created", user, 201);
+  const registerInput: UserRegisterRequest = validate(userRegisterSchema, req);
+  await registerUserService(registerInput.body);
+  sendSuccess(res, `OTP sent to ${registerInput.body.phone_no}`, null, 200);
+};
+
+const verifyRegisteredUser = async (req: Request, res: Response) => {
+  const registerInput: UserVerifyRegisterRequest = validate(userVerifyRegisterSchema, req);
+  const response = await verifyRegistrationOtpService(registerInput.body);
+  const { accessToken, user, refreshToken } = response;
+  setAuthCookies(res, accessToken, refreshToken);
+  sendSuccess(res, "User Created", { accessToken, user, refreshToken }, 201);
 };
 
 const sendUserOtp = async (req: Request, res: Response) => {
@@ -49,7 +58,6 @@ const verifyUserOtp = async (req: Request, res: Response) => {
   const input: UserVerifyOTPRequest = validate(userVerifyOtpSchema, req);
   const response = await verifyUserOtpService(input.body);
   const { accessToken, user, refreshToken } = response;
-
   setAuthCookies(res, accessToken, refreshToken);
   sendSuccess(res, "User login successful", { user, accessToken, refreshToken }, 200);
 };
@@ -135,5 +143,6 @@ const clearAuthCookies = (res: Response) => {
 
 export {
   employerTokenRefresh, logout, registerOrg,
-  registerUser, sendEmployerOtp, sendUserOtp, userTokenRefresh, verifyEmployerOtp, verifyUserOtp
+  registerUser, sendEmployerOtp, sendUserOtp, userTokenRefresh, verifyEmployerOtp, verifyRegisteredUser, verifyUserOtp
 };
+

@@ -44,8 +44,8 @@ imp:
 at root level: pnpm add @repo/[target] --workspace --filter @repo/[current]
 
 after every udpate on tables:
-npx prisma migrate dev --name <descriptive_name>
-npx prisma generate (for ts)
+pnpm prisma migrate dev --name <descriptive_name>
+pnpm prisma generate (for ts)
 ```
 To build all apps and packages, run the following command:
 

@@ -1,9 +1,11 @@
 import { Employer, User } from "@repo/db/server";
-import { employerRegisterSchema, employerSendOtpSchema, employerVerifyOtpSchema, userRegisterSchema, userSendOtpSchema, userVerifyOtpSchema } from "@repo/validator/shared";
+import { employerRegisterSchema, employerSendOtpSchema, employerVerifyOtpSchema, userRegisterSchema, userSendOtpSchema, userVerifyOtpSchema, userVerifyRegisterSchema } from "@repo/validator/shared";
 import z from "zod";
-export type UserReigsterRequest = z.infer<typeof userRegisterSchema>;
+export type UserRegisterRequest = z.infer<typeof userRegisterSchema>;
 export type UserRegisterPayload = z.infer<typeof userRegisterSchema>["body"];
-export type UserRegisterResponse = User
+export type UserVerifyRegisterRequest = z.infer<typeof userVerifyRegisterSchema>;
+export type UserVerifyRegisterPayload = z.infer<typeof userVerifyRegisterSchema>["body"];
+export type UserVerifyRegisterResponse = User
 
 export type EmployerRegisterRequest = z.infer<typeof employerRegisterSchema>;
 export type EmployerRegisterPayload = z.infer<typeof employerRegisterSchema>["body"];

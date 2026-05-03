@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 export const unstable_settings = {
   anchor: '(tabs)',
 };
@@ -33,6 +34,7 @@ export default function RootLayout() {
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
             </Stack>
           </SafeAreaView>
+          <Toast />
           <StatusBar style="auto" />
         </QueryClientProvider>
       </ThemeProvider>

@@ -8,6 +8,7 @@ import {
   sendUserOtp,
   userTokenRefresh,
   verifyEmployerOtp,
+  verifyRegisteredUser,
   verifyUserOtp
 } from "./auth-controller";
 
@@ -15,6 +16,7 @@ const authRouter: Router = Router();
 
 // --- Registration Routes ---
 authRouter.post("/register/user", registerUser);
+authRouter.post("/register/user/verify", verifyRegisteredUser);
 authRouter.post("/register/employer", registerOrg);
 
 // --- User Auth Routes (Phone OTP) ---
