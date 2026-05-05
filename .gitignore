@@ -36,3 +36,14 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# build outputs
+dist
+
+# generated JS + types ONLY in packages
+packages/types/**/*.js
+packages/types/**/*.d.ts
+packages/types/**/*.d.ts.map
+
+# prisma generated (optional if needed)
+packages/db/generated/
