@@ -43,6 +43,7 @@ export default function CustomButton({
   textStyle,
   ...touchableProps
 }: CustomButtonProps) {
+  ` `
   const colorScheme = useColorScheme() ?? 'light';
   const themeColors = Colors[colorScheme];
 
