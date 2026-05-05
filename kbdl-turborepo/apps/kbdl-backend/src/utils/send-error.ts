@@ -6,6 +6,7 @@ import { AppError } from "./api-error";
 
 export const errorHandler = (err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   let response: ApiError;
+  console.log("error was ", err);
 
   if (err instanceof ZodError) {
     response = {
@@ -23,29 +24,32 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
   }
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    switch (err.code) {
+    // FIX: Explicitly cast 'err' because the namespace instanceof check doesn't narrow 'unknown'
+    const prismaErr = err as Prisma.PrismaClientKnownRequestError;
+
+    switch (prismaErr.code) {
       case "P2002": {
         response = {
           success: false,
           error: {
             code: "DUPLICATE_ERROR",
-            message: `A record with this ${err.meta?.target} already exists.`,
-            details: { field: err.meta?.target },
+            message: `A record with this ${prismaErr.meta?.target} already exists.`,
+            details: { field: prismaErr.meta?.target },
           },
         };
         return res.status(409).json(response);
       }
 
       case "P2025": {
-        const modelName = err.meta?.modelName || "Record";
+        const modelName = prismaErr.meta?.modelName || "Record";
         response = {
           success: false,
           error: {
             code: "NOT_FOUND",
             message: `${modelName} not found`,
             details: {
-              cause: err.message,
-              model: err.meta?.modelName,
+              cause: prismaErr.message,
+              model: prismaErr.meta?.modelName,
             },
           },
         };
@@ -58,7 +62,7 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
           error: {
             code: "FOREIGN_KEY_ERROR",
             message: "Related record does not exist",
-            details: { field: err.meta?.field_name },
+            details: { field: prismaErr.meta?.field_name },
           },
         };
         return res.status(400).json(response);
@@ -70,7 +74,7 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
           error: {
             code: "RELATION_ERROR",
             message: "Required relation is missing",
-            details: err.meta,
+            details: prismaErr.meta,
           },
         };
         return res.status(400).json(response);
@@ -83,7 +87,7 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
           error: {
             code: "DATABASE_SCHEMA_ERROR",
             message: "Database schema error",
-            details: { code: err.code, message: err.message },
+            details: { code: prismaErr.code, message: prismaErr.message },
           },
         };
         return res.status(500).json(response);
@@ -95,7 +99,7 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
           error: {
             code: "DATABASE_ERROR",
             message: "Database operation failed",
-            details: { code: err.code, message: err.message },
+            details: { code: prismaErr.code, message: prismaErr.message },
           },
         };
         return res.status(400).json(response);
@@ -114,6 +118,7 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
     };
     return res.status(err.statusCode).json(response);
   }
+
   let message = "Something went wrong";
 
   if (err instanceof Error) {
