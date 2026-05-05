@@ -1,5 +1,6 @@
 // src/features/auth/store/useAuthStore.ts
 import { User } from "@repo/db/shared";
+import { UserRegisterPayload } from "@repo/types";
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 
@@ -7,6 +8,7 @@ interface AuthState {
   accessToken: string | null;
   user: User | null;
   status: 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
+  registerData: UserRegisterPayload;
 
   // Actions
   signIn: (payload: { accessToken: string; refreshToken: string; user: User }) => Promise<void>;
@@ -15,12 +17,18 @@ interface AuthState {
 
   // Helper to update user profile locally (e.g., if they change their name or theme)
   updateUser: (updatedFields: Partial<User>) => void;
+  updateRegisterData: (updatedFields: UserRegisterPayload) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   user: null,
   status: 'loading',
+  registerData: {
+    name: '',
+    phone_no: '',
+    preferences: { theme: "system", language: "en-IN" }
+  },
 
   signIn: async ({ accessToken, refreshToken, user }) => {
     // 1. Save everything securely
@@ -72,4 +80,11 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       return { user: updatedUser };
     }),
+
+  updateRegisterData: (updatedFields) =>
+    set((state) => {
+      const updatedRegisterData = { ...state.registerData, ...updatedFields };
+      return { registerData: updatedRegisterData };
+    }),
+
 }));

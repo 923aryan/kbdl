@@ -1,14 +1,3 @@
-import { env } from "@repo/validator/server";
-import {
-  employerRegisterSchema,
-  employerSendOtpSchema,
-  employerVerifyOtpSchema,
-  userRegisterSchema,
-  userSendOtpSchema,
-  userVerifyOtpSchema,
-  userVerifyRegisterSchema
-} from "@repo/validator/shared";
-import { Request, Response } from "express";
 import {
   EmployerRegisterRequest,
   EmployerRegisterResponse,
@@ -20,7 +9,18 @@ import {
   UserSendOTPRequest,
   UserVerifyOTPRequest,
   UserVerifyRegisterRequest
-} from "../../../../packages/types/request-response/auth-type";
+} from "@repo/types";
+import { env } from "@repo/validator/server";
+import {
+  employerRegisterSchema,
+  employerSendOtpSchema,
+  employerVerifyOtpSchema,
+  userRegisterSchema,
+  userSendOtpSchema,
+  userVerifyOtpSchema,
+  userVerifyRegisterSchema
+} from "@repo/validator/shared";
+import { Request, Response } from "express";
 import { AppError } from "../utils/api-error";
 import { sendSuccess } from "../utils/send-success";
 import { validate } from "../utils/validate";

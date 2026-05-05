@@ -17,12 +17,7 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRY: z.string().default("15m"),
   JWT_REFRESH_EXPIRY: z.string().default("7d"),
   RESEND_API_KEY: z.string().min(1),
-  MSG91_EMAIL_FROM_NAME: z.string().min(1, "MSG91_EMAIL_FROM_NAME is required"),
-  MSG91_EMAIL_FROM_EMAIL: z.string().email("Invalid MSG91_EMAIL_FROM_EMAIL"),
-  MSG91_EMAIL_DOMAIN: z.string().min(1, "MSG91_EMAIL_DOMAIN is required"),
-  MSG91_EMAIL_TEMPLATE_ID: z.string().min(1, "MSG91_EMAIL_TEMPLATE_ID is required"),
-  MSG91_SMS_TEMPLATE_ID: z.string().min(1, "MSG91_EMAIL_TEMPLATE_ID is required"),
-  MSG91_AUTH_KEY: z.string().min(1),
+
 });
 
 const parsed = envSchema.safeParse(process.env);

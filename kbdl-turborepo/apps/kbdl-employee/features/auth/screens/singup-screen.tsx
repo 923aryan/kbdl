@@ -1,14 +1,17 @@
+import { LANGUAGES } from '@/constants/languages';
 import { Colors } from '@/constants/theme';
 import { Feather } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userRegisterSchema } from '@repo/validator/shared';
-import React from 'react';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   ActivityIndicator,
   Dimensions,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -20,7 +23,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
+import translations from '../../../translations';
 import { useRegisterUser } from '../api';
+import { useAuthStore } from '../hooks/useAuth';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,12 +36,16 @@ export default function SignupScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
-
+  const router = useRouter();
   const { mutate: registerUser, isPending } = useRegisterUser();
+  const updateRegisterData = useAuthStore((s) => s.updateRegisterData);
+
+  const [isLangModalVisible, setLangModalVisible] = useState(false);
 
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -44,16 +53,24 @@ export default function SignupScreen() {
       name: '',
       phone_no: '+91',
       preferences: {
-        language: 'en-US',
+        language: 'en-IN',
         theme: 'system',
       },
     },
   });
 
+  // Get the selected language from form state, and select appropriate translations (defaults to English)
+  const selectedLanguage = watch('preferences.language');
+  const isHindi = selectedLanguage?.startsWith('hi');
+  const t = isHindi ? translations.hi : translations.en;
+
   const onSubmit = (data: FormData) => {
     registerUser(data as any, {
       onSuccess: (res) => {
         console.log('Registration successful', res);
+        const parsed = formSchema.parse(data);
+        updateRegisterData(parsed);
+        router.push('/(auth)/verify-otp');
       },
       onError: (err) => {
         console.error('Registration failed', err);
@@ -81,13 +98,15 @@ export default function SignupScreen() {
 
             {/* Language Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Select Language</Text>
+              <Text style={styles.inputLabel}>{t.selectLanguage}</Text>
               <Controller
                 control={control}
                 name="preferences.language"
-                render={({ field: { onChange, onBlur, value } }) => (
+                render={({ field: { onChange, value } }) => (
                   <>
-                    <View
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setLangModalVisible(true)}
                       style={[
                         styles.inputWrapper,
                         errors.preferences?.language && styles.inputError,
@@ -95,15 +114,49 @@ export default function SignupScreen() {
                     >
                       <Feather name="globe" size={20} color={theme.icon} />
                       <View style={styles.divider} />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="e.g., en-US, hi-IN"
-                        placeholderTextColor={theme.textSecondary}
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                        value={value}
-                      />
-                    </View>
+                      <Text style={styles.languageSelectorText}>
+                        {LANGUAGES.find((l) => l.code === value)?.label || 'Select Language'}
+                      </Text>
+                      <Feather name="chevron-down" size={20} color={theme.icon} />
+                    </TouchableOpacity>
+
+                    <Modal
+                      visible={isLangModalVisible}
+                      transparent={true}
+                      animationType="fade"
+                      onRequestClose={() => setLangModalVisible(false)}
+                    >
+                      <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setLangModalVisible(false)}
+                      >
+                        <View style={styles.modalContent}>
+                          <Text style={styles.modalTitle}>{t.selectLanguage}</Text>
+                          {LANGUAGES.map((lang) => (
+                            <TouchableOpacity
+                              key={lang.code}
+                              style={styles.modalOption}
+                              onPress={() => {
+                                onChange(lang.code);
+                                setLangModalVisible(false);
+                              }}
+                            >
+                              <Text style={[
+                                styles.modalOptionText,
+                                value === lang.code && styles.modalOptionTextSelected
+                              ]}>
+                                {lang.label}
+                              </Text>
+                              {value === lang.code && (
+                                <Feather name="check" size={20} color={theme.primary} />
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </TouchableOpacity>
+                    </Modal>
+
                     {errors.preferences?.language && (
                       <Text style={styles.errorText}>
                         {errors.preferences.language.message}
@@ -116,7 +169,7 @@ export default function SignupScreen() {
 
             {/* Name Input */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Enter Name</Text>
+              <Text style={styles.inputLabel}>{t.enterName}</Text>
               <Controller
                 control={control}
                 name="name"
@@ -132,7 +185,7 @@ export default function SignupScreen() {
                       <View style={styles.divider} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Exp: Ramesh Kumar"
+                        placeholder={t.expName}
                         placeholderTextColor={theme.textSecondary}
                         onBlur={onBlur}
                         onChangeText={onChange}
@@ -149,7 +202,7 @@ export default function SignupScreen() {
 
             {/* Mobile Number Input */}
             <View style={styles.inputContainerLarge}>
-              <Text style={styles.inputLabel}>Enter Mobile Number</Text>
+              <Text style={styles.inputLabel}>{t.enterMobileNumber}</Text>
               <Controller
                 control={control}
                 name="phone_no"
@@ -166,7 +219,7 @@ export default function SignupScreen() {
                       <View style={styles.divider} />
                       <TextInput
                         style={styles.textInput}
-                        placeholder="Exp: 8360170..."
+                        placeholder={t.expMobile}
                         placeholderTextColor={theme.textSecondary}
                         keyboardType="phone-pad"
                         maxLength={10}
@@ -200,15 +253,15 @@ export default function SignupScreen() {
               {isPending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.submitButtonText}>OTP Bhejo</Text>
+                <Text style={styles.submitButtonText}>{t.sendOtp}</Text>
               )}
             </TouchableOpacity>
 
             {/* Bottom Footer */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Pehle se account hai, </Text>
+              <Text style={styles.footerText}>{t.alreadyHaveAccount}</Text>
               <TouchableOpacity activeOpacity={0.7}>
-                <Text style={styles.footerLink}>Login Kro</Text>
+                <Text style={styles.footerLink}>{t.loginNow}</Text>
               </TouchableOpacity>
             </View>
 
@@ -320,5 +373,45 @@ const createStyles = (theme: typeof Colors.light) =>
       color: theme.primary,
       fontSize: 15,
       fontWeight: 'bold',
+    },
+    languageSelectorText: {
+      flex: 1,
+      fontSize: 15,
+      color: theme.text,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: theme.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 24,
+      paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: theme.text,
+      marginBottom: 16,
+      textAlign: 'center',
+    },
+    modalOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.border,
+    },
+    modalOptionText: {
+      fontSize: 16,
+      color: theme.text,
+    },
+    modalOptionTextSelected: {
+      color: theme.primary,
+      fontWeight: '600',
     },
   });

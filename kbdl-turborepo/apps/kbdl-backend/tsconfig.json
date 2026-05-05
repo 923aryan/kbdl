@@ -1,5 +1,10 @@
 {
   "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "noEmit": false
+  },
   "include": [
     "src/**/*",
     "../../packages/types/request-response/auth-type.ts"

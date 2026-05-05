@@ -5,23 +5,21 @@ export const userRegisterSchema = z.object({
       .string()
       .min(1, "Name is too short")
       .max(255, "Name is too long")
-      .optional(),
-
+      .optional()
+      .or(z.literal("")),
     preferences: z
       .object({
         language: z
           .string()
-          .min(2, "Language code is too short")
-          .max(10, "Language code is too long")
-          .default("en-US"),
-        theme: z.enum(["light", "dark", "system"]).default("system")
+          .min(2)
+          .max(10)
+          .default("en-IN"),
+        theme: z.enum(["light", "dark", "system"]).default("system"),
       })
       .default({
-        language: "en-US",
+        language: "en-IN",
         theme: "system",
-      })
-      .optional(),
-
+      }),
     phone_no: z
       .string()
       .min(10, "Phone number must be at least 10 characters")
@@ -67,7 +65,8 @@ export const employerRegisterSchema = z.object({
       .string()
       .length(15, "GST number must be exactly 15 characters")
       .regex(/^[A-Z0-9]+$/, "GST number must be alphanumeric")
-      .optional(),
+      .optional()
+      .or(z.literal("")),
 
     subscription_tier: z.string().max(255).optional(),
   }),

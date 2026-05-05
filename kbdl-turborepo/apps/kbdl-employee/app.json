@@ -31,6 +31,9 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "plugins": [
+      "expo-localization"
+    ]
   }
 }

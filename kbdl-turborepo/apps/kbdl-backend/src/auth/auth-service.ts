@@ -1,6 +1,5 @@
 import { Employer, prisma, User } from "@repo/db/server";
 import { env } from "@repo/validator/server";
-import * as https from "https";
 import jwt from "jsonwebtoken";
 import {
   EmployerRegisterPayload,
@@ -12,54 +11,6 @@ import { AppError } from "../utils/api-error";
 
 const generateOtp = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-const sendSmsViaMsg91 = (phone: string, otp: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const options = {
-      method: 'POST',
-      hostname: 'control.msg91.com',
-      path: '/api/v5/flow',
-      headers: {
-        accept: 'application/json',
-        authkey: env.MSG91_AUTH_KEY as string,
-        'content-type': 'application/json'
-      }
-    };
-
-    const req = https.request(options, function (res) {
-      const chunks: any[] = [];
-      res.on('data', function (chunk) { chunks.push(chunk); });
-      res.on('end', function () {
-        const body = Buffer.concat(chunks).toString();
-        try {
-          const response = JSON.parse(body);
-          if (response.type === "error") {
-            return reject(new Error(response.message));
-          }
-          resolve();
-        } catch (e) {
-          resolve();
-        }
-      });
-    });
-
-    req.on('error', (e) => reject(e));
-
-    const mobileWithCountryCode = `91${phone}`;
-
-    req.write(JSON.stringify({
-      template_id: env.MSG91_SMS_TEMPLATE_ID,
-      short_url: "0",
-      recipients: [
-        {
-          mobiles: mobileWithCountryCode,
-          VAR1: otp
-        }
-      ]
-    }));
-    req.end();
-  });
 };
 
 const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
@@ -129,7 +80,7 @@ export const registerUserService = async (
     create: { phone_no, otp, expires_at: expiresAt, name, preferences: preferences },
   });
 
-  // TODO: sendSmsViaMsg91(phone_no, otp);
+  // TODO: sendOtpSMS(phone, otp);;
   return null;
 };
 
@@ -188,7 +139,7 @@ export const sendUserOtpService = async (
     create: { phone_no: phone, otp, expires_at: expiresAt },
   });
   // TODO: Uncomment this
-  // await sendSmsViaMsg91(phone, otp);
+  // await sendOtpSMS(phone, otp);
 
   return null;
 };

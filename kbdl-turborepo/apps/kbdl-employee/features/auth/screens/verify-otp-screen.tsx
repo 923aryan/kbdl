@@ -1,7 +1,9 @@
 import Security from '@/assets/icons/security.svg';
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,17 +15,21 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useAuthStore } from '../hooks/useAuth';
 // Adjust this import path based on your project structure
 import { Colors } from '@/constants/theme';
+import { useVerifyRegisterUser } from '../api';
 
 export default function OtpVerificationScreen() {
   const colorScheme = useColorScheme() ?? 'light';
+  const phone = useAuthStore((state) => state.registerData.phone_no);
+  const router = useRouter();
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
+  const { mutate: verifyOtp, isPending } = useVerifyRegisterUser();
 
-  // State to hold the 4 OTP digits (Optional: useful for actual implementation)
-  const [otp, setOtp] = useState(['', '', '', '']);
+  // State to hold the 6 OTP digits
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   // Handle OTP input change and auto-focus next input
@@ -32,7 +38,7 @@ export default function OtpVerificationScreen() {
     newOtp[index] = text;
     setOtp(newOtp);
 
-    if (text.length !== 0 && index < 3) {
+    if (text.length !== 0 && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -42,6 +48,21 @@ export default function OtpVerificationScreen() {
     if (e.nativeEvent.key === 'Backspace' && index > 0 && otp[index] === '') {
       inputRefs.current[index - 1]?.focus();
     }
+  };
+
+  const handleVerify = () => {
+    const otpString = otp.join('');
+    if (otpString.length !== 6) return;
+
+    verifyOtp({ phone_no: phone, otp: otpString }, {
+      onSuccess: (res) => {
+        console.log('OTP Verified successfully', res);
+        router.replace('/(tabs)');
+      },
+      onError: (err) => {
+        console.error('OTP Verification failed', err);
+      }
+    });
   };
 
   return (
@@ -54,7 +75,11 @@ export default function OtpVerificationScreen() {
 
           {/* Header Bar */}
           <View style={styles.header}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.backButton}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
               <Feather name="chevron-left" size={28} color={theme.text} />
             </TouchableOpacity>
           </View>
@@ -73,9 +98,9 @@ export default function OtpVerificationScreen() {
             {/* Title & Subtitle */}
             <Text style={styles.title}>Enter OTP</Text>
             <Text style={styles.subtitle}>
-              We have sent a 4-digit OTP to
+              We have sent a 6-digit OTP to
             </Text>
-            <Text style={styles.phoneNumber}>+91 8956473856</Text>
+            <Text style={styles.phoneNumber}>+91 {phone}</Text>
 
             {/* OTP Input Boxes */}
             <View style={styles.otpContainer}>
@@ -105,8 +130,17 @@ export default function OtpVerificationScreen() {
             </View>
 
             {/* Verify Button */}
-            <TouchableOpacity style={styles.verifyButton} activeOpacity={0.8}>
-              <Text style={styles.verifyButtonText}>Verify</Text>
+            <TouchableOpacity
+              style={[styles.verifyButton, otp.join('').length !== 6 && { opacity: 0.7 }]}
+              activeOpacity={0.8}
+              onPress={handleVerify}
+              disabled={isPending || otp.join('').length !== 6}
+            >
+              {isPending ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.verifyButtonText}>Verify</Text>
+              )}
             </TouchableOpacity>
 
           </View>
@@ -177,14 +211,14 @@ const createStyles = (theme: typeof Colors.light) =>
       marginBottom: 32,
     },
     otpInput: {
-      width: 60,
-      height: 65,
+      width: 45,
+      height: 55,
       borderWidth: 1,
       borderColor: theme.border,
-      borderRadius: 12,
+      borderRadius: 10,
       backgroundColor: theme.card,
       textAlign: 'center',
-      fontSize: 24,
+      fontSize: 20,
       fontWeight: '600',
       color: theme.text,
     },
