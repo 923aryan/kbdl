@@ -27,7 +27,7 @@ jobs:
             pnpm install --frozen-lockfile
 
             echo "🔧 Build backend (with deps)"
-            pnpm turbo run build --filter=apps/backend...
+            pnpm turbo run build --filter=kbdl-backend...
 
             echo "🗄 Run Prisma"
             pnpm --filter apps/backend exec prisma migrate deploy
