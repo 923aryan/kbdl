@@ -1,0 +1,44 @@
+name: Deploy Backend (Turborepo)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+
+            # Ensure global binaries are available
+            export PATH="$PATH:/usr/local/bin"
+
+            cd ~/app/kbdl/kbdl-turborepo
+
+            echo "📥 Pull latest"
+            git pull origin main
+
+            echo "📦 Install dependencies"
+            pnpm install --frozen-lockfile
+
+            echo "🧬 Generate Prisma client"
+            pnpm --filter @repo/db exec prisma generate
+
+            echo "🔧 Build backend (with deps)"
+            pnpm turbo run build --filter=kbdl-backend...
+
+            echo "🗄 Run Prisma migrations"
+            pnpm --filter @repo/db exec prisma migrate deploy
+
+            echo "🚀 Restart app"
+            pm2 restart backend || pm2 start apps/kbdl-backend/dist/server.js --name backend
+
+            echo "✅ Done"
