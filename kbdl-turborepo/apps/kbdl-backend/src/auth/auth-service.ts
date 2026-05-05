@@ -1,11 +1,11 @@
 import { Employer, prisma, User } from "@repo/db/server";
-import { env } from "@repo/validator/server";
-import jwt from "jsonwebtoken";
 import {
   EmployerRegisterPayload,
   UserRegisterPayload,
   UserVerifyRegisterPayload
-} from "../../../../packages/types/request-response/auth-type";
+} from "@repo/types";
+import { env } from "@repo/validator/server";
+import jwt from "jsonwebtoken";
 import { resendClient } from "../config/resend";
 import { AppError } from "../utils/api-error";
 

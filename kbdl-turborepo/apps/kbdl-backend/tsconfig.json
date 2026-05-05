@@ -6,8 +6,7 @@
     "noEmit": false
   },
   "include": [
-    "src/**/*",
-    "../../packages/types/request-response/auth-type.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
