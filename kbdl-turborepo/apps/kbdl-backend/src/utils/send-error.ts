@@ -114,14 +114,20 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
     };
     return res.status(err.statusCode).json(response);
   }
+  let message = "Something went wrong";
+
+  if (err instanceof Error) {
+    message = err.message;
+  }
+
   console.error("error is ", err);
+
   response = {
     success: false,
     error: {
       code: "INTERNAL_SERVER_ERROR",
-      message: "Something went wrong",
+      message,
     },
   };
-
   return res.status(500).json(response);
 };
