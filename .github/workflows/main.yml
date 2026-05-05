@@ -24,7 +24,8 @@ jobs:
             cd ~/app/kbdl/kbdl-turborepo
 
             echo "📥 Pull latest"
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
 
             echo "📦 Install dependencies"
             pnpm install --frozen-lockfile
