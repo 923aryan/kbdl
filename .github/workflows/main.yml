@@ -17,7 +17,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
-            cd ~/app
+
+            cd ~/app/kbdl/kbdl-turborepo
 
             echo "📥 Pull latest"
             git pull origin main
