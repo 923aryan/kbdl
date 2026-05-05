@@ -18,6 +18,9 @@ jobs:
           script: |
             set -e
 
+            # Ensure global binaries are available
+            export PATH="$PATH:/usr/local/bin"
+
             cd ~/app/kbdl/kbdl-turborepo
 
             echo "📥 Pull latest"
@@ -26,13 +29,16 @@ jobs:
             echo "📦 Install dependencies"
             pnpm install --frozen-lockfile
 
+            echo "🧬 Generate Prisma client"
+            pnpm --filter @repo/db exec prisma generate
+
             echo "🔧 Build backend (with deps)"
             pnpm turbo run build --filter=kbdl-backend...
 
-            echo "🗄 Run Prisma"
-            pnpm --filter apps/backend exec prisma migrate deploy
+            echo "🗄 Run Prisma migrations"
+            pnpm --filter @repo/db exec prisma migrate deploy
 
             echo "🚀 Restart app"
-            pm2 restart backend || pm2 start apps/backend/dist/server.js --name backend
+            pm2 restart backend || pm2 start apps/kbdl-backend/dist/server.js --name backend
 
             echo "✅ Done"
