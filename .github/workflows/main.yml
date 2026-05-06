@@ -18,7 +18,6 @@ jobs:
           script: |
             set -e
 
-            # Ensure global binaries are available
             export PATH="$PATH:/usr/local/bin"
 
             cd ~/app/kbdl/kbdl-turborepo
@@ -33,13 +32,18 @@ jobs:
             echo "🧬 Generate Prisma client"
             pnpm --filter @repo/db exec prisma generate
 
-            echo "🔧 Build backend (with deps)"
+            echo "🔧 Build all required packages"
+            pnpm turbo run build --filter=@repo/db...
             pnpm turbo run build --filter=kbdl-backend...
 
             echo "🗄 Run Prisma migrations"
             pnpm --filter @repo/db exec prisma migrate deploy
 
             echo "🚀 Restart app"
-            pm2 restart backend || pm2 start apps/kbdl-backend/dist/server.js --name backend
+            pm2 delete backend || true
+            pm2 start apps/kbdl-backend/dist/server.js --name backend
+
+            echo "📊 PM2 Status"
+            pm2 list
 
             echo "✅ Done"
