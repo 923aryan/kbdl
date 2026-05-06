@@ -33,13 +33,16 @@ jobs:
             echo "🧬 Generate Prisma client"
             pnpm --filter @repo/db exec prisma generate
 
-            echo "🔧 Build backend (with deps)"
-            pnpm turbo run build --filter=kbdl-backend...
+            # NOTE: The build step is completely removed from here!
 
             echo "🗄 Run Prisma migrations"
             pnpm --filter @repo/db exec prisma migrate deploy
 
             echo "🚀 Restart app"
-            pm2 restart backend || pm2 start apps/kbdl-backend/dist/server.js --name backend
+            # Delete the old 'dist' based process so it doesn't conflict
+            pm2 delete backend || true 
+            
+            # Start the backend natively using tsx
+            pm2 start "npx tsx apps/kbdl-backend/src/server.ts" --name backend
 
             echo "✅ Done"
