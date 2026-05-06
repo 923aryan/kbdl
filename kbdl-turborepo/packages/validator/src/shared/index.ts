@@ -1,1 +1,1 @@
-export * from "../../validation-schema/auth";
+export * from "../../validation-schema/auth.js";

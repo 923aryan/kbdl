@@ -1,4 +1,4 @@
-import { Prisma } from "@repo/db/generated/prisma/client.js";
+import { Prisma } from "@repo/db/server";
 import { ApiError } from "@repo/types";
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";

@@ -26,22 +26,38 @@ jobs:
             git fetch origin
             git reset --hard origin/main
 
+            echo "🧹 Clean old builds"
+            rm -rf packages/db/dist
+            rm -rf packages/validator/dist
+            rm -rf apps/kbdl-backend/dist
+
             echo "📦 Install dependencies"
             pnpm install --frozen-lockfile
 
             echo "🧬 Generate Prisma client"
             pnpm --filter @repo/db exec prisma generate
 
-            echo "🔧 Build all required packages"
-            pnpm turbo run build --filter=@repo/db...
-            pnpm turbo run build --filter=kbdl-backend...
+            echo "🔧 Build db package"
+            pnpm --filter @repo/db build
+
+            echo "🔧 Build validator package"
+            pnpm --filter @repo/validator build
+
+            echo "🔧 Build backend"
+            pnpm --filter kbdl-backend build
 
             echo "🗄 Run Prisma migrations"
             pnpm --filter @repo/db exec prisma migrate deploy
 
             echo "🚀 Restart app"
             pm2 delete backend || true
-            pm2 start apps/kbdl-backend/dist/server.js --name backend
+
+            pm2 start apps/kbdl-backend/dist/server.js \
+              --name backend \
+              --node-args="--env-file=apps/kbdl-backend/.env"
+
+            echo "💾 Save PM2"
+            pm2 save
 
             echo "📊 PM2 Status"
             pm2 list

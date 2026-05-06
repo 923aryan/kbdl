@@ -5,9 +5,18 @@
   "license": "MIT",
   "main": "./index.ts",
   "types": "./index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
   "exports": {
-    "./server": "./src/server/index.ts",
-    "./shared": "./src/shared/index.ts"
+    "./server": {
+      "types": "./dist/src/server/index.d.ts",
+      "default": "./dist/src/server/index.js"
+    },
+    "./shared": {
+      "types": "./dist/src/shared/index.d.ts",
+      "default": "./dist/src/shared/index.js"
+    }
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

@@ -6,13 +6,19 @@
   "main": "./index.ts",
   "types": "./index.ts",
   "exports": {
-    "./server": "./src/server/index.ts",
-    "./shared": "./src/shared/index.ts",
-    "./*": "./*"
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "default": "./dist/shared/index.js"
+    }
   },
   "scripts": {
     "generate": "prisma generate",
-    "push": "prisma db push"
+    "push": "prisma db push",
+    "build": "prisma generate && tsc"
   },
   "publishConfig": {
     "access": "public"
@@ -20,15 +26,16 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@prisma/client-runtime-utils": "^7.8.0",
     "@repo/validator": "workspace:^",
     "dotenv": "^17.4.2",
     "pg": "^8.20.0"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
-    "prisma": "^7.8.0",
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*"
+    "prisma": "^7.8.0"
   }
 }
