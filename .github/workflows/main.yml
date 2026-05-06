@@ -18,7 +18,6 @@ jobs:
           script: |
             set -e
 
-            # Ensure global binaries are available
             export PATH="$PATH:/usr/local/bin"
 
             cd ~/app/kbdl/kbdl-turborepo
@@ -28,20 +27,23 @@ jobs:
             git reset --hard origin/main
 
             echo "📦 Install dependencies"
-            # Pure pnpm! No global sudo commands needed.
             pnpm install --frozen-lockfile
 
             echo "🧬 Generate Prisma client"
             pnpm --filter @repo/db exec prisma generate
 
+            echo "🔧 Build all required packages"
+            pnpm turbo run build --filter=@repo/db...
+            pnpm turbo run build --filter=kbdl-backend...
+
             echo "🗄 Run Prisma migrations"
             pnpm --filter @repo/db exec prisma migrate deploy
 
             echo "🚀 Restart app"
-            # Delete the old process so it doesn't conflict
-            pm2 delete backend || true 
-            
-            # Start the app using the local tsx binary installed by pnpm!
-            pm2 start apps/kbdl-backend/src/server.ts --name backend --interpreter ./node_modules/.bin/tsx
+            pm2 delete backend || true
+            pm2 start apps/kbdl-backend/dist/server.js --name backend
+
+            echo "📊 PM2 Status"
+            pm2 list
 
             echo "✅ Done"
