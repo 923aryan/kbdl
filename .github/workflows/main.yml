@@ -27,9 +27,8 @@ jobs:
             git fetch origin
             git reset --hard origin/main
 
-            echo "📦 Install global runner & local dependencies"
-            # Install tsx globally so PM2 can always find it
-            sudo npm install -g tsx
+            echo "📦 Install dependencies"
+            # Pure pnpm! No global sudo commands needed.
             pnpm install --frozen-lockfile
 
             echo "🧬 Generate Prisma client"
@@ -42,7 +41,7 @@ jobs:
             # Delete the old process so it doesn't conflict
             pm2 delete backend || true 
             
-            # Start the backend and explicitly tell PM2 to use tsx as the engine
-            pm2 start apps/kbdl-backend/src/server.ts --name backend --interpreter tsx
+            # Start the app using the local tsx binary installed by pnpm!
+            pm2 start apps/kbdl-backend/src/server.ts --name backend --interpreter ./node_modules/.bin/tsx
 
             echo "✅ Done"
