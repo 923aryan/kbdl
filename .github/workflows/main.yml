@@ -29,7 +29,7 @@ jobs:
 
             echo "📦 Install global runner & local dependencies"
             # Install tsx globally so PM2 can always find it
-            npm install -g tsx
+            sudo npm install -g tsx
             pnpm install --frozen-lockfile
 
             echo "🧬 Generate Prisma client"
