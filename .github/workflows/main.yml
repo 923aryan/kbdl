@@ -36,12 +36,12 @@ jobs:
 
             echo "🧬 Generate Prisma client"
             pnpm --filter @repo/db exec prisma generate
+            
+            echo "🔧 Build validator package"
+            pnpm --filter @repo/validator build
 
             echo "🔧 Build db package"
             pnpm --filter @repo/db build
-
-            echo "🔧 Build validator package"
-            pnpm --filter @repo/validator build
 
             echo "🔧 Build backend"
             pnpm --filter kbdl-backend build
