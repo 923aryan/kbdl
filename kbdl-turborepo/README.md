@@ -44,6 +44,8 @@ imp:
 at root level: pnpm add @repo/[target] --workspace --filter @repo/[current]
 
 after every udpate on tables:
+pnpm --filter @repo/type build
+pnpm --filter @repo/validator build
 pnpm prisma migrate dev --name <descriptive_name>
 pnpm prisma generate (for ts)
 ```

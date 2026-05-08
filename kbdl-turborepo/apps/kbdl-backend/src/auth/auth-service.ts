@@ -108,8 +108,8 @@ export const verifyRegistrationOtpService = async (
   await prisma.otpVerification.delete({ where: { phone_no: phone_no } });
 
   // 4. Generate JWTs
-  const accessToken = jwt.sign({ userId: newUser.id, role: "USER" }, env.JWT_ACCESS_SECRET);
-  const refreshToken = jwt.sign({ userId: newUser.id, role: "USER" }, env.JWT_REFRESH_SECRET);
+  const accessToken = jwt.sign({ id: newUser.id, role: "USER" }, env.JWT_ACCESS_SECRET);
+  const refreshToken = jwt.sign({ id: newUser.id, role: "USER" }, env.JWT_REFRESH_SECRET);
 
   const finalUser = await prisma.user.update({
     where: { id: newUser.id },
@@ -176,11 +176,11 @@ export const verifyUserOtpService = async (
     throw new AppError(404, "NON_EXISTENT_USER", "User not found");
   }
 
-  const accessToken = jwt.sign({ userId: existingUser.id, role: "USER" }, env.JWT_ACCESS_SECRET as string, {
+  const accessToken = jwt.sign({ id: existingUser.id, role: "USER" }, env.JWT_ACCESS_SECRET as string, {
     expiresIn: env.JWT_ACCESS_EXPIRY as any,
   });
 
-  const refreshToken = jwt.sign({ userId: existingUser.id, role: "USER" }, env.JWT_REFRESH_SECRET as string, {
+  const refreshToken = jwt.sign({ id: existingUser.id, role: "USER" }, env.JWT_REFRESH_SECRET as string, {
     expiresIn: env.JWT_REFRESH_EXPIRY as any,
   });
 
@@ -250,11 +250,11 @@ export const verifyEmployerOtpService = async (
     throw new AppError(404, "NON_EXISTENT_EMPLOYER", "Employer not found");
   }
 
-  const accessToken = jwt.sign({ userId: existingEmployer.id, role: "EMPLOYER" }, env.JWT_ACCESS_SECRET as string, {
+  const accessToken = jwt.sign({ id: existingEmployer.id, role: "ORGANIZATION" }, env.JWT_ACCESS_SECRET as string, {
     expiresIn: env.JWT_ACCESS_EXPIRY as any,
   });
 
-  const refreshToken = jwt.sign({ userId: existingEmployer.id, role: "EMPLOYER" }, env.JWT_REFRESH_SECRET as string, {
+  const refreshToken = jwt.sign({ id: existingEmployer.id, role: "ORGANIZATION" }, env.JWT_REFRESH_SECRET as string, {
     expiresIn: env.JWT_REFRESH_EXPIRY as any,
   });
 
@@ -270,17 +270,17 @@ export const generateRefreshTokenService = async (
   oldRefreshToken: string
 ): Promise<{ accessToken: string; refreshToken: string; user?: User; employer?: Employer }> => {
   try {
-    const decoded = jwt.verify(oldRefreshToken, env.JWT_REFRESH_SECRET as string) as { userId: string; role: string };
+    const decoded = jwt.verify(oldRefreshToken, env.JWT_REFRESH_SECRET as string) as { id: string; role: string };
 
     if (decoded.role === "USER") {
-      const existingUser = await prisma.user.findUnique({ where: { id: decoded.userId } });
+      const existingUser = await prisma.user.findUnique({ where: { id: decoded.id } });
 
       if (!existingUser || existingUser.refresh_token !== oldRefreshToken) {
         throw new AppError(401, "INVALID_TOKEN", "Invalid refresh token");
       }
 
-      const accessToken = jwt.sign({ userId: existingUser.id, role: "USER" }, env.JWT_ACCESS_SECRET as string, { expiresIn: env.JWT_ACCESS_EXPIRY as any });
-      const newRefreshToken = jwt.sign({ userId: existingUser.id, role: "USER" }, env.JWT_REFRESH_SECRET as string, { expiresIn: env.JWT_REFRESH_EXPIRY as any });
+      const accessToken = jwt.sign({ id: existingUser.id, role: "USER" }, env.JWT_ACCESS_SECRET as string, { expiresIn: env.JWT_ACCESS_EXPIRY as any });
+      const newRefreshToken = jwt.sign({ id: existingUser.id, role: "USER" }, env.JWT_REFRESH_SECRET as string, { expiresIn: env.JWT_REFRESH_EXPIRY as any });
 
       const updatedUser = await prisma.user.update({
         where: { id: existingUser.id },
@@ -289,15 +289,15 @@ export const generateRefreshTokenService = async (
 
       return { accessToken, refreshToken: newRefreshToken, user: updatedUser };
 
-    } else if (decoded.role === "EMPLOYER") {
-      const existingEmployer = await prisma.employer.findUnique({ where: { id: decoded.userId } });
+    } else if (decoded.role === "ORGANIZATION") {
+      const existingEmployer = await prisma.employer.findUnique({ where: { id: decoded.id } });
 
       if (!existingEmployer || existingEmployer.refresh_token !== oldRefreshToken) {
         throw new AppError(401, "INVALID_TOKEN", "Invalid refresh token");
       }
 
-      const accessToken = jwt.sign({ userId: existingEmployer.id, role: "EMPLOYER" }, env.JWT_ACCESS_SECRET as string, { expiresIn: env.JWT_ACCESS_EXPIRY as any });
-      const newRefreshToken = jwt.sign({ userId: existingEmployer.id, role: "EMPLOYER" }, env.JWT_REFRESH_SECRET as string, { expiresIn: env.JWT_REFRESH_EXPIRY as any });
+      const accessToken = jwt.sign({ id: existingEmployer.id, role: "ORGANIZATION" }, env.JWT_ACCESS_SECRET as string, { expiresIn: env.JWT_ACCESS_EXPIRY as any });
+      const newRefreshToken = jwt.sign({ id: existingEmployer.id, role: "ORGANIZATION" }, env.JWT_REFRESH_SECRET as string, { expiresIn: env.JWT_REFRESH_EXPIRY as any });
 
       const updatedEmployer = await prisma.employer.update({
         where: { id: existingEmployer.id },

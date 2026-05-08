@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* 1. Tell Tailwind to use class-based dark mode (Outside of @theme) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 2. Define the Tailwind utility mappings */
+@theme {
+  /* Fonts */
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui;
+
+  /* Brand Colors (Static, won't change in dark mode) */
+  --color-primary: #0658C2;
+  --color-navy: #01122E;
+
+  /* Dynamic Colors (Mapped to standard CSS variables) */
+  --color-background: var(--bg-color);
+  --color-surface: var(--surface-color);
+  --color-text: var(--text-color);
+  --color-text-secondary: var(--text-secondary-color);
+  --color-border: var(--border-color);
+  --color-card: var(--card-color);
+  --color-icon: var(--icon-color);
+}
+
+/* 3. Define the actual light/dark values using standard CSS */
+@layer base {
+  /* Light Mode (Default) */
+  :root {
+    --bg-color: #FFFFFF;
+    --surface-color: #F9FAFB;
+    --text-color: #1F2937;
+    --text-secondary-color: #676767;
+    --border-color: #D3D3D3;
+    --card-color: #FFFFFF;
+    --icon-color: #676767;
+  }
+
+  /* Dark Mode */
+  .dark {
+    --bg-color: #01122E;
+    --surface-color: #0A1A3A;
+    --text-color: #FFFFFF;
+    --text-secondary-color: #A1A1AA;
+    --border-color: #2A2A2A;
+    --card-color: #111827;
+    --icon-color: #A1A1AA;
+  }
+
+  /* Smooth transitions for theme switching */
+  body {
+    @apply transition-colors duration-200;
+  }
+}

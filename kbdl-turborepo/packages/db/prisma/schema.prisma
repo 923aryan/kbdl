@@ -9,6 +9,13 @@ datasource db {
   extensions = [postgis]
 }
 
+enum UserType {
+  organization
+  user
+
+  @@map("user_type")
+}
+
 model User {
   id              String                                 @id @default(uuid()) @db.Uuid
   name            String?                                @db.VarChar
@@ -58,14 +65,15 @@ enum ShiftStatus {
 }
 
 model Shift {
-  id                      String  @id @default(uuid()) @db.Uuid
-  original_employee_id    String  @db.Uuid
-  replacement_employee_id String? @db.Uuid
-  employer_id             String  @db.Uuid
-
-  shift_date  DateTime @db.Timestamptz()
-  shift_start DateTime @db.Timestamptz()
-  shift_end   DateTime @db.Timestamptz()
+  id                      String   @id @default(uuid()) @db.Uuid
+  original_employee_id    String   @db.Uuid
+  replacement_employee_id String?  @db.Uuid
+  employer_id             String   @db.Uuid
+  request_accepted        Boolean  @default(false)
+  created_by              UserType
+  shift_date              DateTime @db.Timestamptz()
+  shift_start             DateTime @db.Timestamptz()
+  shift_end               DateTime @db.Timestamptz()
 
   skill_required String      @db.VarChar
   status         ShiftStatus
@@ -130,13 +138,6 @@ enum JobStatus {
   paused
 
   @@map("job_status")
-}
-
-enum UserType {
-  organization
-  user
-
-  @@map("user_type")
 }
 
 model Job {

@@ -3,6 +3,7 @@ declare global {
     interface Request {
       user: any;
       id: string;
+      role: string;
     }
   }
 }

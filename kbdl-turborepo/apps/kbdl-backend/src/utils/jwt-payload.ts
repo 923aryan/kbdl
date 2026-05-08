@@ -1,4 +1,4 @@
 export type JwtPayload = {
-  userId: string;
-  role: string;
+  id: string;
+  role: "user" | "organization" | "admin";
 };
