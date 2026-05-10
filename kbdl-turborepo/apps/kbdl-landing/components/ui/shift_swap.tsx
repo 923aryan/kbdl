@@ -269,8 +269,8 @@ export default function ShiftSwapSection() {
         </div>
 
         {/* Primary CTA Button */}
-        <button className="bg-[#0658C2] text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
-          Get Job
+        <button className="bg-primary text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
+          Coming Soon
         </button>
       </div>
     </section>

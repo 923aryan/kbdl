@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         type: 'website',
         images: [
             {
-                url: '/og-image.png',
+                url: '/favicon.ico',
                 width: 1200,
                 height: 630,
                 alt: 'Kaam Badlo',
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
         title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
         description:
             'Shift swaps, verified worker profiles, and hiring tools for factories and workers.',
-        images: ['/og-image.png'],
+        images: ['/favicon.ico'],
     },
 
     keywords: [
