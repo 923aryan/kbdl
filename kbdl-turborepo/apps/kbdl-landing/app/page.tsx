@@ -2,57 +2,58 @@ import { Metadata } from "next";
 import StructuredData from "../components/seo/structured-data";
 import HeroSection from "../components/ui/hero";
 import TimelineSection from "../components/ui/timeline";
+import ShiftSwapSection from "../components/ui/shift_swap";
+import GetJob from "../components/ui/get_job";
 import { siteConfig } from "../lib/seo-constants";
-// import { Button } from '@repo/ui'; 
-
+// import { Button } from '@repo/ui';
 
 export const metadata: Metadata = {
   title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
 
   description:
-    'Kaam Badlo helps factories and workers manage shift swaps, verified skill cards, and hyperlocal blue-collar hiring.',
+    "Kaam Badlo helps factories and workers manage shift swaps, verified skill cards, and hyperlocal blue-collar hiring.",
 
   metadataBase: new URL(siteConfig.url),
 
   alternates: {
-    canonical: '/',
+    canonical: "/",
   },
 
   openGraph: {
     title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
     description:
-      'Shift swaps, Karigari Skill Cards, and hyperlocal hiring for blue-collar workers and factories.',
+      "Shift swaps, Karigari Skill Cards, and hyperlocal hiring for blue-collar workers and factories.",
     url: siteConfig.url,
     siteName: siteConfig.name,
-    type: 'website',
+    type: "website",
     images: [
       {
-        url: '/og-image.png',
+        url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: 'Kaam Badlo',
+        alt: "Kaam Badlo",
       },
     ],
   },
 
   twitter: {
-    card: 'summary_large_image',
+    card: "summary_large_image",
     title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
     description:
-      'Shift swaps, verified worker profiles, and hiring tools for factories and workers.',
-    images: ['/og-image.png'],
+      "Shift swaps, verified worker profiles, and hiring tools for factories and workers.",
+    images: ["/og-image.png"],
   },
 
   keywords: [
-    'shift swap platform',
-    'blue collar jobs',
-    'factory workers',
-    'workforce management',
-    'Karigari card',
-    'industrial hiring',
-    'worker verification',
-    'Noida jobs',
-    'factory staffing',
+    "shift swap platform",
+    "blue collar jobs",
+    "factory workers",
+    "workforce management",
+    "Karigari card",
+    "industrial hiring",
+    "worker verification",
+    "Noida jobs",
+    "factory staffing",
   ],
 
   authors: [
@@ -66,7 +67,7 @@ export const metadata: Metadata = {
   publisher: siteConfig.name,
 
   icons: {
-    icon: '/favicon.ico',
+    icon: "/favicon.ico",
   },
 };
 
@@ -94,6 +95,8 @@ export default function Home() {
       <StructuredData data={schema} />
       <HeroSection />
       <TimelineSection />
+      <ShiftSwapSection />
+      {/* <GetJob /> */}
     </div>
   );
 }
