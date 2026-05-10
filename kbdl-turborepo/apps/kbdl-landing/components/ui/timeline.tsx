@@ -9,9 +9,9 @@ const steps = [
     time: '2 mins',
     colorHex: '#0658C2', // Blue
     bgClass: 'bg-[#EBF3FF]',
-    textClass: 'text-[#0658C2]',
+    textClass: 'text-primary',
     icon: (
-      <svg className="w-12 h-12 text-[#0658C2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-12 h-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     ),
@@ -62,8 +62,8 @@ const steps = [
   {
     id: '05',
     title: 'Interview & Hire',
-    desc: 'Connect directly via WhatsApp. Interview and hire the best — all within 48 hours.',
-    time: 'Within 48 Hours',
+    desc: 'Connect directly via WhatsApp. Interview and hire the best — all Instant Swap.',
+    time: 'Instant Swap',
     colorHex: '#0D9488', // Teal
     bgClass: 'bg-[#E0F2FE]', // Using a light cyan/teal for the bg
     textClass: 'text-[#0D9488]',
@@ -77,8 +77,8 @@ const steps = [
 
 export default function TimelineSection(): JSX.Element {
   return (
-    <section className="py-20 px-4 md:px-8 bg-white overflow-hidden">
-      <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
+    <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
+      <div className="max-w-350 mx-auto flex flex-col items-center text-center">
 
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-6">
@@ -91,10 +91,10 @@ export default function TimelineSection(): JSX.Element {
         {/* Main Heading */}
         <h2 className="text-4xl md:text-5xl font-extrabold text-navy mb-6">
           Hire Blue-Collar Talent in Just{' '}
-          <span className="relative inline-block text-[#0658C2]">
+          <span className="relative inline-block text-primary">
             48 Hours!
             {/* Curved Swoosh SVG */}
-            <svg className="absolute w-[110%] h-4 -bottom-3 -left-[5%] text-[#0658C2]" viewBox="0 0 100 20" preserveAspectRatio="none">
+            <svg className="absolute w-[110%] h-4 -bottom-3 -left-[5%] text-primary" viewBox="0 0 100 20" preserveAspectRatio="none">
               <path d="M0,10 Q50,25 100,0" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
             </svg>
           </span>

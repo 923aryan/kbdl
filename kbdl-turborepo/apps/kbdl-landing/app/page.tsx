@@ -1,9 +1,10 @@
 import { Metadata } from "next";
 import StructuredData from "../components/seo/structured-data";
+import GetWorkSection from "../components/ui/geJob";
 import HeroSection from "../components/ui/hero";
-import TimelineSection from "../components/ui/timeline";
 import ShiftSwapSection from "../components/ui/shift_swap";
-import GetJob from "../components/ui/get_job";
+import TimelineSection from "../components/ui/timeline";
+import WhomWeServeSection from "../components/ui/whom-we-serve";
 import { siteConfig } from "../lib/seo-constants";
 // import { Button } from '@repo/ui';
 
@@ -96,7 +97,8 @@ export default function Home() {
       <HeroSection />
       <TimelineSection />
       <ShiftSwapSection />
-      {/* <GetJob /> */}
+      <GetWorkSection />
+      <WhomWeServeSection />
     </div>
   );
 }

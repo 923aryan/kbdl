@@ -5,7 +5,7 @@ import engineer from "../../public/engineer.png";
 export default function HeroSection() {
   return (
     // Hero section
-    <section className="relative w-full min-h-[600px] flex flex-col justify-center items-center overflow-hidden bg-navy">
+    <section className="relative w-full min-h-175 md:min-h-150 flex flex-col justify-center items-center overflow-hidden bg-navy">
       {/* 1. SEO Optimized Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -16,7 +16,7 @@ export default function HeroSection() {
           className="object-cover object-center opacity-90"
         />
         {/* Deep blue radial/linear gradient overlay to match the image tone */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#010C1E]/90 via-[#01122E]/80 to-[#01122E]/40"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-[#010C1E]/10 via-navy/80 to-navy/40"></div>
       </div>
 
       {/* 2. Main Hero Content */}
@@ -60,31 +60,29 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* 3. Floating App Store Badges (Hidden on mobile, snaps to right edge on desktop) */}
-      <div className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 flex-col gap-4 z-20">
-        {/* App Store Button */}
-        <button className="flex items-center gap-3 bg-[#EBF3FF] hover:bg-white transition-colors text-navy px-4 py-3 rounded-l-xl shadow-lg border border-r-0 border-white/20 group">
+      {/* TODO: Once app arrives uncomment this : 3. Floating App Store Badges (Sticky to right edge of screen) */}
+      {/* <div className="flex fixed right-0 top-1/2 -translate-y-1/2 flex-col gap-3 sm:gap-4 z-50">
+        <button className="flex items-center gap-2 sm:gap-3 bg-[#EBF3FF] hover:bg-white transition-colors text-navy px-3 py-2 sm:px-4 sm:py-3 rounded-l-xl shadow-lg border border-r-0 border-white/20 group">
           <svg
-            className="w-8 h-8 text-black"
+            className="w-6 h-6 sm:w-8 sm:h-8 text-black"
             viewBox="0 0 24 24"
             fill="currentColor"
           >
             <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.78.78-.04 1.94-.8 3.42-.69 1.14.04 2.37.52 3.1 1.5-2.61 1.54-2.18 5.25.5 6.27-.64 1.77-1.48 3.55-2.1 4.11zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
           </svg>
           <div className="text-left flex flex-col">
-            <span className="text-[10px] font-medium leading-none text-gray-600 mb-1">
-              Download on the
+            <span className="text-[8px] sm:text-[10px] font-medium leading-none text-gray-600 mb-1">
+              Coming Soon on the
             </span>
-            <span className="text-sm font-bold leading-none text-black">
+            <span className="text-xs sm:text-sm font-bold leading-none text-black">
               App Store
             </span>
           </div>
         </button>
 
-        {/* Google Play Button */}
-        <button className="flex items-center gap-3 bg-[#EBF3FF] hover:bg-white transition-colors text-navy px-4 py-3 rounded-l-xl shadow-lg border border-r-0 border-white/20">
+        <button className="flex items-center gap-2 sm:gap-3 bg-[#EBF3FF] hover:bg-white transition-colors text-navy px-3 py-2 sm:px-4 sm:py-3 rounded-l-xl shadow-lg border border-r-0 border-white/20">
           <svg
-            className="w-8 h-8"
+            className="w-6 h-6 sm:w-8 sm:h-8"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
@@ -107,15 +105,15 @@ export default function HeroSection() {
             />
           </svg>
           <div className="text-left flex flex-col">
-            <span className="text-[10px] font-medium leading-none text-gray-600 mb-1">
-              Get It On
+            <span className="text-[8px] sm:text-[10px] font-medium leading-none text-gray-600 mb-1">
+              Coming Soon on the
             </span>
-            <span className="text-sm font-bold leading-none text-black">
+            <span className="text-xs sm:text-sm font-bold leading-none text-black">
               Google Play
             </span>
           </div>
         </button>
-      </div>
+      </div> */}
     </section>
   );
 }

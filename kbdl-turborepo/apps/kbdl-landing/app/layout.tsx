@@ -1,11 +1,10 @@
 import { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import React from 'react';
-import { Footer } from '../components/ui/footer';
-import { Navbar } from '../components/ui/navbar';
+import Footer from '../components/ui/footer';
+import Navbar from '../components/ui/navbar';
 import { siteConfig } from '../lib/seo-constants';
 import './globals.css';
-import './scss/main.scss';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),

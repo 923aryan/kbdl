@@ -1,4 +1,3 @@
-import type { JSX } from "react";
 
 // Data structure for the steps
 const steps = [
@@ -9,10 +8,10 @@ const steps = [
     time: "2 mins",
     colorHex: "#0658C2",
     bgClass: "bg-[#EBF3FF]",
-    textClass: "text-[#0658C2]",
+    textClass: "text-primary",
     icon: (
       <svg
-        className="w-12 h-12 text-[#0658C2]"
+        className="w-12 h-12 text-primary"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -131,8 +130,8 @@ const steps = [
   {
     id: "05",
     title: "Swap Confirmed!",
-    desc: "Both workers receive confirmation. Original worker gets leave without deduction. Production line stays active.",
-    time: "Within 48 Hours",
+    desc: "Both workers receive confirmation. Production line stays active.",
+    time: "Instant Swap",
     colorHex: "#0D9488",
     bgClass: "bg-[#E0F2FE]",
     textClass: "text-[#0D9488]",
@@ -161,10 +160,10 @@ const steps = [
 ];
 
 // Main timeline section component
-export default function (ShiftSwapSection): JSX.Element {
+export default function ShiftSwapSection() {
   return (
-    <section className="py-20 px-4 md:px-8 bg-white overflow-hidden">
-      <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
+    <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
+      <div className="max-w-350 mx-auto flex flex-col items-center text-center">
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-6">
           <svg
@@ -186,10 +185,10 @@ export default function (ShiftSwapSection): JSX.Element {
         {/* Main Heading */}
         <h2 className="text-4xl md:text-5xl font-extrabold text-navy mb-6">
           How Cross-Factory{" "}
-          <span className="relative inline-block text-[#0658C2]">
+          <span className="relative inline-block text-primary">
             Shift Swap
             <svg
-              className="absolute w-[110%] h-4 -bottom-3 -left-[5%] text-[#0658C2]"
+              className="absolute w-[110%] h-4 -bottom-3 -left-[5%] text-primary"
               viewBox="0 0 100 20"
               preserveAspectRatio="none"
             >
@@ -230,9 +229,9 @@ export default function (ShiftSwapSection): JSX.Element {
                 </div>
 
                 {/* Card */}
-                <div className="relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-200 hover:-translate-y-1 border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg cursor-pointer">
+                <div className="relative w-full max-w-70 lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-200 hover:-translate-y-1 border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg cursor-pointer">
                   {/* Card Content */}
-                  <div className="p-6 flex flex-col flex-grow items-center">
+                  <div className="p-6 flex flex-col grow items-center">
                     <div className="mb-4 h-16 flex items-center justify-center">
                       {step.icon}
                     </div>

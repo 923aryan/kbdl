@@ -7,6 +7,8 @@ import express, { Request, Response } from "express";
 import morgan from "morgan";
 import authRouter from "./auth/auth-routes";
 import redis from "./config/redis";
+import leadRouter from "./leads/leads-routes";
+import shiftSwapRouter from "./shift-swap/shift-swap-routes";
 import { errorHandler } from "./utils/send-error";
 import { sendSuccess } from "./utils/send-success";
 const app = express();
@@ -26,6 +28,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(morgan("combined"));
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/shift-swap", shiftSwapRouter);
+app.use("/api/v1/leads", leadRouter);
 
 app.get("/health", (_req: Request, res: Response) => {
   sendSuccess<null>(res, "Server is running", null, 200);

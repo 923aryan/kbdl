@@ -212,8 +212,7 @@ export const sendEmployerOtpService = async (
     update: { otp, expires_at: expiresAt },
     create: { email: email, otp, expires_at: expiresAt },
   });
-  // TODO: remove this in prod
-  // await sendOtpEmail(email, otp);
+  await sendOtpEmail(email, otp);
 
   return null;
 };
