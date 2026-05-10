@@ -7,6 +7,9 @@ import { siteConfig } from '../lib/seo-constants';
 import './globals.css';
 
 export const metadata: Metadata = {
+  verification: {
+    google: "J5qQnLaVfXYkaXJAYlmndACDTuTu_p5Z8JpBMeUvIVk",
+  },
   metadataBase: new URL(siteConfig.url),
   title: {
     default: siteConfig.name,
