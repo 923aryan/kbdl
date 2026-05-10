@@ -218,7 +218,7 @@ export default function Workers() {
                     <ArrowRightIcon />
                   </button>
 
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#2563eb]/0 via-[#2563eb]/0 to-[#2563eb]/0 group-hover:from-[#2563eb]/[0.02] transition-all duration-300 pointer-events-none" />
+                  <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-[#2563eb]/0 via-[#2563eb]/0 to-[#2563eb]/0 group-hover:from-[#2563eb]/[0.02] transition-all duration-300 pointer-events-none" />
                 </div>
               );
             })}

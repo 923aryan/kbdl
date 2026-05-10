@@ -5,7 +5,7 @@ import engineer from "../../public/engineer.png";
 export default function HeroSection() {
   return (
     // Hero section
-    <section className="relative w-full min-h-175 md:min-h-150 flex flex-col justify-center items-center overflow-hidden bg-navy">
+    <section className="relative w-full min-h-160 md:min-h-150 flex flex-col justify-center items-center overflow-hidden bg-navy">
       {/* 1. SEO Optimized Background Image */}
       <div className="absolute inset-0 z-0">
         <Image
