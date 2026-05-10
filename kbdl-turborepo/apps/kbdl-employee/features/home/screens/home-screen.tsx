@@ -88,7 +88,7 @@ export default function HomeScreen() {
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-          onPress={() => router.push("/refer")}
+          onPress={() => router.push("/refer" as any)}
         >
           <View style={styles.referContent}>
             <FontAwesome
