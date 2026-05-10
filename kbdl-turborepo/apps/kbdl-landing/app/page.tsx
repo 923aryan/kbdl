@@ -4,6 +4,9 @@ import HeroSection from "../components/ui/hero";
 import TimelineSection from "../components/ui/timeline";
 import ShiftSwapSection from "../components/ui/shift_swap";
 import GetJob from "../components/ui/get_job";
+import AudienceSection from "../components/ui/audience";
+import PromotionSection from "../components/ui/promotionSection";
+import ContactSection from "../components/ui/contactSection";
 import { siteConfig } from "../lib/seo-constants";
 // import { Button } from '@repo/ui';
 
@@ -96,7 +99,10 @@ export default function Home() {
       <HeroSection />
       <TimelineSection />
       <ShiftSwapSection />
-      {/* <GetJob /> */}
+      <GetJob />
+      <AudienceSection />
+      <PromotionSection />
+      <ContactSection />
     </div>
   );
 }

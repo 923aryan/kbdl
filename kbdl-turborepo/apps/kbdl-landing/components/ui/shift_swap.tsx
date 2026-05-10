@@ -161,9 +161,9 @@ const steps = [
 ];
 
 // Main timeline section component
-export default function (ShiftSwapSection): JSX.Element {
+export default function ShiftSwapSection(): JSX.Element {
   return (
-    <section className="py-20 px-4 md:px-8 bg-white overflow-hidden">
+    <section className="py-20 px-4 md:px-8 overflow-hidden bg-[#F9FAFB]">
       <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-6">
@@ -184,7 +184,7 @@ export default function (ShiftSwapSection): JSX.Element {
         </div>
 
         {/* Main Heading */}
-        <h2 className="text-4xl md:text-5xl font-extrabold text-navy mb-6">
+        <h2 className="text-4xl md:text-5xl font-bold  0 text-navy mb-6">
           How Cross-Factory{" "}
           <span className="relative inline-block text-[#0658C2]">
             Shift Swap
@@ -270,7 +270,7 @@ export default function (ShiftSwapSection): JSX.Element {
         </div>
 
         {/* Primary CTA Button */}
-        <button className="bg-[#0658C2] text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
+        <button className="bg-[#0658C2] text-white px-20 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30">
           Get Job
         </button>
       </div>
