@@ -1,14 +1,14 @@
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
-import { Ionicons, FontAwesome } from "@expo/vector-icons";
-import { router } from "expo-router";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -25,7 +25,7 @@ export default function HomeScreen() {
       icon: "swap-horizontal",
       iconColor: "#2F80ED",
       bgColor: "#EAF2FF",
-      route: "/shifts",
+      route: "/(shift-swap)",
     },
     {
       id: 2,
@@ -88,7 +88,7 @@ export default function HomeScreen() {
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-          onPress={() => router.push("/refer")}
+        // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
             <FontAwesome

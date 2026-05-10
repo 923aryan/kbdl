@@ -13,6 +13,14 @@ export const createShiftSchema = z.object({
     employer_id: z
       .string()
       .uuid("Invalid employer ID format"),
+    payType: z.enum(["HOURLY", "FIXED"], {
+      message: "payType must be either HOURLY or FIXED",
+    }),
+    shift_pay: z
+      .number({
+        message: "shift_pay must be a number",
+      })
+      .positive("shift_pay must be greater than 0"),
     shift_date: z
       .string()
       .datetime({ message: "shift_date must be a valid ISO datetime string" }),
@@ -26,6 +34,7 @@ export const createShiftSchema = z.object({
       .string()
       .min(1, "Skill required cannot be empty")
       .max(255, "Skill name is too long"),
+
   }),
 });
 

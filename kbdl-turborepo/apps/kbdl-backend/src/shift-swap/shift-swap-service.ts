@@ -73,6 +73,8 @@ export const createShiftService = async (
       employer_id: employerId,
       replacement_employee_id: payload.replacement_employee_id || null, // Null implies a public shift
       created_by: userType,
+      payType: payload.payType,
+      shift_pay: payload.shift_pay,
       shift_date: new Date(payload.shift_date),
       shift_start: new Date(payload.shift_start),
       shift_end: new Date(payload.shift_end),
