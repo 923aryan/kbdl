@@ -47,7 +47,7 @@ export default function FAQSection() {
       <HeroSection />
       <DownloadSection />
 
-      <section className="py-16 px-4 md:px-8 bg-[#F8F9FA]">
+      <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA]">
         <div className="max-w-4xl mx-auto">
 
           {/* Header Section */}

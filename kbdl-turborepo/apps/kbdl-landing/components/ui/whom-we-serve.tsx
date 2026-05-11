@@ -3,6 +3,7 @@ import Image from "next/image";
 import workerImg from "../../public/blue-collar.png";
 import factoryImg from "../../public/factory-hr.png";
 import agentImg from "../../public/placement-agent.png";
+import Link from "next/link";
 
 export default function WhomWeServeSection() {
 
@@ -35,7 +36,7 @@ export default function WhomWeServeSection() {
   ];
 
   return (
-    <section className="py-8 px-4 md:px-8 bg-white">
+    <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-white">
       <div className="max-w-350 mx-auto">
 
         {/* 1. Header Area */}
@@ -57,10 +58,10 @@ export default function WhomWeServeSection() {
           {cards.map((card) => (
             <div
               key={card.id}
-              className={`${card.bgClass} rounded-4xl p-6 flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-6 transition-transform hover:-translate-y-1`}
+              className={`${card.bgClass} rounded-4xl p-6 flex flex-col sm:flex-row xl:flex-row gap-6 transition-transform hover:-translate-y-1`}
             >
               {/* Card Image */}
-              <div className="relative w-full sm:w-32.5 lg:w-full xl:w-32.5 h-45 sm:h-32.5 lg:h-45 xl:h-32.5 shrink-0 rounded-2xl overflow-hidden shadow-lg">
+              <div className="relative w-full my-auto sm:w-32.5  xl:w-32.5 h-45 sm:h-32.5 md:max-h-[165px] md:h-full shrink-0 rounded-2xl overflow-hidden shadow-lg">
                 <Image
                   src={card.imgSrc}
                   alt={card.title.replace('\n', ' ')}
@@ -79,12 +80,12 @@ export default function WhomWeServeSection() {
                 </p>
 
                 {/* Link */}
-                {/* <Link
-                  href={card.link}
+                <Link
+                  href= "#"
                   className="text-primary font-semibold text-sm flex items-center hover:underline mt-auto"
                 >
                   Learn more <span className="ml-1" aria-hidden="true">→</span>
-                </Link> */}
+                </Link>
               </div>
             </div>
           ))}

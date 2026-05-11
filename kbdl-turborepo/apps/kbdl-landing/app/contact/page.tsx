@@ -13,7 +13,7 @@ const ContactSection = ({ showSections = true }) => {
           <DownloadSection />
         </>
       )}
-      <section className="py-20 px-4 md:px-8 bg-[#F8F9FA]">
+      <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA]">
         <div className="max-w-300 mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
 
           {/* LEFT COLUMN: Text & Info Cards */}
@@ -63,7 +63,7 @@ const ContactSection = ({ showSections = true }) => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">WhatsApp Support</p>
-                  <p className="text-navy font-bold text-[15px]">Available for workers 9am–9pm IST</p>
+                  <p className="text-navy font-bold text-[15px]">Available for workers 24 Hours IST</p>
                 </div>
               </div>
 

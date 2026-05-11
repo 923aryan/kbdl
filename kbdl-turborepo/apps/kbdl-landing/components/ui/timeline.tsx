@@ -9,7 +9,7 @@ const steps = [
     id: '01',
     title: 'Register Factory',
     desc: 'Download the app or visit our web dashboard. Create your business profile in minutes.',
-    time: '2 mins',
+    time: '5 mins',
     colorHex: '#0658C2', // Blue
     bgClass: 'bg-[#EBF3FF]',
     textClass: 'text-primary',
@@ -23,7 +23,7 @@ const steps = [
     id: '02',
     title: 'Create Project',
     desc: 'Set up a project — define the location, job role, and type of workers needed for your factory.',
-    time: '5 mins',
+    time: '7 mins',
     colorHex: '#00A650', // Green
     bgClass: 'bg-[#E6F9EC]',
     textClass: 'text-[#00A650]',
@@ -37,7 +37,7 @@ const steps = [
     id: '03',
     title: 'Post Job Order',
     desc: 'Specify required skills, rotational shift, experience level, salary, and number of candidates.',
-    time: '5 mins',
+    time: '8 mins',
     colorHex: '#FF6B00', // Orange (Active)
     bgClass: 'bg-[#FFF0E6]',
     textClass: 'text-[#FF6B00]',
@@ -51,7 +51,7 @@ const steps = [
     id: '04',
     title: 'Review Applications',
     desc: 'Every application is screened. You can shortlist, check ratings, and verify candidates.',
-    time: '15 mins',
+    time: '10 mins',
     colorHex: '#9333EA', // Purple
     bgClass: 'bg-[#F3E8FF]',
     textClass: 'text-[#9333EA]',
@@ -89,7 +89,7 @@ export default function TimelineSection(): JSX.Element {
   }, []);
 
   return (
-    <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
+    <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-white overflow-hidden">
       <div className="max-w-350 mx-auto flex flex-col items-center text-center">
 
         {/* Header Badge */}
@@ -181,12 +181,12 @@ export default function TimelineSection(): JSX.Element {
         </div>
 
         {/* Primary CTA Button */}
-        <button className="bg-[#0658C2] text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30 mb-10 lg:mb-20">
+        <button className="bg-[#0658C2] text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30 mb-[25px] md:mb-10 lg:mb-20">
           Coming Soon
         </button>
 
         {/* Bottom Trust/Features Footer */}
-        <div className="w-full max-w-6xl border-t border-gray-100 md:pt-10">
+        <div className="w-full max-w-6xl border-t border-gray-100 pt-[25px] md:pt-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
 
             <TrustBadge

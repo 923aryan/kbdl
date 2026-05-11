@@ -8,7 +8,7 @@ const steps = [
     id: "01",
     title: "Worker Posts Shift",
     desc: "Worker opens app or WhatsApp, selects shift to give away — date, factory, skill, timing.",
-    time: "2 mins",
+    time: "3 mins",
     colorHex: "#0658C2",
     bgClass: "bg-[#EBF3FF]",
     textClass: "text-primary",
@@ -74,7 +74,7 @@ const steps = [
     id: "03",
     title: "Replacement Gets Alert",
     desc: "Matched worker receives WhatsApp notification with shift details, pay, and factory info.",
-    time: "5 mins",
+    time: "4 mins",
     colorHex: "#FF6B00",
     bgClass: "bg-[#FFF0E6]",
     textClass: "text-[#FF6B00]",
@@ -104,7 +104,7 @@ const steps = [
     id: "04",
     title: "HR Approves in 1 Click",
     desc: "Factory HR reviews replacement's Karigari Card – rating, verification, history and approves.",
-    time: "15 mins",
+    time: "8 mins",
     colorHex: "#9333EA",
     bgClass: "bg-[#F3E8FF]",
     textClass: "text-[#9333EA]",
@@ -175,7 +175,7 @@ export default function ShiftSwapSection() {
   }, []);
 
   return (
-    <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
+    <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-white overflow-hidden">
       <div className="max-w-350 mx-auto flex flex-col items-center text-center">
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-4 lg:mb-6">

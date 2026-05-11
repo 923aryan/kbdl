@@ -130,7 +130,7 @@ export default function AboutUs() {
                 </div>
             </section>
             {/* <TimelineSection /> */}
-            <section className="px-4 md:px-8 bg-white py-4 sm:px-6 lg:px-16 xl:px-24">
+            <section className="bg-white py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8">
                 <div className="max-w-350 mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
                     {/* LEFT */}
                     <div className="flex flex-col justify-center">
@@ -373,7 +373,7 @@ export default function AboutUs() {
                     </div>
                 </div>
             </section>
-            <section className="relative w-full pb-16 pt-4 px-4 md:px-8 bg-[#F8F9FA] overflow-hidden">
+            <section className="relative w-full py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA] overflow-hidden">
                 <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
 
                     {/* LEFT */}
@@ -585,7 +585,7 @@ export default function AboutUs() {
 
                 </div>
             </section>
-            <section className="py-16 px-4 md:px-8 bg-navy overflow-hidden">
+            <section className=" py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-navy overflow-hidden">
                 <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
 
                     {/* LEFT CONTENT */}

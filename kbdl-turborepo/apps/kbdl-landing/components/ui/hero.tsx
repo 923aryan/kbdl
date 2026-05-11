@@ -50,8 +50,12 @@ export default function HeroSection() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <button className="flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-primary rounded-xl font-semibold hover:bg-gray-100 transition-colors">
+          <button className="flex items-center justify-center gap-2 px-8 py-3.5 bg-[#0658C2] text-white rounded-xl font-semibold hover:bg-gray-100 transition-colors">
             Hire Workers <span aria-hidden="true">→</span>
+          </button>
+
+          <button className="flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-primary rounded-xl font-semibold hover:bg-gray-100 transition-colors">
+            Find Job <span aria-hidden="true">→</span>
           </button>
 
           <button className="flex items-center justify-center gap-2 px-8 py-3.5 bg-transparent border border-gray-500 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors">
