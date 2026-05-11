@@ -1,11 +1,13 @@
 import { Metadata } from "next";
 import StructuredData from "../components/seo/structured-data";
+import { DownloadSection } from "../components/ui/download";
 import GetWorkSection from "../components/ui/geJob";
 import HeroSection from "../components/ui/hero";
 import ShiftSwapSection from "../components/ui/shift_swap";
 import TimelineSection from "../components/ui/timeline";
 import WhomWeServeSection from "../components/ui/whom-we-serve";
 import { siteConfig } from "../lib/seo-constants";
+import ContactSection from "./contact/page";
 // import { Button } from '@repo/ui';
 
 export const metadata: Metadata = {
@@ -99,6 +101,9 @@ export default function Home() {
       <ShiftSwapSection />
       <GetWorkSection />
       <WhomWeServeSection />
+      <DownloadSection />
+      <ContactSection showSections={false} />
     </div>
+
   );
 }

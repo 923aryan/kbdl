@@ -4,11 +4,15 @@ import HeroSection from "../../components/ui/hero";
 // ==========================================
 // 1. The Main Layout Section Component
 // ==========================================
-const ContactSection = () => {
+const ContactSection = ({ showSections = true }) => {
   return (
     <div className="w-full h-full">
-      <HeroSection />
-      <DownloadSection />
+      {showSections && (
+        <>
+          <HeroSection />
+          <DownloadSection />
+        </>
+      )}
       <section className="py-20 px-4 md:px-8 bg-[#F8F9FA]">
         <div className="max-w-300 mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
 
