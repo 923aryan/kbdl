@@ -5,7 +5,7 @@ import { MiniFeature } from "./mini-feature";
 import { TrustItem } from "./trust-item";
 export const DownloadSection = () => {
   return (
-    <section className="relative w-full pt-10 pb-8 px-4 md:px-8 bg-[#F8F9FA] overflow-hidden">
+    <section className="relative w-full py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA] overflow-hidden">
       <div className="max-w-[1400px] mx-auto">
 
         {/* Top Main 3-Column Layout */}

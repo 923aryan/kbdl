@@ -8,7 +8,7 @@ const steps = [
     id: "01",
     title: "Create Your Profile",
     desc: "Register in Minutes\n Add your skills, location, work type and experience in minutes.",
-    time: "2 mins",
+    time: "5 mins",
     colorHex: "#0658C2",
     bgClass: "bg-[#EBF3FF]",
     textClass: "text-primary",
@@ -38,7 +38,7 @@ const steps = [
     id: "02",
     title: "Get Job Matches",
     desc: "Jobs Across India. \n Find trusted job opportunities in your city or relocate for better work opportunities anywhere in India.",
-    time: "5 mins",
+    time: "8 mins",
     colorHex: "#00A650",
     bgClass: "bg-[#E6F9EC]",
     textClass: "text-[#00A650]",
@@ -74,7 +74,7 @@ const steps = [
     id: "03",
     title: "Receive Instant Alerts",
     desc: "New Work Notification. \nGet alerts for shifts, daily work, replacement jobs and urgent openings.",
-    time: "5 mins",
+    time: "7 mins",
     colorHex: "#FF6B00",
     bgClass: "bg-[#FFF0E6]",
     textClass: "text-[#FF6B00]",
@@ -104,7 +104,7 @@ const steps = [
     id: "04",
     title: "Confirm & Start Working",
     desc: "Employer Approval. \n Factory, contractor or homeowner confirms your profile in one click.",
-    time: "15 mins",
+    time: "10 mins",
     colorHex: "#9333EA",
     bgClass: "bg-[#F3E8FF]",
     textClass: "text-[#9333EA]",
@@ -175,7 +175,7 @@ export default function GetWorkSection() {
   }, []);
 
   return (
-    <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
+    <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-white overflow-hidden">
       <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-4 lg:mb-6">

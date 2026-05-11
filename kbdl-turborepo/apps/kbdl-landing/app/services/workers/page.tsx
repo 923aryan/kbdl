@@ -169,7 +169,7 @@ export default function Workers() {
 
         </div>
       </section>
-      <section className="bg-[#ffffff] py-[40px] md:py-[55px] lg:py-[70px]">
+      <section className="bg-[#ffffff] py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto mb-12 md:mb-15">
@@ -226,7 +226,7 @@ export default function Workers() {
         </div>
       </section>
 
-      <section className="w-full bg-[#01122E] py-[40px] md:py-[55px] lg:py-[70px] relative overflow-hidden">
+      <section className="w-full bg-[#01122E] py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 relative overflow-hidden">
         {/* Subtle grid/pattern overlay */}
         <div
           className="absolute inset-0 opacity-10"
