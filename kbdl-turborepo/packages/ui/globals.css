@@ -25,6 +25,15 @@
 /* 3. Define the actual light/dark values using standard CSS */
 @layer base {
   /* Light Mode (Default) */
+    html {
+    font-size: 14px;
+  }
+
+  @media (min-width: 768px) {
+    html {
+      font-size: 16px;
+    }
+  }
   :root {
     --bg-color: #FFFFFF;
     --surface-color: #F9FAFB;

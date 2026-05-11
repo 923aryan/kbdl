@@ -93,7 +93,7 @@ export default function TimelineSection(): JSX.Element {
       <div className="max-w-350 mx-auto flex flex-col items-center text-center">
 
         {/* Header Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-4 lg:mb-6">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -101,7 +101,7 @@ export default function TimelineSection(): JSX.Element {
         </div>
 
         {/* Main Heading */}
-        <h2 className="text-4xl md:text-5xl font-extrabold text-navy mb-6">
+        <h2 className="text-3xl md:text-5xl font-extrabold text-navy mb-4 lg:mb-6">
           Hire Blue-Collar Talent {' '}
           <span className="relative inline-block text-primary">
             Instantly
@@ -113,19 +113,19 @@ export default function TimelineSection(): JSX.Element {
         </h2>
 
         {/* Subtitle */}
-        <p className="text-gray-500 text-lg max-w-2xl mb-16">
+        <p className="text-gray-500 text-lg max-w-2xl mb-8 lg:mb-16">
           From registration to hiring — a streamlined process <br className="hidden md:block" />
           designed for busy HR managers and factory supervisors.
         </p>
 
         {/* Timeline & Cards Wrapper */}
-        <div className="relative w-full mb-16">
+        <div className="relative w-full mb-10 lg:mb-16">
 
           {/* Dashed Line (Visible on Desktop only) */}
           <div className="hidden lg:block absolute top-[20px] left-[10%] right-[10%] border-t-2 border-dashed border-gray-200 z-0"></div>
 
           {/* Grid of Steps */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-4 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-4 relative z-10">
             {steps.map((step, index) => {
               const isActive = index === activeIndex;
 
@@ -134,7 +134,7 @@ export default function TimelineSection(): JSX.Element {
 
                   {/* Number Circle */}
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-8 shadow-md"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-4 lg:mb-8 shadow-md"
                     style={{ backgroundColor: step.colorHex }}
                   >
                     {step.id}
@@ -142,8 +142,8 @@ export default function TimelineSection(): JSX.Element {
 
                   {/* Card */}
                   <div className={`relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-300 cursor-pointer ${isActive
-                      ? 'border-2 border-[#FF6B00] shadow-xl -translate-y-1'
-                      : 'border border-gray-100 shadow-sm hover:-translate-y-1 hover:border-2 hover:border-[#FF6B00] hover:shadow-lg'
+                    ? 'border-2 border-[#FF6B00] shadow-xl -translate-y-1'
+                    : 'border border-gray-100 shadow-sm hover:-translate-y-1 hover:border-2 hover:border-[#FF6B00] hover:shadow-lg'
                     }`}>
 
                     {/* "You are here" Badge for active step */}
@@ -181,7 +181,7 @@ export default function TimelineSection(): JSX.Element {
         </div>
 
         {/* Primary CTA Button */}
-        <button className="bg-[#0658C2] text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30 mb-20">
+        <button className="bg-[#0658C2] text-white px-12 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30 mb-10 lg:mb-20">
           Coming Soon
         </button>
 

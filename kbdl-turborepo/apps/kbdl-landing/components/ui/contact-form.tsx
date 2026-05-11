@@ -6,6 +6,14 @@ import { submitContactForm } from "../../app/actions/contact";
 export function ContactForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error') => {
+    setToastMessage({ text, type });
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
 
   const clearError = (field: string) => {
     if (errors[field]) {
@@ -18,10 +26,11 @@ export function ContactForm() {
     setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+    const mobileInput = (formData.get('mobile') as string || "").trim();
     const data = {
       fullName: (formData.get('fullName') as string || "").trim(),
       email: (formData.get('email') as string || "").trim(),
-      mobileNumber: (formData.get('mobile') as string || "").trim(),
+      mobileNumber: `+91 ${mobileInput}`,
       subject: (formData.get('subject') as string || "").trim(),
       message: (formData.get('message') as string || "").trim(),
     };
@@ -33,6 +42,8 @@ export function ContactForm() {
       newErrors.fullName = "Full name is required";
     } else if (data.fullName.length < 2) {
       newErrors.fullName = "Full name must be at least 2 characters";
+    } else if (/\d/.test(data.fullName)) {
+      newErrors.fullName = "Full name cannot contain numbers";
     }
 
     if (!data.email) {
@@ -41,10 +52,12 @@ export function ContactForm() {
       newErrors.email = "Please enter a valid email address";
     }
 
-    if (!data.mobileNumber) {
+    if (!mobileInput) {
       newErrors.mobile = "Mobile number is required";
-    } else if (!/^\+?[0-9\s-]{10,15}$/.test(data.mobileNumber)) {
-      newErrors.mobile = "Please enter a valid mobile number (10-15 digits)";
+    } else if (mobileInput.startsWith('0')) {
+      newErrors.mobile = "Mobile number cannot start with 0";
+    } else if (!/^\d{10}$/.test(mobileInput)) {
+      newErrors.mobile = "Please enter exactly 10 digits";
     }
 
     if (!data.subject) {
@@ -72,15 +85,32 @@ export function ContactForm() {
     setIsSubmitting(false);
 
     if (result.success) {
-      alert("Message sent successfully!");
+      showToast("Message sent successfully!", "success");
       (e.target as HTMLFormElement).reset();
     } else {
-      alert(result.message);
+      showToast(result.message, "error");
     }
   };
 
   return (
     <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-xl border border-gray-100 w-full">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed top-20 right-4 md:right-8 z-50 px-6 py-3 rounded-xl shadow-lg border ${toastMessage.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'
+          } font-semibold transition-all duration-300 flex items-center gap-2`}>
+          {toastMessage.type === 'success' ? (
+            <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+          {toastMessage.text}
+        </div>
+      )}
+
       <h3 className="text-2xl font-extrabold text-navy mb-8">
         Send Us a Message
       </h3>
@@ -131,17 +161,26 @@ export function ContactForm() {
             <label htmlFor="mobile" className="text-[11px] font-bold text-navy uppercase tracking-wider">
               Mobile Number
             </label>
-            <input
-              type="tel"
-              id="mobile"
-              name="mobile"
-              placeholder="+91 XXXXX XXXXX"
-              onChange={() => clearError('mobile')}
-              className={`w-full px-4 py-3.5 bg-white border rounded-xl text-navy placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-colors ${errors.mobile
-                ? 'border-red-500 focus:ring-red-500/20 focus:border-red-500'
-                : 'border-gray-200 focus:ring-[#0658C2]/20 focus:border-[#0658C2]'
-                }`}
-            />
+            <div className={`flex w-full bg-white border rounded-xl overflow-hidden focus-within:ring-2 transition-colors ${errors.mobile
+              ? 'border-red-500 focus-within:ring-red-500/20 focus-within:border-red-500'
+              : 'border-gray-200 focus-within:ring-[#0658C2]/20 focus-within:border-[#0658C2]'
+              }`}>
+              <span className="px-4 py-3.5 bg-gray-50 border-r border-gray-200 text-navy font-medium select-none flex items-center justify-center">
+                +91
+              </span>
+              <input
+                type="tel"
+                id="mobile"
+                name="mobile"
+                placeholder="XXXXXXXXXX"
+                maxLength={10}
+                onChange={(e) => {
+                  e.target.value = e.target.value.replace(/\D/g, '');
+                  clearError('mobile');
+                }}
+                className="w-full px-4 py-3.5 text-navy placeholder:text-gray-400 focus:outline-none bg-transparent"
+              />
+            </div>
             {errors.mobile && <span className="text-red-500 text-xs font-medium">{errors.mobile}</span>}
           </div>
         </div>

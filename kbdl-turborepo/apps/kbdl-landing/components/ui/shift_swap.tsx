@@ -178,7 +178,7 @@ export default function ShiftSwapSection() {
     <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
       <div className="max-w-350 mx-auto flex flex-col items-center text-center">
         {/* Header Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-4 lg:mb-6">
           <svg
             className="w-4 h-4"
             fill="none"
@@ -196,7 +196,7 @@ export default function ShiftSwapSection() {
         </div>
 
         {/* Main Heading */}
-        <h2 className="text-4xl md:text-5xl font-extrabold text-navy mb-6">
+        <h2 className="text-3xl md:text-5xl font-extrabold text-navy mb-4 lg:mb-6">
           How Cross-Factory{" "}
           <span className="relative inline-block text-primary">
             Shift Swap
@@ -218,19 +218,19 @@ export default function ShiftSwapSection() {
         </h2>
 
         {/* Subtitle */}
-        <p className="text-gray-500 text-lg max-w-2xl mb-16">
+        <p className="text-gray-500 text-lg max-w-2xl mb-8 lg:mb-16">
           From registration to hiring — a streamlined process{" "}
           <br className="hidden md:block" />
           designed for busy HR managers and factory supervisors.
         </p>
 
         {/* Timeline & Cards Wrapper */}
-        <div className="relative w-full mb-16">
+        <div className="relative w-full mb-10 lg:mb-16">
           {/* Dashed Line - Desktop only */}
           <div className="hidden lg:block absolute top-[20px] left-[10%] right-[10%] border-t-2 border-dashed border-gray-200 z-0" />
 
           {/* Steps Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-4 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-4 relative z-10">
             {steps.map((step, index) => {
               const isActive = index === activeIndex;
 
@@ -238,7 +238,7 @@ export default function ShiftSwapSection() {
                 <div key={step.id} className="flex flex-col items-center">
                   {/* Number Circle */}
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-8 shadow-md"
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-4 lg:mb-8 shadow-md"
                     style={{ backgroundColor: step.colorHex }}
                   >
                     {step.id}
@@ -246,8 +246,8 @@ export default function ShiftSwapSection() {
 
                   {/* Card */}
                   <div className={`relative w-full max-w-70 lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-300 cursor-pointer ${isActive
-                      ? "border-2 border-[#FF6B00] shadow-xl -translate-y-1"
-                      : "border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg hover:-translate-y-1"
+                    ? "border-2 border-[#FF6B00] shadow-xl -translate-y-1"
+                    : "border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg hover:-translate-y-1"
                     }`}>
                     {/* "You are here" Badge for active step */}
                     {isActive && (
