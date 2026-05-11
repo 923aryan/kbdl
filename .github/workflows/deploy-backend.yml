@@ -4,11 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'apps/kbdl-backend/**'
-      - 'packages/db/**'
-      - 'packages/validator/**'
-      - 'pnpm-lock.yaml'
-      - 'turbo.json'
+      - 'kbdl-turborepo/apps/kbdl-backend/**'
+      - 'kbdl-turborepo/packages/db/**'
+      - 'kbdl-turborepo/packages/validator/**'
+      - 'kbdl-turborepo/pnpm-lock.yaml'
+      - 'kbdl-turborepo/turbo.json'
 jobs:
   deploy:
     runs-on: ubuntu-latest

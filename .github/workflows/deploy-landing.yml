@@ -4,11 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'apps/kbdl-landing/**'
-      - 'packages/ui/**'
-      - 'packages/validator/**'
-      - 'pnpm-lock.yaml'
-      - 'turbo.json'
+      - 'kbdl-turborepo/apps/kbdl-landing/**'
+      - 'kbdl-turborepo/packages/ui/**'
+      - 'kbdl-turborepo/packages/validator/**'
+      - 'kbdl-turborepo/pnpm-lock.yaml'
+      - 'kbdl-turborepo/turbo.json'
 
 jobs:
   deploy:
