@@ -1,0 +1,53 @@
+name: Deploy Landing
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'apps/kbdl-landing/**'
+      - 'packages/ui/**'
+      - 'packages/validator/**'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Landing via SSH
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_KEY }}
+
+          script: |
+            set -e
+
+            export PATH="$PATH:/usr/local/bin"
+
+            cd ~/app/kbdl/kbdl-turborepo
+
+            echo "📥 Pull latest"
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "🧹 Clean old build"
+            rm -rf apps/kbdl-landing/.next
+
+            echo "📦 Install deps"
+            pnpm install --frozen-lockfile
+
+            echo "🏗 Build landing"
+            pnpm --filter kbdl-landing build
+
+            echo "🚀 Restart landing"
+            cd apps/kbdl-landing
+            pm2 restart landing || pm2 start "pnpm start" --name landing
+
+            echo "💾 Save PM2"
+            pm2 save
+
+            echo "✅ Done"

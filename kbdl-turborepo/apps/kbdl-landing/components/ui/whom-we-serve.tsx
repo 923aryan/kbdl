@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 
 import workerImg from "../../public/blue-collar.png";
 import factoryImg from "../../public/factory-hr.png";
@@ -42,7 +41,7 @@ export default function WhomWeServeSection() {
         {/* 1. Header Area */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-primary text-xs font-bold tracking-widest uppercase mb-4 block">
-            Whom We Are Serving
+            Who We Are Serving
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-navy mb-6">
             Trusted Hiring Platform for Everyone
@@ -58,7 +57,7 @@ export default function WhomWeServeSection() {
           {cards.map((card) => (
             <div
               key={card.id}
-              className={`${card.bgClass} rounded-4xl p-6 lg:p-8 flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-6 transition-transform hover:-translate-y-1`}
+              className={`${card.bgClass} rounded-4xl p-6 flex flex-col sm:flex-row lg:flex-col xl:flex-row gap-6 transition-transform hover:-translate-y-1`}
             >
               {/* Card Image */}
               <div className="relative w-full sm:w-32.5 lg:w-full xl:w-32.5 h-45 sm:h-32.5 lg:h-45 xl:h-32.5 shrink-0 rounded-2xl overflow-hidden shadow-lg">
@@ -80,12 +79,12 @@ export default function WhomWeServeSection() {
                 </p>
 
                 {/* Link */}
-                <Link
+                {/* <Link
                   href={card.link}
                   className="text-primary font-semibold text-sm flex items-center hover:underline mt-auto"
                 >
                   Learn more <span className="ml-1" aria-hidden="true">→</span>
-                </Link>
+                </Link> */}
               </div>
             </div>
           ))}

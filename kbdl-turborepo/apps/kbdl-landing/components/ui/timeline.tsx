@@ -1,4 +1,7 @@
+'use client';
+
 import type { JSX } from 'react';
+import { useEffect, useState } from 'react';
 
 // Data structure for the steps to keep the JSX clean
 const steps = [
@@ -38,7 +41,6 @@ const steps = [
     colorHex: '#FF6B00', // Orange (Active)
     bgClass: 'bg-[#FFF0E6]',
     textClass: 'text-[#FF6B00]',
-    isActive: true,
     icon: (
       <svg className="w-12 h-12 text-[#FF6B00]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
@@ -76,6 +78,16 @@ const steps = [
 ];
 
 export default function TimelineSection(): JSX.Element {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % steps.length);
+    }, 2500); // Change the active card every 2.5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
       <div className="max-w-350 mx-auto flex flex-col items-center text-center">
@@ -90,9 +102,9 @@ export default function TimelineSection(): JSX.Element {
 
         {/* Main Heading */}
         <h2 className="text-4xl md:text-5xl font-extrabold text-navy mb-6">
-          Hire Blue-Collar Talent in Just{' '}
+          Hire Blue-Collar Talent {' '}
           <span className="relative inline-block text-primary">
-            48 Hours!
+            Instantly
             {/* Curved Swoosh SVG */}
             <svg className="absolute w-[110%] h-4 -bottom-3 -left-[5%] text-primary" viewBox="0 0 100 20" preserveAspectRatio="none">
               <path d="M0,10 Q50,25 100,0" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
@@ -114,53 +126,57 @@ export default function TimelineSection(): JSX.Element {
 
           {/* Grid of Steps */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-4 relative z-10">
-            {steps.map((step) => (
-              <div key={step.id} className="flex flex-col items-center">
+            {steps.map((step, index) => {
+              const isActive = index === activeIndex;
 
-                {/* Number Circle */}
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-8 shadow-md"
-                  style={{ backgroundColor: step.colorHex }}
-                >
-                  {step.id}
-                </div>
+              return (
+                <div key={step.id} className="flex flex-col items-center">
 
-                {/* Card */}
-                <div className={`relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-transform hover:-translate-y-1 ${step.isActive
-                  ? 'border-2 border-[#FF6B00] shadow-xl'
-                  : 'border border-gray-100 shadow-sm'
-                  }`}>
-
-                  {/* "You are here" Badge for active step */}
-                  {step.isActive && (
-                    <div className="absolute -top-1 -right-1 bg-[#FF6B00] text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-xl rounded-tr-xl shadow-md">
-                      You are<br />here
-                    </div>
-                  )}
-
-                  {/* Card Content Area */}
-                  <div className="p-6 flex flex-col flex-grow items-center">
-                    <div className="mb-4 h-16 flex items-center justify-center">
-                      {step.icon}
-                    </div>
-                    <h3 className="text-navy font-bold text-lg mb-3">
-                      {step.title}
-                    </h3>
-                    <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                      {step.desc}
-                    </p>
+                  {/* Number Circle */}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-8 shadow-md"
+                    style={{ backgroundColor: step.colorHex }}
+                  >
+                    {step.id}
                   </div>
 
-                  {/* Colored Bottom Bar */}
-                  <div className={`w-full py-3 rounded-b-xl flex justify-center items-center gap-1.5 font-semibold text-sm ${step.bgClass} ${step.textClass}`}>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {step.time}
+                  {/* Card */}
+                  <div className={`relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-300 cursor-pointer ${isActive
+                      ? 'border-2 border-[#FF6B00] shadow-xl -translate-y-1'
+                      : 'border border-gray-100 shadow-sm hover:-translate-y-1 hover:border-2 hover:border-[#FF6B00] hover:shadow-lg'
+                    }`}>
+
+                    {/* "You are here" Badge for active step */}
+                    {isActive && (
+                      <div className="absolute -top-1 -right-1 bg-[#FF6B00] text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-xl rounded-tr-xl shadow-md z-10">
+                        You are<br />here
+                      </div>
+                    )}
+
+                    {/* Card Content Area */}
+                    <div className="p-6 flex flex-col flex-grow items-center">
+                      <div className="mb-4 h-16 flex items-center justify-center">
+                        {step.icon}
+                      </div>
+                      <h3 className="text-navy font-bold text-lg mb-3">
+                        {step.title}
+                      </h3>
+                      <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                        {step.desc}
+                      </p>
+                    </div>
+
+                    {/* Colored Bottom Bar */}
+                    <div className={`w-full py-3 rounded-b-xl flex justify-center items-center gap-1.5 font-semibold text-sm ${step.bgClass} ${step.textClass}`}>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {step.time}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -170,7 +186,7 @@ export default function TimelineSection(): JSX.Element {
         </button>
 
         {/* Bottom Trust/Features Footer */}
-        <div className="w-full max-w-6xl border-t border-gray-100 pt-10">
+        <div className="w-full max-w-6xl border-t border-gray-100 md:pt-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
 
             <TrustBadge
@@ -206,15 +222,33 @@ export default function TimelineSection(): JSX.Element {
 }
 
 // Small helper component for the trust badges at the bottom
-function TrustBadge({ icon, title, desc, colorClass }: { icon: string, title: string, desc: string, colorClass: string }) {
+function TrustBadge({
+  icon,
+  title,
+  desc,
+  colorClass,
+}: {
+  icon: string;
+  title: string;
+  desc: string;
+  colorClass: string;
+}) {
   return (
-    <div className="flex items-center gap-4 text-left justify-center lg:justify-start">
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${colorClass}`}>
+    <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4">
+      <div
+        className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${colorClass}`}
+      >
         {icon}
       </div>
+
       <div>
-        <h4 className="text-navy font-bold text-sm mb-0.5">{title}</h4>
-        <p className="text-gray-500 text-xs">{desc}</p>
+        <h4 className="text-navy font-bold text-sm mb-0.5">
+          {title}
+        </h4>
+
+        <p className="text-gray-500 text-xs">
+          {desc}
+        </p>
       </div>
     </div>
   );

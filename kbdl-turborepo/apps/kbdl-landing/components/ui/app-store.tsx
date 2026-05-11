@@ -14,9 +14,6 @@ export const AppStoreButton = ({ type }: { type: 'apple' | 'google' }) => {
         </svg>
       )}
       <div className="text-left flex flex-col justify-center">
-        <span className="text-[9px] text-gray-300 leading-none mb-[2px]">
-          {type === 'apple' ? 'Coming Soon on the' : 'Coming Soon on the'}
-        </span>
         <span className="text-xs font-bold leading-none">
           {type === 'apple' ? 'App Store' : 'Google Play'}
         </span>

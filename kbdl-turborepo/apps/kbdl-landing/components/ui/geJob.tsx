@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 
 // Data structure for the steps
 const steps = [
@@ -161,6 +164,16 @@ const steps = [
 
 // Main timeline section component
 export default function GetWorkSection() {
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveIndex((current) => (current + 1) % steps.length);
+    }, 2500); // Change the active card every 2.5 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <section className="py-10 px-4 md:px-8 bg-white overflow-hidden">
       <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
@@ -217,53 +230,67 @@ export default function GetWorkSection() {
 
           {/* Steps Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-4 relative z-10">
-            {steps.map((step) => (
-              <div key={step.id} className="flex flex-col items-center">
-                {/* Number Circle */}
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-8 shadow-md"
-                  style={{ backgroundColor: step.colorHex }}
-                >
-                  {step.id}
-                </div>
+            {steps.map((step, index) => {
+              const isActive = index === activeIndex;
 
-                {/* Card */}
-                <div className="relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-200 hover:-translate-y-1 border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg cursor-pointer">
-                  {/* Card Content */}
-                  <div className="p-6 flex flex-col flex-grow items-center">
-                    <div className="mb-4 h-16 flex items-center justify-center">
-                      {step.icon}
-                    </div>
-                    <h3 className="text-navy font-bold text-lg mb-3">
-                      {step.title}
-                    </h3>
-                    <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                      {step.desc}
-                    </p>
-                  </div>
-
-                  {/* Bottom Time Bar */}
+              return (
+                <div key={step.id} className="flex flex-col items-center">
+                  {/* Number Circle */}
                   <div
-                    className={`w-full py-3 rounded-b-xl flex justify-center items-center gap-1.5 font-semibold text-sm ${step.bgClass} ${step.textClass}`}
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold mb-8 shadow-md"
+                    style={{ backgroundColor: step.colorHex }}
                   >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                    {step.id}
+                  </div>
+
+                  {/* Card */}
+                  <div className={`relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-300 cursor-pointer ${isActive
+                      ? "border-2 border-[#FF6B00] shadow-xl -translate-y-1"
+                      : "border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg hover:-translate-y-1"
+                    }`}>
+                    {/* "You are here" Badge for active step */}
+                    {isActive && (
+                      <div className="absolute -top-1 -right-1 bg-[#FF6B00] text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-xl rounded-tr-xl shadow-md z-10">
+                        You are<br />here
+                      </div>
+                    )}
+
+                    {/* Card Content */}
+                    <div className="p-6 flex flex-col flex-grow items-center">
+                      <div className="mb-4 h-16 flex items-center justify-center">
+                        {step.icon}
+                      </div>
+                      <h3 className="text-navy font-bold text-lg mb-3">
+                        {step.title}
+                      </h3>
+                      <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                        {step.desc}
+                      </p>
+                    </div>
+
+                    {/* Bottom Time Bar */}
+                    <div
+                      className={`w-full py-3 rounded-b-xl flex justify-center items-center gap-1.5 font-semibold text-sm ${step.bgClass} ${step.textClass}`}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    {step.time}
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      {step.time}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

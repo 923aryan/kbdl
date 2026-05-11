@@ -3,7 +3,12 @@ name: Deploy Backend (Turborepo)
 on:
   push:
     branches: [ main ]
-
+    paths:
+      - 'apps/kbdl-backend/**'
+      - 'packages/db/**'
+      - 'packages/validator/**'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
 jobs:
   deploy:
     runs-on: ubuntu-latest
