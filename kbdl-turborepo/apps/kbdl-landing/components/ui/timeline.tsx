@@ -36,7 +36,7 @@ const steps = [
   {
     id: '03',
     title: 'Post Job Order',
-    desc: 'Specify required skills, radio shift, experience level, salary, and number of candidates.',
+    desc: 'Specify required skills, rotational shift, experience level, salary, and number of candidates.',
     time: '5 mins',
     colorHex: '#FF6B00', // Orange (Active)
     bgClass: 'bg-[#FFF0E6]',
@@ -64,7 +64,7 @@ const steps = [
   {
     id: '05',
     title: 'Interview & Hire',
-    desc: 'Connect directly via WhatsApp. Interview and hire the best — all Instant Swap.',
+    desc: 'Connect directly via WhatsApp. Interview and hire the best — all in one instant platform.',
     time: 'Instant Swap',
     colorHex: '#0D9488', // Teal
     bgClass: 'bg-[#E0F2FE]', // Using a light cyan/teal for the bg

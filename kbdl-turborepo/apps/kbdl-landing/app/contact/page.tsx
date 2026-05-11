@@ -29,7 +29,7 @@ const ContactSection = ({ showSections = true }) => {
 
             {/* Main Heading */}
             <h2 className="text-4xl md:text-5xl lg:text-[56px] font-extrabold text-navy leading-[1.15] mb-6">
-              Let's Stop Daily Production <br className="hidden sm:block" /> Loss.
+              Let's Stop Daily Production <br className="hidden sm:block" /> Loss
             </h2>
 
             {/* Description */}

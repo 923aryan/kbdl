@@ -7,7 +7,7 @@ const steps = [
   {
     id: "01",
     title: "Create Your Profile",
-    desc: "Register in Minutes\n Add your skills, location, work type and experience in minutes.",
+    desc: "Register in Minutes.\n Add your skills... location, work type and experience in minutes.",
     time: "2 mins",
     colorHex: "#0658C2",
     bgClass: "bg-[#EBF3FF]",
@@ -133,7 +133,7 @@ const steps = [
   {
     id: "05",
     title: "Start Earning",
-    desc: "Work Confirmed!. \nFactory, contractor or homeowner confirms your profile in one click.",
+    desc: "Work Confirmed! \nFactory, contractor or homeowner confirms your profile in one click.",
     time: "Instant!",
     colorHex: "#0D9488",
     bgClass: "bg-[#E0F2FE]",
