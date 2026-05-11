@@ -1,6 +1,33 @@
 export const siteConfig = {
   name: "Kaam Badlo",
   url: "https://kaambadlo.com",
-  description: "A comprehensive workforce management platform connecting organizations with skilled workers.",
+  title: "Kaam Badlo: #1 Shift Swap & Blue Collar Jobs Platform",
+  description: "Hire verified factory workers instantly. Swap shifts seamlessly. Find welder, packing, and helper jobs in Noida, Gurgaon & NCR. Get your Karigari Skill Card today.",
   contactEmail: "support@kaambadlo.com",
+  socialLinks: [
+    "https://www.linkedin.com/company/kaam-badlo/",
+    "https://www.instagram.com/kaambadlo/",
+    "https://www.facebook.com/profile.php?id=61588838140681"
+  ],
+  keywords: [
+    "shift swap for factory workers",
+    "factory shift replacement",
+    "worker shift exchange app india",
+    "industrial shift swap",
+    "shift replacement noida",
+    "temporary shift replacement workers",
+    "blue collar jobs",
+    "blue collar workers",
+    "welder jobs in noida",
+    "factory helper jobs in gurgaon",
+    "packing jobs in greater noida",
+    "night shift jobs in noida",
+    "electrician jobs near me",
+    "daily wage jobs noida",
+    "factory shift exchange",
+    "worker replacement platform",
+    "blue collar hiring india",
+    "verified factory workers",
+    "Karigari skill card"
+  ]
 };

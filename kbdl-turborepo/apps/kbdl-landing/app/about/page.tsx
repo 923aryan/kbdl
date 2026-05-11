@@ -81,10 +81,7 @@ export default function AboutUs() {
             email: siteConfig.contactEmail,
             contactType: "customer support",
         },
-        sameAs: [
-            "https://www.linkedin.com/company/kaam-badlo/",
-            "https://www.instagram.com/kaambadlo/",
-        ],
+        sameAs: siteConfig.socialLinks,
     };
 
     return (

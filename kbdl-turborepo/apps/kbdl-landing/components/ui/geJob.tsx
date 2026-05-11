@@ -162,7 +162,6 @@ const steps = [
   },
 ];
 
-// Main timeline section component
 export default function GetWorkSection() {
   const [activeIndex, setActiveIndex] = useState(0);
 

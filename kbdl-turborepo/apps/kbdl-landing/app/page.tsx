@@ -11,10 +11,8 @@ import ContactSection from "./contact/page";
 // import { Button } from '@repo/ui';
 
 export const metadata: Metadata = {
-  title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
-
-  description:
-    "Kaam Badlo helps factories and workers manage shift swaps, verified skill cards, and hyperlocal blue-collar hiring.",
+  title: siteConfig.title,
+  description: siteConfig.description,
 
   metadataBase: new URL(siteConfig.url),
 
@@ -23,9 +21,8 @@ export const metadata: Metadata = {
   },
 
   openGraph: {
-    title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
-    description:
-      "Shift swaps, Karigari Skill Cards, and hyperlocal hiring for blue-collar workers and factories.",
+    title: siteConfig.title,
+    description: siteConfig.description,
     url: siteConfig.url,
     siteName: siteConfig.name,
     type: "website",
@@ -41,23 +38,12 @@ export const metadata: Metadata = {
 
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
-    description:
-      "Shift swaps, verified worker profiles, and hiring tools for factories and workers.",
+    title: siteConfig.title,
+    description: siteConfig.description,
     images: ["/favicon.ico"],
   },
 
-  keywords: [
-    "shift swap platform",
-    "blue collar jobs",
-    "factory workers",
-    "workforce management",
-    "Karigari card",
-    "industrial hiring",
-    "worker verification",
-    "Noida jobs",
-    "factory staffing",
-  ],
+  keywords: siteConfig.keywords,
 
   authors: [
     {
@@ -78,19 +64,34 @@ export default function Home() {
   // Define Schema specific to the homepage
   const schema = {
     "@context": "https://schema.org",
-    "@type": "Organization",
-    name: siteConfig.name,
-    url: siteConfig.url,
-    logo: `${siteConfig.url}/logo.png`,
-    contactPoint: {
-      "@type": "ContactPoint",
-      email: siteConfig.contactEmail,
-      contactType: "customer support",
-    },
-    sameAs: [
-      "https://www.linkedin.com/company/kaam-badlo/",
-      "https://www.instagram.com/kaambadlo/",
-    ],
+    "@graph": [
+      {
+        "@type": "Organization",
+        "name": siteConfig.name,
+        "url": siteConfig.url,
+        "logo": `${siteConfig.url}/logo.png`,
+        "description": siteConfig.description,
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "email": siteConfig.contactEmail,
+          "contactType": "customer support",
+          "areaServed": "IN",
+          "availableLanguage": ["English", "Hindi"]
+        },
+        "sameAs": siteConfig.socialLinks
+      },
+      {
+        "@type": "WebSite",
+        "url": siteConfig.url,
+        "name": siteConfig.name,
+        "description": siteConfig.description,
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": `${siteConfig.url}/search?q={search_term_string}`,
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
   };
 
   return (

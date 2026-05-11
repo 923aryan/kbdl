@@ -10,7 +10,7 @@ import logo from '../../public/logo-new.svg';
 const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'About Us', href: '/about' },
-  { name: 'Workers', href: 'services/workers' },
+  { name: 'Workers', href: '/services/workers' },
   { name: 'FAQ', href: '/faq' },
   { name: 'Contact Us', href: '/contact' },
 ];
