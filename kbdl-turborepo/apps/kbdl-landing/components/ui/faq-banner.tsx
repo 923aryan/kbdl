@@ -3,7 +3,7 @@ import engineer from "../../public/faq-hero-bg.png";
 
 export default function FAQBanner() {
   return (
-    <section className="relative w-full min-h-[420px] sm:min-h-[520px] lg:min-h-[600px] flex items-center justify-center overflow-hidden bg-[#020817]">
+    <section className="relative w-full h-[420px] sm:h-[520px] lg:h-[600px] overflow-hidden bg-[#020817]">
       {/* BACKGROUND IMAGE */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -11,29 +11,34 @@ export default function FAQBanner() {
           alt="Kaam Badlo FAQ Banner"
           fill
           priority
-          className="object-cover object-center"
+          sizes="100vw"
+          className="
+            object-cover
+            object-[78%_center]
+            sm:object-center
+          "
         />
 
         {/* DARK OVERLAY */}
-        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-black/40" />
 
         {/* EXTRA GRADIENT */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#020817]/90 via-[#020817]/70 to-[#0057D9]/30" />
       </div>
 
       {/* CONTENT */}
-      <div className="relative z-10 flex flex-col items-center text-center max-w-5xl px-4 sm:px-6 mx-auto">
+      <div className="relative z-10 flex h-full flex-col items-center justify-center text-center max-w-5xl px-4 sm:px-6 mx-auto">
         {/* TOP BADGE */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#3B82F6]/40 bg-[#2563EB]/10 backdrop-blur-md mb-6 sm:mb-8">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-
-          <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[#D6E8FF] tracking-[1px] uppercase">
-            Everything You Need To Know
-          </span>
+        <div className="mb-6 sm:mb-8">
+          <div className="inline-flex items-center justify-center rounded-full border border-[#0D6EFD]/50 bg-[#0A1A33]/80 px-6 sm:px-8 py-3 backdrop-blur-md shadow-[0_0_25px_rgba(13,110,253,0.15)]">
+            <span className="text-[10px] sm:text-xs md:text-[13px] font-bold tracking-[3px] uppercase text-[#8DBBFF]">
+              Everything You Need To Know
+            </span>
+          </div>
         </div>
 
         {/* HEADING */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[68px] font-bold text-white leading-[1.1] mb-5 sm:mb-6 max-w-5xl">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[56px] font-bold text-white leading-[1.1] mb-5 sm:mb-6 max-w-5xl">
           Got Questions About
           <br />
           <span className="text-[#0D6EFD]">Kaam Badlo Services?</span>

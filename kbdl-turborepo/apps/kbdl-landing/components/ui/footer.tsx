@@ -30,7 +30,7 @@ export default function Footer() {
             </p>
 
             {/* ADDRESS */}
-            <div className="border-l border-[#0D6EFD] pl-4 space-y-5">
+            <div className="border-l border-[#0D6EFD] pl-4">
               <div className="flex gap-3">
                 <svg
                   className="w-4 h-4 text-[#0D6EFD] mt-1 shrink-0"
@@ -53,33 +53,7 @@ export default function Footer() {
                 </svg>
 
                 <p className="text-[#8A94A7] text-sm leading-6">
-                  Corporate Office: Noida, Delhi NCR – 201301 (India)
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <svg
-                  className="w-4 h-4 text-[#0D6EFD] mt-1 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-
-                <p className="text-[#8A94A7] text-sm leading-6">
-                  Registered Sector 29, Near Botanical Garden, Noida, UP
+                  Noida, Delhi NCR – 201301 (India)
                 </p>
               </div>
             </div>
@@ -217,60 +191,12 @@ export default function Footer() {
               </p>
             </div>
 
-            {/* PHONE */}
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-3">
-                <svg
-                  className="w-4 h-4 text-[#0D6EFD]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-
-                <a
-                  href="tel:+919654007500"
-                  className="text-[#8A94A7] hover:text-white text-sm"
-                >
-                  +91 96540 07500
-                </a>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <svg
-                  className="w-4 h-4 text-[#0D6EFD]"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-
-                <a
-                  href="tel:+919876501234"
-                  className="text-[#8A94A7] hover:text-white text-sm"
-                >
-                  +91 98765 01234 (Worker Helpline)
-                </a>
-              </div>
-            </div>
-
             {/* SOCIAL */}
             <div>
               <p className="text-sm text-[#8A94A7] mb-4">Follow Our Movement</p>
 
               <div className="flex items-center gap-4">
+                {/* FACEBOOK */}
                 <a
                   href={siteConfig.socialLinks[2]}
                   target="_blank"
@@ -286,6 +212,7 @@ export default function Footer() {
                   </svg>
                 </a>
 
+                {/* INSTAGRAM */}
                 <a
                   href={siteConfig.socialLinks[1]}
                   target="_blank"
@@ -301,6 +228,7 @@ export default function Footer() {
                   </svg>
                 </a>
 
+                {/* LINKEDIN */}
                 <a
                   href={siteConfig.socialLinks[0]}
                   target="_blank"

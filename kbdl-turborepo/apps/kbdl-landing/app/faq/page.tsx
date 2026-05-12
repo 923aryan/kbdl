@@ -42,7 +42,7 @@ const faqs = [
 export default function FAQSection() {
   // State to track which FAQ is currently open.
   // Initialized to 1 (the second item) to match your design image where one is open by default.
-  const [openIndex, setOpenIndex] = useState<number | null>(1);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const toggleFAQ = (index: number) => {
     // If clicking the currently open one, close it. Otherwise, open the new one.

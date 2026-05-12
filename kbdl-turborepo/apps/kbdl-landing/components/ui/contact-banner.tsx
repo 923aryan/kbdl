@@ -11,7 +11,12 @@ export default function ContactBanner() {
           alt="Kaam Badlo Contact Banner"
           fill
           priority
-          className="object-cover object-center"
+          sizes="100vw"
+          className="
+            object-cover
+            object-[78%_center]
+            sm:object-center
+          "
         />
 
         {/* DARK OVERLAY */}
@@ -24,16 +29,14 @@ export default function ContactBanner() {
       {/* CONTENT */}
       <div className="relative z-10 flex flex-col items-center text-center max-w-5xl px-4 sm:px-6 mx-auto">
         {/* BADGE */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#3B82F6]/40 bg-[#2563EB]/10 backdrop-blur-md mb-6 sm:mb-8">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-
-          <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[#D6E8FF] tracking-[1px] uppercase">
+        <div className="inline-flex items-center justify-center px-5 sm:px-7 py-3 rounded-full border border-[#0D6EFD]/40 bg-[#0A1D3A]/80 backdrop-blur-md shadow-[0_0_25px_rgba(13,110,253,0.15)] mb-6 sm:mb-8">
+          <span className="text-[9px] sm:text-[11px] md:text-[12px] font-bold tracking-[3px] uppercase text-[#8DBDFF]">
             24×7 Support For Workers & Businesses
           </span>
         </div>
 
         {/* HEADING */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[68px] font-bold text-white leading-[1.1] mb-5 sm:mb-6 max-w-5xl">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[56px] font-bold text-white leading-[1.1] mb-5 sm:mb-6 max-w-5xl">
           Connecting Businesses &
           <br />
           <span className="text-[#0D6EFD]">Workers Without Delays</span>

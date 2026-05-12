@@ -1,18 +1,18 @@
-'use client'; // Required since we are using state for the mobile menu
+"use client"; // Required since we are using state for the mobile menu
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import logo from '../../public/logo-new.svg';
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import logo from "../../public/logo-new.svg";
 // import logo from "../../public/logo.png"; // Make sure to adjust this import
 
 const navLinks = [
-  { name: 'Home', href: '/' },
-  { name: 'About Us', href: '/about' },
-  { name: 'Workers', href: '/services/workers' },
-  { name: 'FAQ', href: '/faq' },
-  { name: 'Contact Us', href: '/contact' },
+  { name: "Home", href: "/" },
+  { name: "About Us", href: "/about" },
+  { name: "Workers", href: "/services/workers" },
+  { name: "FAQ", href: "/faq" },
+  { name: "Contact Us", href: "/contact" },
 ];
 
 export default function Navbar() {
@@ -23,7 +23,6 @@ export default function Navbar() {
     <header className="w-full bg-white border-b border-gray-100 sticky top-0 z-50">
       <div className="md:w-full md:pr-8">
         <div className="flex items-center justify-between h-15">
-
           {/* Logo */}
           <Link href="/" className="flex items-start justify-start p-1">
             <Image
@@ -42,8 +41,9 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`text-[15px] font-medium transition-colors hover:text-primary ${isActive ? 'text-primary' : 'text-gray-600'
-                    }`}
+                  className={`text-[15px] font-medium transition-colors hover:text-primary ${
+                    isActive ? "text-primary" : "text-gray-600"
+                  }`}
                 >
                   {link.name}
                 </Link>
@@ -60,13 +60,33 @@ export default function Navbar() {
             >
               {isMobileMenuOpen ? (
                 // Close Icon (X)
-                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="h-8 w-8"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               ) : (
                 // Hamburger Icon
-                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg
+                  className="h-8 w-8"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 </svg>
               )}
             </button>
@@ -85,10 +105,11 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   onClick={() => setIsMobileMenuOpen(false)} // Close menu on click
-                  className={`block px-3 py-3 rounded-md text-base font-medium transition-colors ${isActive
-                    ? 'bg-blue-50 text-primary'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
-                    }`}
+                  className={`block px-3 py-3 rounded-md text-base font-medium transition-colors ${
+                    isActive
+                      ? "bg-blue-50 text-primary"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-primary"
+                  }`}
                 >
                   {link.name}
                 </Link>
