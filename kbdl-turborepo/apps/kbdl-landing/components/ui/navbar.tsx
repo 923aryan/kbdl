@@ -20,8 +20,8 @@ export default function Navbar() {
   const pathname = usePathname(); // Optional: used to highlight the active link
 
   return (
-    <header className="w-full bg-white border-b border-gray-100 sticky top-0 z-50">
-      <div className="md:w-full md:pr-8">
+    <header className="w-full bg-white border-b border-gray-100 sticky top-0 z-50 py-[10px] py-md-[14px]">
+      <div className="md:w-full px-4 md:px-8">
         <div className="flex items-center justify-between h-15">
           {/* Logo */}
           <Link href="/" className="flex items-start justify-start p-1">

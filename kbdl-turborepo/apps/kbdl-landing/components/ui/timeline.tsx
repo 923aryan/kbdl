@@ -186,8 +186,8 @@ export default function TimelineSection(): JSX.Element {
         </button>
 
         {/* Bottom Trust/Features Footer */}
-        <div className="w-full max-w-6xl border-t border-gray-100 pt-[25px] md:pt-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="w-full border-t border-gray-100 pt-[25px] md:pt-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 justify-between">
 
             <TrustBadge
               icon="✓"
@@ -212,6 +212,12 @@ export default function TimelineSection(): JSX.Element {
               title="Dedicated Support"
               desc="We're here to help"
               colorClass="text-purple-600 bg-purple-50"
+            />
+             <TrustBadge
+              icon="✓"
+              title="Trusted Platform"
+              desc="Built for reliability"
+              colorClass="text-blue-600 bg-blue-50"
             />
 
           </div>

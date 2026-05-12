@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "../../lib/seo-constants";
-import logo from "../../public/logo.png";
+import logo from "../../public/logo-dark-bg.png";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -17,9 +17,7 @@ export default function Footer() {
               <Image
                 src={logo}
                 alt="Kaam Badlo Logo"
-                width={120}
-                height={45}
-                className="object-contain"
+                className="object-contain  w-full h-15"
               />
             </Link>
 
@@ -183,6 +181,34 @@ export default function Footer() {
                   className="text-white text-sm"
                 >
                   connect@kaambadlo.com
+                </a>
+              </div>
+               <div className="flex items-center gap-3 mb-2">
+                <svg
+                  className="w-4 h-4 text-[#0D6EFD]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+
+                <a
+                  href="mailto:business@kaambadlo.com"
+                  className="text-white text-sm"
+                >
+                  business@kaambadlo.com
                 </a>
               </div>
 
