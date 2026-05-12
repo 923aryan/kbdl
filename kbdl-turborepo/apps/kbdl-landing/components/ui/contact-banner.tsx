@@ -3,7 +3,7 @@ import bannerImage from "../../public/contact-banner.png";
 
 export default function ContactBanner() {
   return (
-    <section className="relative w-full min-h-[320px] sm:min-h-[380px] lg:min-h-[450px] overflow-hidden">
+    <section className="relative w-full min-h-[420px] sm:min-h-[520px] lg:min-h-[600px] flex items-center justify-center overflow-hidden bg-[#020817]">
       {/* BACKGROUND IMAGE */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -15,36 +15,36 @@ export default function ContactBanner() {
         />
 
         {/* DARK OVERLAY */}
-        <div className="absolute inset-0 bg-[#000000]/25" />
+        <div className="absolute inset-0 bg-black/30" />
 
-        {/* BLUE GLOW */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#020817]/90 via-[#020817]/65 to-[#0057D9]/30" />
+        {/* GRADIENT OVERLAY */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#020817]/90 via-[#020817]/70 to-[#0057D9]/30" />
       </div>
 
       {/* CONTENT */}
-      <div className="relative z-10 flex items-center justify-center min-h-[320px] sm:min-h-[380px] lg:min-h-[420px] px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          {/* BADGE */}
-          <div className="inline-flex items-center rounded-full border border-[#3B82F6]/40 bg-[#2563EB]/10 px-4 py-2 sm:px-5 backdrop-blur-md mb-6 sm:mb-8">
-            <span className="text-[9px] sm:text-[11px] md:text-[12px] font-semibold tracking-[1.5px] sm:tracking-[2px] uppercase text-[#93C5FD]">
-              24×7 Support For Workers & Businesses
-            </span>
-          </div>
+      <div className="relative z-10 flex flex-col items-center text-center max-w-5xl px-4 sm:px-6 mx-auto">
+        {/* BADGE */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#3B82F6]/40 bg-[#2563EB]/10 backdrop-blur-md mb-6 sm:mb-8">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
 
-          {/* HEADING */}
-          <h1 className="text-white font-bold leading-[1.1] text-3xl sm:text-5xl md:text-6xl lg:text-[68px] max-w-5xl mx-auto">
-            Connecting Businesses &
-            <br />
-            <span className="text-[#0658C2]">Workers Without Delays</span>
-          </h1>
-
-          {/* DESCRIPTION */}
-          <p className="mt-5 sm:mt-8 max-w-3xl mx-auto text-sm sm:text-base md:text-xl leading-6 sm:leading-8 text-[#D1D5DB] px-2">
-            Have questions about hiring, worker onboarding, or shift management?
-            Our team is ready to help businesses and workers with fast and
-            reliable support.
-          </p>
+          <span className="text-[10px] sm:text-xs md:text-sm font-medium text-[#D6E8FF] tracking-[1px] uppercase">
+            24×7 Support For Workers & Businesses
+          </span>
         </div>
+
+        {/* HEADING */}
+        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[68px] font-bold text-white leading-[1.1] mb-5 sm:mb-6 max-w-5xl">
+          Connecting Businesses &
+          <br />
+          <span className="text-[#0D6EFD]">Workers Without Delays</span>
+        </h1>
+
+        {/* DESCRIPTION */}
+        <p className="text-sm sm:text-lg md:text-xl text-[#D1D5DB] max-w-3xl leading-7 sm:leading-8 px-2">
+          Have questions about hiring workers, onboarding, shift management, or
+          partnerships? Our support team is ready to assist businesses and
+          workers with fast and reliable solutions.
+        </p>
       </div>
     </section>
   );
