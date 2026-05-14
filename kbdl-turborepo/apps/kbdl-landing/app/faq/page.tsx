@@ -50,10 +50,11 @@ export default function FAQSection() {
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full overflow-hidden">
       <FAQBanner />
       <DownloadSection />
 
+      <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA]">
       <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA]">
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}
@@ -78,19 +79,20 @@ export default function FAQSection() {
               return (
                 <div
                   key={index}
-                  className={`bg-white rounded-xl overflow-hidden transition-all duration-300 border ${
+                  className={`bg-white rounded-2xl overflow-hidden transition-all duration-300 border ${
                     isOpen
-                      ? "border-[#0658C2] shadow-md"
+                      ? "border-[#0658C2] shadow-lg"
                       : "border-gray-200 shadow-sm hover:border-gray-300"
                   }`}
                 >
                   {/* Question Button */}
                   <button
+                    type="button"
                     onClick={() => toggleFAQ(index)}
                     className="w-full flex items-center justify-between p-6 text-left focus:outline-none"
                     aria-expanded={isOpen}
                   >
-                    <span className="text-[15px] md:text-base font-bold text-navy pr-8">
+                    <span className="text-[15px] md:text-base font-bold text-[#01122E] pr-8 leading-7">
                       {faq.question}
                     </span>
 
