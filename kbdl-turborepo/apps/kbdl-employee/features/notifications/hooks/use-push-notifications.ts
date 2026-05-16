@@ -24,6 +24,15 @@ export function usePushNotifications() {
         token,
         platform: Platform.OS,
       });
+      try {
+        await savePushToken({
+          token,
+          platform: Platform.OS,
+        });
+        console.log('✅ Push token saved successfully:', token);
+      } catch (error) {
+        console.error('❌ Failed to save push token to backend:', error);
+      }
     }
 
     init();
