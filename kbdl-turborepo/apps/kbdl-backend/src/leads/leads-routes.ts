@@ -1,35 +1,21 @@
-import { Router } from "express";
-import { authenticate } from "../middleware/auth-middleware";
-import { ROLES } from "../utils/constants";
+import { Router } from 'express';
+import { authenticate } from '../middleware/auth-middleware';
+import { ROLES } from '../utils/constants';
 
-import {
-  createLead,
-  deleteLead,
-  getAllLeads,
-  getLeadById,
-  resolveLead,
-} from "./leads-controllers";
+import { createLead, deleteLead, getAllLeads, getLeadById, resolveLead } from './leads-controllers';
 
 const leadRouter: Router = Router();
 
 // Public
-leadRouter.post("/", createLead);
+leadRouter.post('/', createLead);
 
 // Admin
-leadRouter.get("/", authenticate([ROLES.ADMIN]), getAllLeads);
+leadRouter.get('/', authenticate([ROLES.ADMIN]), getAllLeads);
 
-leadRouter.get("/:id", authenticate([ROLES.ADMIN]), getLeadById);
+leadRouter.get('/:id', authenticate([ROLES.ADMIN]), getLeadById);
 
-leadRouter.patch(
-  "/:id/resolve",
-  authenticate([ROLES.ADMIN]),
-  resolveLead
-);
+leadRouter.patch('/:id/resolve', authenticate([ROLES.ADMIN]), resolveLead);
 
-leadRouter.delete(
-  "/:id",
-  authenticate([ROLES.ADMIN]),
-  deleteLead
-);
+leadRouter.delete('/:id', authenticate([ROLES.ADMIN]), deleteLead);
 
 export default leadRouter;

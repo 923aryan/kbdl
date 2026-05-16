@@ -21,7 +21,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.kbdlemployee"
+      "package": "com.anonymous.kbdlemployee",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -33,7 +34,14 @@
       "reactCompiler": true
     },
     "plugins": [
-      "expo-localization"
-    ]
+      "expo-localization",
+      "expo-dev-client"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5d70137e-e6a5-46a8-b619-945c8a227749"
+      }
+    },
+    "owner": "aryanraj923s-organization"
   }
 }

@@ -1,12 +1,12 @@
-import { ApiSuccess } from "@repo/types";
-import { Response } from "express";
+import { ApiSuccess } from '@repo/types';
+import { Response } from 'express';
 
 export const sendSuccess = <T>(
   res: Response,
   message: string,
   data: T,
   statusCode = 200,
-  meta?: Record<string, unknown>
+  meta?: Record<string, unknown>,
 ) => {
   const response: ApiSuccess<T> = {
     success: true,

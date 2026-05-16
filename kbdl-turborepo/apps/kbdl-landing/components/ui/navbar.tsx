@@ -1,18 +1,18 @@
-"use client"; // Required since we are using state for the mobile menu
+'use client'; // Required since we are using state for the mobile menu
 
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import logo from "../../public/logo-new.svg";
+import Image from 'next/image';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import logo from '../../public/logo-new.svg';
 // import logo from "../../public/logo.png"; // Make sure to adjust this import
 
 const navLinks = [
-  { name: "Home", href: "/" },
-  { name: "About Us", href: "/about" },
-  { name: "Workers", href: "/services/workers" },
-  { name: "FAQ", href: "/faq" },
-  { name: "Contact Us", href: "/contact" },
+  { name: 'Home', href: '/' },
+  { name: 'About Us', href: '/about' },
+  { name: 'Workers', href: '/services/workers' },
+  { name: 'FAQ', href: '/faq' },
+  { name: 'Contact Us', href: '/contact' },
 ];
 
 export default function Navbar() {
@@ -42,7 +42,7 @@ export default function Navbar() {
                   key={link.name}
                   href={link.href}
                   className={`text-[15px] font-medium transition-colors hover:text-primary ${
-                    isActive ? "text-primary" : "text-gray-600"
+                    isActive ? 'text-primary' : 'text-gray-600'
                   }`}
                 >
                   {link.name}
@@ -60,12 +60,7 @@ export default function Navbar() {
             >
               {isMobileMenuOpen ? (
                 // Close Icon (X)
-                <svg
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -75,12 +70,7 @@ export default function Navbar() {
                 </svg>
               ) : (
                 // Hamburger Icon
-                <svg
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -107,8 +97,8 @@ export default function Navbar() {
                   onClick={() => setIsMobileMenuOpen(false)} // Close menu on click
                   className={`block px-3 py-3 rounded-md text-base font-medium transition-colors ${
                     isActive
-                      ? "bg-blue-50 text-primary"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-primary"
+                      ? 'bg-blue-50 text-primary'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-primary'
                   }`}
                 >
                   {link.name}

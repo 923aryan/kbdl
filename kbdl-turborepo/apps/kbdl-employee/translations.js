@@ -9,7 +9,9 @@ export default {
     expMobile: "Exp: 8360170...",
     sendOtp: "Send OTP",
     alreadyHaveAccount: "Already have an account, ",
-    loginNow: "Login Now"
+    loginNow: "Login Now",
+    dontHaveAccount: "Don't have an account? ",
+    registerNow: "Sign up now"
   },
   hi: {
     welcome: "स्वागत है",
@@ -21,6 +23,8 @@ export default {
     expMobile: "उदा: 8360170...",
     sendOtp: "OTP भेजें",
     alreadyHaveAccount: "पहले से अकाउंट है, ",
-    loginNow: "लॉगिन करें"
+    loginNow: "लॉगिन करें",
+    dontHaveAccount: "अकाउंट नहीं है? ",
+    registerNow: "अभी रजिस्टर करें"
   }
 };

@@ -1,0 +1,35 @@
+import { MarkNotificationReadRequest, SavePushTokenRequest } from '@repo/types';
+import { markNotificationReadSchema, savePushTokenSchema } from '@repo/validator/shared';
+import { Request, Response } from 'express';
+import { sendSuccess } from '../utils/send-success';
+import { validate } from '../utils/validate';
+import {
+  getUserNotificationsService,
+  markNotificationAsReadService,
+  savePushTokenService,
+} from './notification-service';
+
+const savePushToken = async (req: Request, res: Response) => {
+  const userId = req.payload.user.id;
+  const input: SavePushTokenRequest = validate(savePushTokenSchema, req);
+
+  const pushToken = await savePushTokenService(userId, input.body);
+  sendSuccess(res, 'Push token saved', pushToken, 201);
+};
+
+const getNotifications = async (req: Request, res: Response) => {
+  const userId = req.payload.user.id;
+
+  const notifications = await getUserNotificationsService(userId);
+  sendSuccess(res, 'Notifications fetched', notifications, 200);
+};
+
+const markNotificationRead = async (req: Request, res: Response) => {
+  const userId = req.payload.user.id;
+  const input: MarkNotificationReadRequest = validate(markNotificationReadSchema, req);
+
+  const notification = await markNotificationAsReadService(input.params.notificationId, userId);
+  sendSuccess(res, 'Notification marked as read', notification, 200);
+};
+
+export { getNotifications, markNotificationRead, savePushToken };

@@ -8,7 +8,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   verification: {
-    google: "J5qQnLaVfXYkaXJAYlmndACDTuTu_p5Z8JpBMeUvIVk",
+    google: 'J5qQnLaVfXYkaXJAYlmndACDTuTu_p5Z8JpBMeUvIVk',
   },
   metadataBase: new URL(siteConfig.url),
   title: {
@@ -33,7 +33,11 @@ const poppins = Poppins({
   weight: ['400', '500', '600', '700'],
   variable: '--font-poppins',
 });
-export default function RootLayout({ children }: { children: React.ReactNode }): React.ReactElement {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
   return (
     <html lang="en" className={poppins.variable}>
       <body>

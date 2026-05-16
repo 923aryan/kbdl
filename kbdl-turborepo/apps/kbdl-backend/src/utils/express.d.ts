@@ -1,12 +1,24 @@
 declare global {
   namespace Express {
     interface Request {
-      user: any;
-      id: string;
-      role: string;
+      role: 'user' | 'employer' | 'admin';
+      payload: {
+        employer: {
+          id: string;
+          email: string;
+          is_verified: boolean;
+        };
+        user: {
+          id: string;
+          phone_no: string;
+        };
+        admin: {
+          id: string;
+          email: string;
+        };
+      };
     }
   }
 }
 
-export { };
-
+export {};

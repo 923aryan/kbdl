@@ -48,8 +48,9 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-imp:
-adb pair 192.168.31.191:38413
-pnpm expo build
-adb devices
-pnpm expo run:android
+  imp:
+  adb pair 192.168.31.191:38413
+  pnpm expo build
+  adb devices
+  pnpm expo run:android
+  npx expo run:android

@@ -1,49 +1,43 @@
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const [showDropdown, setShowDropdown] = useState(false);
-  const [location, setLocation] = useState("Chandigarh");
+  const [location, setLocation] = useState('Chandigarh');
 
   // Cards Data
   const cards = [
     {
       id: 1,
-      title: "Shifts",
-      subtitle: "Browse job by your preferred shift",
-      icon: "swap-horizontal",
-      iconColor: "#2F80ED",
-      bgColor: "#EAF2FF",
-      route: "/(shift-swap)",
+      title: 'Shifts',
+      subtitle: 'Browse job by your preferred shift',
+      icon: 'swap-horizontal',
+      iconColor: '#2F80ED',
+      bgColor: '#EAF2FF',
+      route: '/(public)/(shift-swap)',
     },
     {
       id: 2,
-      title: "Alert",
-      subtitle: "Find jobs that match your skills",
-      icon: "notifications-outline",
-      iconColor: "#EB5757",
-      bgColor: "#FDECEA",
-      route: "/alerts",
+      title: 'Alert',
+      subtitle: 'Find jobs that match your skills',
+      icon: 'notifications-outline',
+      iconColor: '#EB5757',
+      bgColor: '#FDECEA',
+      route: '/alerts',
     },
     {
       id: 3,
-      title: "Find Job",
-      subtitle: "Search and apply for the best job",
-      icon: "search",
-      iconColor: "#F2994A",
-      bgColor: "#FFF4E5",
-      route: "/find-job",
+      title: 'Find Job',
+      subtitle: 'Search and apply for the best job',
+      icon: 'search',
+      iconColor: '#F2994A',
+      bgColor: '#FFF4E5',
+      route: '/find-job',
     },
   ];
 
@@ -59,17 +53,14 @@ export default function HomeScreen() {
 
               <Text style={styles.locationText}>{location}</Text>
 
-              <Ionicons
-                name={showDropdown ? "chevron-up" : "chevron-down"}
-                size={16}
-              />
+              <Ionicons name={showDropdown ? 'chevron-up' : 'chevron-down'} size={16} />
             </View>
           </TouchableOpacity>
 
           {/* Popup Dropdown */}
           {showDropdown && (
             <View style={styles.dropdown}>
-              {["Chandigarh", "Delhi", "Mumbai"].map((city) => (
+              {['Chandigarh', 'Delhi', 'Mumbai'].map((city) => (
                 <TouchableOpacity
                   key={city}
                   style={styles.dropdownItem}
@@ -91,12 +82,7 @@ export default function HomeScreen() {
         // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
-            <FontAwesome
-              name="whatsapp"
-              size={17}
-              color="#25D366"
-              style={{ marginTop: 2 }}
-            />
+            <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
 
             <Text style={styles.referText}>Refer</Text>
           </View>
@@ -109,11 +95,7 @@ export default function HomeScreen() {
 
         <View style={styles.divider} />
 
-        <TextInput
-          placeholder="Search"
-          placeholderTextColor="#999"
-          style={styles.input}
-        />
+        <TextInput placeholder="Search" placeholderTextColor="#999" style={styles.input} />
       </View>
 
       {/* Cards */}
@@ -125,11 +107,7 @@ export default function HomeScreen() {
         >
           {/* Icon */}
           <View style={[styles.iconBox, { backgroundColor: item.bgColor }]}>
-            <Ionicons
-              name={item.icon as any}
-              size={24}
-              color={item.iconColor}
-            />
+            <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
           </View>
 
           {/* Text */}
@@ -151,49 +129,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 16,
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
   },
 
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
     zIndex: 999,
   },
 
   locationWrapper: {
-    position: "relative",
+    position: 'relative',
   },
 
   locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
   },
 
   locationText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 
   dropdown: {
-    position: "absolute",
+    position: 'absolute',
     top: 35,
     left: 0,
     width: 150,
 
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 10,
 
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: '#eee',
 
     paddingVertical: 5,
 
     elevation: 5,
 
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 5,
     shadowOffset: {
@@ -210,30 +188,30 @@ const styles = StyleSheet.create({
   },
 
   referBtn: {
-    backgroundColor: "#E6F7EC",
+    backgroundColor: '#E6F7EC',
     paddingHorizontal: 15,
     paddingVertical: 6,
     borderRadius: 20,
   },
 
   referContent: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   referText: {
-    color: "green",
-    fontWeight: "500",
+    color: 'green',
+    fontWeight: '500',
     marginLeft: 6,
   },
 
   searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
 
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: '#ddd',
 
     borderRadius: 12,
 
@@ -246,7 +224,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 20,
-    backgroundColor: "#ddd",
+    backgroundColor: '#ddd',
     marginHorizontal: 8,
   },
 
@@ -256,13 +234,13 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
 
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
 
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: '#ddd',
 
     borderRadius: 16,
 
@@ -276,8 +254,8 @@ const styles = StyleSheet.create({
 
     borderRadius: 12,
 
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
 
     marginRight: 12,
   },
@@ -288,12 +266,12 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 
   subtitle: {
     fontSize: 13,
-    color: "#666",
+    color: '#666',
     marginTop: 4,
   },
 });

@@ -7,7 +7,8 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc",
     "start": "node --env-file=.env dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev:debug": "node --inspect --env-file=.env --import tsx src/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -17,15 +18,18 @@
     "@repo/types": "workspace:*",
     "@repo/validator": "workspace:*",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.76.8",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "expo-server-sdk": "^6.1.0",
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
     "pg": "^8.20.0",
     "resend": "^6.12.2",
+    "socket.io": "^4.8.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {

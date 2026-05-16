@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import React from 'react';
+import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   KeyboardAvoidingView,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
   useColorScheme,
 } from 'react-native';
@@ -28,6 +29,9 @@ export default function CreateShiftScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
+
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [employeeMobile, setEmployeeMobile] = useState('');
 
   const {
     control,
@@ -57,7 +61,6 @@ export default function CreateShiftScreen() {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-
           {/* Header Section */}
           <View style={styles.headerContainer}>
             <Text style={styles.title}>Shift details</Text>
@@ -66,7 +69,6 @@ export default function CreateShiftScreen() {
 
           {/* Form Section */}
           <View style={styles.formSection}>
-
             {/* Domain / Skill Required Input */}
             <Controller
               control={control}
@@ -83,6 +85,48 @@ export default function CreateShiftScreen() {
                 />
               )}
             />
+
+            {/* Pay Type Selection */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Pay Type :</Text>
+              <Controller
+                control={control}
+                name="payType"
+                render={({ field: { onChange, value } }) => (
+                  <View style={styles.payTypeContainer}>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={[
+                        styles.payTypeButton,
+                        value === 'FIXED' && styles.payTypeButtonActive,
+                      ]}
+                      onPress={() => onChange('FIXED')}
+                    >
+                      <Text
+                        style={[styles.payTypeText, value === 'FIXED' && styles.payTypeTextActive]}
+                      >
+                        Fixed
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={[
+                        styles.payTypeButton,
+                        value === 'HOURLY' && styles.payTypeButtonActive,
+                      ]}
+                      onPress={() => onChange('HOURLY')}
+                    >
+                      <Text
+                        style={[styles.payTypeText, value === 'HOURLY' && styles.payTypeTextActive]}
+                      >
+                        Hourly
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              />
+              {errors.payType && <Text style={styles.errorText}>{errors.payType.message}</Text>}
+            </View>
 
             {/* Shift Pay Input */}
             <Controller
@@ -161,14 +205,30 @@ export default function CreateShiftScreen() {
               </View>
             </View>
 
+            {/* Add Employee Mobile Number Field */}
+            {showAddEmployee && (
+              <View style={styles.addEmployeeContainer}>
+                <CustomInput
+                  label="Enter Mobile Number of Employee :"
+                  placeholder="Exp: 9876543210"
+                  icon={<Feather name="smartphone" size={18} color={theme.icon} />}
+                  keyboardType="phone-pad"
+                  value={employeeMobile}
+                  onChangeText={setEmployeeMobile}
+                />
+              </View>
+            )}
+
             {/* Bottom Action Buttons */}
             <View style={styles.actionRow}>
-              <CustomButton
-                title="Add Employe"
-                variant="outline"
-                containerStyle={styles.halfButton}
-                onPress={() => console.log('Add Employee clicked')}
-              />
+              {!showAddEmployee && (
+                <CustomButton
+                  title="Add Employee"
+                  variant="outline"
+                  containerStyle={styles.halfButton}
+                  onPress={() => setShowAddEmployee(true)}
+                />
+              )}
               <CustomButton
                 title="Confirm"
                 variant="primary"
@@ -177,7 +237,6 @@ export default function CreateShiftScreen() {
                 onPress={handleSubmit(onSubmit)}
               />
             </View>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -216,6 +275,46 @@ const createStyles = (theme: typeof Colors.light) =>
     formSection: {
       paddingHorizontal: 24,
     },
+    inputContainer: {
+      marginBottom: 16,
+    },
+    inputLabel: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: theme.text,
+      marginBottom: 8,
+    },
+    payTypeContainer: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    payTypeButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 10,
+      alignItems: 'center',
+      backgroundColor: theme.card,
+    },
+    payTypeButtonActive: {
+      borderColor: theme.primary,
+      backgroundColor: theme.primary + '15',
+    },
+    payTypeText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: theme.textSecondary,
+    },
+    payTypeTextActive: {
+      color: theme.primary,
+      fontWeight: '600',
+    },
+    errorText: {
+      color: 'red',
+      fontSize: 12,
+      marginTop: 4,
+    },
     rowContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -223,6 +322,9 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     halfWidth: {
       flex: 1,
+    },
+    addEmployeeContainer: {
+      marginTop: 16,
     },
     actionRow: {
       flexDirection: 'row',

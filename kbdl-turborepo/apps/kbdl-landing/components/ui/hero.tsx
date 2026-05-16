@@ -1,5 +1,5 @@
-import Image from "next/image";
-import engineer from "../../public/engineer.png";
+import Image from 'next/image';
+import engineer from '../../public/engineer.png';
 // import { Button } from '@repo/ui'; // You can use your UI button, but custom styled below to match exactly
 
 export default function HeroSection() {
@@ -37,14 +37,9 @@ export default function HeroSection() {
 
         {/* Subheading / Description */}
         <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl leading-relaxed">
-          India's first platform enabling seamless{" "}
-          <strong className="text-white font-semibold">
-            Cross-Factory Shift Swaps
-          </strong>{" "}
-          and verified{" "}
-          <strong className="text-white font-semibold">
-            Karigari Digital Identities
-          </strong>
+          India's first platform enabling seamless{' '}
+          <strong className="text-white font-semibold">Cross-Factory Shift Swaps</strong> and
+          verified <strong className="text-white font-semibold">Karigari Digital Identities</strong>
           . Hire with speed, transparency, and confidence.
         </p>
 

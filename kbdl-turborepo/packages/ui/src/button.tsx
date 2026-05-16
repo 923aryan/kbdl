@@ -23,12 +23,14 @@ export const Button = ({
   ...props
 }: ButtonProps): JSX.Element => {
   // 1. Base classes that apply to EVERY button
-  const baseClasses = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none';
+  const baseClasses =
+    'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none';
 
   // 2. Variant specific classes mapped to your Tailwind v4 theme variables
   const variantClasses = {
     primary: 'bg-primary text-white shadow-sm hover:opacity-90',
-    outline: 'bg-transparent border border-navy text-navy hover:bg-surface dark:border-border dark:text-text',
+    outline:
+      'bg-transparent border border-navy text-navy hover:bg-surface dark:border-border dark:text-text',
   };
 
   // 3. Size specific classes
@@ -42,11 +44,7 @@ export const Button = ({
   const combinedClasses = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`;
 
   return (
-    <button
-      className={combinedClasses}
-      disabled={disabled}
-      {...props}
-    >
+    <button className={combinedClasses} disabled={disabled} {...props}>
       {children}
     </button>
   );

@@ -1,6 +1,6 @@
-import { ContactForm } from "../../components/ui/contact-form";
-import { DownloadSection } from "../../components/ui/download";
-import ContactBanner from "../../components/ui/contact-banner";
+import { ContactForm } from '../../components/ui/contact-form';
+import { DownloadSection } from '../../components/ui/download';
+import ContactBanner from '../../components/ui/contact-banner';
 // ==========================================
 // 1. The Main Layout Section Component
 // ==========================================
@@ -27,14 +27,13 @@ const ContactSection = ({ showSections = true }) => {
 
             {/* Main Heading */}
             <h2 className="text-4xl md:text-5xl lg:text-[48px] font-extrabold text-navy leading-[1.15] mb-6">
-              Let's Stop Daily Production <br className="hidden sm:block" />{" "}
-              Loss
+              Let's Stop Daily Production <br className="hidden sm:block" /> Loss
             </h2>
 
             {/* Description */}
             <p className="text-gray-500 text-lg mb-12 max-w-md leading-relaxed">
-              Fill out the form and our team will get back to you within 24
-              hours. No long calls, no commitments.
+              Fill out the form and our team will get back to you within 24 hours. No long calls, no
+              commitments.
             </p>
 
             {/* Info Cards Container */}
@@ -66,9 +65,7 @@ const ContactSection = ({ showSections = true }) => {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Corporate Address
                   </p>
-                  <p className="text-navy font-bold text-[15px]">
-                    Noida, Delhi NCR 201301, India
-                  </p>
+                  <p className="text-navy font-bold text-[15px]">Noida, Delhi NCR 201301, India</p>
                 </div>
               </div>
 
@@ -120,9 +117,7 @@ const ContactSection = ({ showSections = true }) => {
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                     Response Time
                   </p>
-                  <p className="text-navy font-bold text-[15px]">
-                    Within 24 hours guaranteed
-                  </p>
+                  <p className="text-navy font-bold text-[15px]">Within 24 hours guaranteed</p>
                 </div>
               </div>
             </div>

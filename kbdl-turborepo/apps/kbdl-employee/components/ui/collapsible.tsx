@@ -2,10 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { PropsWithChildren, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
-export function Collapsible({
-  children,
-  title,
-}: PropsWithChildren & { title: string }) {
+export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -24,16 +21,10 @@ export function Collapsible({
           }}
         />
 
-        <Text className="font-semibold text-textPrimary dark:text-white">
-          {title}
-        </Text>
+        <Text className="font-semibold text-textPrimary dark:text-white">{title}</Text>
       </TouchableOpacity>
 
-      {isOpen && (
-        <View className="mt-2 ml-6">
-          {children}
-        </View>
-      )}
+      {isOpen && <View className="mt-2 ml-6">{children}</View>}
     </View>
   );
 }

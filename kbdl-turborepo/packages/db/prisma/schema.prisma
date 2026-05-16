@@ -10,46 +10,51 @@ datasource db {
 }
 
 enum UserType {
-  organization
+  employer
   user
 
   @@map("user_type")
 }
 
 model User {
-  id              String                                 @id @default(uuid()) @db.Uuid
-  name            String?                                @db.VarChar
-  karigari_id     String?                                @db.VarChar
-  phone_no        String                                 @unique @db.VarChar
-  default_address String?                                @db.VarChar
-  skills          String[]
-  experience      Int?
-  city            String?                                @db.VarChar
-  area            String?                                @db.VarChar
-  preferences     Json?                                  @default("{}")
-  // PostGIS geography type
-  location        Unsupported("geography(Point, 4326)")?
+  id          String  @id @default(uuid()) @db.Uuid
+  name        String? @db.VarChar
+  karigari_id String? @db.VarChar
+  employer_id String? @db.Uuid
 
-  rating_avg         Decimal? @db.Decimal(3, 2)
+  phone_no           String                                 @unique @db.VarChar
+  default_address    String?                                @db.VarChar
+  skills             String[]
+  experience         Int?
+  city               String?                                @db.VarChar
+  area               String?                                @db.VarChar
+  preferences        Json?                                  @default("{}")
+  // PostGIS geography type
+  location           Unsupported("geography(Point, 4326)")?
+  role               String                                 @default("user")
+  rating_avg         Decimal?                               @db.Decimal(3, 2)
   rating_count       Int?
   verification_level Int?
-  extra_shift        Boolean  @default(false)
-  refresh_token      String?  @db.VarChar
+  extra_shift        Boolean                                @default(true)
+  refresh_token      String?                                @db.VarChar
 
   created_at DateTime @default(now()) @db.Timestamptz()
   updated_at DateTime @updatedAt @db.Timestamptz()
 
   //relations
-  original_shifts    Shift[]              @relation("OriginalEmployeeShift")
-  replacement_shifts Shift[]              @relation("ReplacementEmployeeShift")
-  jobApplications    JobApplication[]
-  subscriptions      Subscriptions[]
-  employments        EmployeeEmployment[]
-  transactions       Transaction[]
-  orders             Order[]
-  jobs               Job[]
-  ratings_given      Rating[]             @relation("UserGivenRatings")
-  ratings_received   Rating[]             @relation("UserReceivedRatings")
+  original_shifts         Shift[]                 @relation("OriginalEmployeeShift")
+  replacement_shifts      Shift[]                 @relation("ReplacementEmployeeShift")
+  jobApplications         JobApplication[]
+  subscriptions           Subscriptions[]
+  employments             EmployeeEmployment[]
+  transactions            Transaction[]
+  orders                  Order[]
+  jobs                    Job[]
+  ratings_given           Rating[]                @relation("UserGivenRatings")
+  ratings_received        Rating[]                @relation("UserReceivedRatings")
+  pushTokens              PushToken[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference?
 
   @@map("users")
 }
@@ -105,18 +110,20 @@ model Shift {
 }
 
 model Employer {
-  id                String   @id @default(uuid()) @db.Uuid
-  company_name      String   @db.VarChar
-  email             String   @unique @db.VarChar
-  preferences       Json     @default("{}")
-  company_address   String?  @db.VarChar
-  phone_no          String   @unique @db.VarChar
-  subscription_tier String?  @db.VarChar
-  gst_number        String?  @db.VarChar
-  is_verified       Boolean  @default(false)
-  refresh_token     String?  @db.VarChar
-  created_at        DateTime @default(now()) @db.Timestamptz()
-  updated_at        DateTime @updatedAt @db.Timestamptz()
+  id                String                                 @id @default(uuid()) @db.Uuid
+  company_name      String                                 @db.VarChar
+  email             String                                 @unique @db.VarChar
+  role              String                                 @default("employer")
+  preferences       Json                                   @default("{}")
+  company_address   String?                                @db.VarChar
+  company_location  Unsupported("geography(Point, 4326)")?
+  phone_no          String                                 @unique @db.VarChar
+  subscription_tier String?                                @db.VarChar
+  gst_number        String?                                @db.VarChar
+  is_verified       Boolean                                @default(false)
+  refresh_token     String?                                @db.VarChar
+  created_at        DateTime                               @default(now()) @db.Timestamptz()
+  updated_at        DateTime                               @updatedAt @db.Timestamptz()
 
   // relations
   shifts              Shift[]
@@ -309,7 +316,7 @@ model Admin {
   id            String @id @default(uuid()) @db.Uuid
   name          String @db.VarChar
   email         String @unique @db.VarChar
-  role          String @db.VarChar
+  role          String @default("admin")
   password_hash String @db.VarChar
 
   created_at DateTime @default(now()) @db.Timestamptz()
@@ -335,7 +342,7 @@ model EmployeeEmployment {
   employee_no       String?          @db.VarChar
   employment_status EmploymentStatus
 
-  joined_at DateTime? @db.Timestamptz()
+  joined_at DateTime  @db.Timestamptz()
   left_at   DateTime? @db.Timestamptz()
 
   created_at DateTime @default(now()) @db.Timestamptz()
@@ -475,4 +482,50 @@ model Lead {
   @@index([email])
   @@index([createdAt])
   @@map("leads")
+}
+
+model PushToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  user_id   String   @db.Uuid
+  token     String   @unique
+  platform  String?
+  deviceId  String?  @map("device_id")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("push_tokens")
+}
+
+model Notification {
+  id      String @id @default(uuid()) @db.Uuid
+  user_id String @db.Uuid
+  type    String
+  title   String
+  body    String
+  data    Json?
+
+  isRead Boolean @default(false) @map("is_read")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, isRead])
+  @@index([user_id])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  user_id String @id @db.Uuid
+
+  shiftSwap Boolean @default(true) @map("shift_swap")
+
+  jobAlert Boolean @default(true) @map("job_alert")
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("notification_preferences")
 }

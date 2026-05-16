@@ -1,5 +1,5 @@
-import Image from "next/image";
-import bannerImage from "../../public/contact-banner.png";
+import Image from 'next/image';
+import bannerImage from '../../public/contact-banner.png';
 
 export default function ContactBanner() {
   return (
@@ -44,9 +44,8 @@ export default function ContactBanner() {
 
         {/* DESCRIPTION */}
         <p className="text-sm sm:text-lg md:text-xl text-[#D1D5DB] max-w-3xl leading-7 sm:leading-8 px-2">
-          Have questions about hiring workers, onboarding, shift management, or
-          partnerships? Our support team is ready to assist businesses and
-          workers with fast and reliable solutions.
+          Have questions about hiring workers, onboarding, shift management, or partnerships? Our
+          support team is ready to assist businesses and workers with fast and reliable solutions.
         </p>
       </div>
     </section>

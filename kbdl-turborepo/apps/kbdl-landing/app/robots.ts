@@ -1,11 +1,11 @@
-import { MetadataRoute } from "next";
-import { siteConfig } from "../lib/seo-constants";
+import { MetadataRoute } from 'next';
+import { siteConfig } from '../lib/seo-constants';
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
-      userAgent: "*",
-      allow: "/",
+      userAgent: '*',
+      allow: '/',
     },
     sitemap: `${siteConfig.url}/sitemap.xml`,
   };

@@ -1,5 +1,5 @@
-import Image from "next/image";
-import engineer from "../../public/faq-hero-bg.png";
+import Image from 'next/image';
+import engineer from '../../public/faq-hero-bg.png';
 
 export default function FAQBanner() {
   return (
@@ -46,8 +46,8 @@ export default function FAQBanner() {
 
         {/* DESCRIPTION */}
         <p className="text-sm sm:text-lg md:text-xl text-[#D1D5DB] max-w-3xl leading-7 sm:leading-8 px-2">
-          Find quick answers about hiring workers, shift swaps, onboarding,
-          payments, worker verification, and platform support.
+          Find quick answers about hiring workers, shift swaps, onboarding, payments, worker
+          verification, and platform support.
         </p>
       </div>
     </section>

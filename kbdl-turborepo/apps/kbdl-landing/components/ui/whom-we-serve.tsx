@@ -1,44 +1,42 @@
-import Image from "next/image";
+import Image from 'next/image';
 
-import workerImg from "../../public/blue-collar.png";
-import factoryImg from "../../public/factory-hr.png";
-import agentImg from "../../public/placement-agent.png";
-import Link from "next/link";
+import workerImg from '../../public/blue-collar.png';
+import factoryImg from '../../public/factory-hr.png';
+import agentImg from '../../public/placement-agent.png';
+import Link from 'next/link';
 
 export default function WhomWeServeSection() {
-
   // Data array to keep the component clean and DRY
   const cards = [
     {
       id: 1,
-      title: "Factory HR / \nEmployer",
-      desc: "Hire verified workers for your factory. Approve shift swaps in one click. Never face production loss again.",
-      link: "/employer",
+      title: 'Factory HR / \nEmployer',
+      desc: 'Hire verified workers for your factory. Approve shift swaps in one click. Never face production loss again.',
+      link: '/employer',
       imgSrc: factoryImg, // Replace with your actual imported variable
-      bgClass: "bg-[#F2FCF5]", // Soft light green
+      bgClass: 'bg-[#F2FCF5]', // Soft light green
     },
     {
       id: 2,
-      title: "Reliable Home \nServices",
-      desc: "Get trusted help for daily household needs. From cleaning to maintenance, find reliable support without the hassle.",
-      link: "/worker",
+      title: 'Reliable Home \nServices',
+      desc: 'Get trusted help for daily household needs. From cleaning to maintenance, find reliable support without the hassle.',
+      link: '/worker',
       imgSrc: workerImg, // Replace with your actual imported variable
-      bgClass: "bg-[#F0F5FF]", // Soft light blue
+      bgClass: 'bg-[#F0F5FF]', // Soft light blue
     },
     {
       id: 3,
-      title: "Service \nPartner",
-      desc: "Join as a verified service provider.Get customer leads, manage bookings and grow your business faster. Service Partners",
-      link: "/agent",
+      title: 'Service \nPartner',
+      desc: 'Join as a verified service provider.Get customer leads, manage bookings and grow your business faster. Service Partners',
+      link: '/agent',
       imgSrc: agentImg, // Replace with your actual imported variable
-      bgClass: "bg-[#FFF8F0]", // Soft light orange
-    }
+      bgClass: 'bg-[#FFF8F0]', // Soft light orange
+    },
   ];
 
   return (
     <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-white">
       <div className="max-w-350 mx-auto">
-
         {/* 1. Header Area */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-primary text-xs font-bold tracking-widest uppercase mb-4 block">
@@ -75,22 +73,22 @@ export default function WhomWeServeSection() {
                 <h3 className="text-xl font-bold text-navy mb-3 whitespace-pre-line">
                   {card.title}
                 </h3>
-                <p className="text-sm text-gray-600 mb-6 flex-grow leading-relaxed">
-                  {card.desc}
-                </p>
+                <p className="text-sm text-gray-600 mb-6 flex-grow leading-relaxed">{card.desc}</p>
 
                 {/* Link */}
                 <Link
-                  href= "#"
+                  href="#"
                   className="text-primary font-semibold text-sm flex items-center hover:underline mt-auto"
                 >
-                  Learn more <span className="ml-1" aria-hidden="true">→</span>
+                  Learn more{' '}
+                  <span className="ml-1" aria-hidden="true">
+                    →
+                  </span>
                 </Link>
               </div>
             </div>
           ))}
         </div>
-
       </div>
     </section>
   );

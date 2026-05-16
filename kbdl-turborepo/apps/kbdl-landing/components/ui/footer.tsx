@@ -1,7 +1,7 @@
-import Image from "next/image";
-import Link from "next/link";
-import { siteConfig } from "../../lib/seo-constants";
-import logo from "../../public/logo-dark-bg.png";
+import Image from 'next/image';
+import Link from 'next/link';
+import { siteConfig } from '../../lib/seo-constants';
+import logo from '../../public/logo-dark-bg.png';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -14,17 +14,12 @@ export default function Footer() {
           {/* COLUMN 1 */}
           <div>
             <Link href="/" className="inline-block mb-6">
-              <Image
-                src={logo}
-                alt="Kaam Badlo Logo"
-                className="object-contain  w-full h-15"
-              />
+              <Image src={logo} alt="Kaam Badlo Logo" className="object-contain  w-full h-15" />
             </Link>
 
             <p className="text-[#8A94A7] text-sm leading-7 max-w-sm mb-8">
-              India's first cross-factory shift swap & verified skill card
-              ecosystem. Transforming blue-collar workforce with trust,
-              transparency and technology.
+              India's first cross-factory shift swap & verified skill card ecosystem. Transforming
+              blue-collar workforce with trust, transparency and technology.
             </p>
 
             {/* ADDRESS */}
@@ -66,20 +61,18 @@ export default function Footer() {
 
             <ul className="space-y-4">
               {[
-                { name: "Home", href: "/" },
-                { name: "About Us", href: "/about" },
-                { name: "Workers", href: "/services/workers" },
-                { name: "FAQ & Support", href: "/faq" },
-                { name: "Contact Us", href: "/contact" },
+                { name: 'Home', href: '/' },
+                { name: 'About Us', href: '/about' },
+                { name: 'Workers', href: '/services/workers' },
+                { name: 'FAQ & Support', href: '/faq' },
+                { name: 'Contact Us', href: '/contact' },
               ].map((item) => (
                 <li key={item.name}>
                   <Link
                     href={item.href}
                     className="flex items-center gap-2 text-[#8A94A7] hover:text-white transition-colors text-sm"
                   >
-                    <span className="text-[#0D6EFD] text-[11px] leading-none mt-[1px]">
-                      ›
-                    </span>
+                    <span className="text-[#0D6EFD] text-[11px] leading-none mt-[1px]">›</span>
 
                     {item.name}
                   </Link>
@@ -176,14 +169,11 @@ export default function Footer() {
                   />
                 </svg>
 
-                <a
-                  href="mailto:connect@kaambadlo.com"
-                  className="text-white text-sm"
-                >
+                <a href="mailto:connect@kaambadlo.com" className="text-white text-sm">
                   connect@kaambadlo.com
                 </a>
               </div>
-               <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-2">
                 <svg
                   className="w-4 h-4 text-[#0D6EFD]"
                   fill="none"
@@ -204,17 +194,12 @@ export default function Footer() {
                   />
                 </svg>
 
-                <a
-                  href="mailto:business@kaambadlo.com"
-                  className="text-white text-sm"
-                >
+                <a href="mailto:business@kaambadlo.com" className="text-white text-sm">
                   business@kaambadlo.com
                 </a>
               </div>
 
-              <p className="text-[#7F8DA3] text-xs">
-                24/7 support & partnership inquiries
-              </p>
+              <p className="text-[#7F8DA3] text-xs">24/7 support & partnership inquiries</p>
             </div>
 
             {/* SOCIAL */}
@@ -229,11 +214,7 @@ export default function Footer() {
                   rel="noopener noreferrer"
                   className="text-white hover:text-[#0D6EFD] transition-colors"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" />
                   </svg>
                 </a>
@@ -245,11 +226,7 @@ export default function Footer() {
                   rel="noopener noreferrer"
                   className="text-white hover:text-[#0D6EFD] transition-colors"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M7.75 2C4.574 2 2 4.574 2 7.75v8.5C2 19.426 4.574 22 7.75 22h8.5C19.426 22 22 19.426 22 16.25v-8.5C22 4.574 19.426 2 16.25 2h-8.5zm0 1.8h8.5a3.95 3.95 0 013.95 3.95v8.5a3.95 3.95 0 01-3.95 3.95h-8.5a3.95 3.95 0 01-3.95-3.95v-8.5A3.95 3.95 0 017.75 3.8zm9.15 1.35a1.05 1.05 0 100 2.1 1.05 1.05 0 000-2.1zM12 7a5 5 0 100 10 5 5 0 000-10zm0 1.8A3.2 3.2 0 1112 15.2 3.2 3.2 0 0112 8.8z" />
                   </svg>
                 </a>
@@ -261,11 +238,7 @@ export default function Footer() {
                   rel="noopener noreferrer"
                   className="text-white hover:text-[#0D6EFD] transition-colors"
                 >
-                  <svg
-                    className="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path
                       fillRule="evenodd"
                       d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"
@@ -281,8 +254,7 @@ export default function Footer() {
         {/* BOTTOM BAR */}
         <div className="border-t border-white/10 mt-12 pt-6 text-center">
           <p className="text-[#667085] text-sm">
-            © {currentYear} KAAM BADLO — On-Demand Labour Platform. All rights
-            reserved.
+            © {currentYear} KAAM BADLO — On-Demand Labour Platform. All rights reserved.
           </p>
         </div>
       </div>

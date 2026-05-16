@@ -5,7 +5,7 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
-  withTiming
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -14,25 +14,21 @@ import NotificationsIcon from '@/assets/icons/notification.svg';
 import ProfileIcon from '@/assets/icons/profile.svg';
 import { Colors } from '@/constants/theme';
 
-function AnimatedIcon({
-  focused,
-  children,
-}: {
-  focused: boolean;
-  children: React.ReactNode;
-}) {
+function AnimatedIcon({ focused, children }: { focused: boolean; children: React.ReactNode }) {
   const translateY = useSharedValue(0);
 
   useEffect(() => {
-    translateY.set(withTiming(focused ? -25 : 0, {
-      duration: 250,
-      easing: Easing.out(Easing.quad),
-    }));
+    translateY.set(
+      withTiming(focused ? -25 : 0, {
+        duration: 250,
+        easing: Easing.out(Easing.quad),
+      }),
+    );
   }, [focused]);
 
   useEffect(() => {
-    console.log("focus ")
-  }, [focused])
+    console.log('focus ');
+  }, [focused]);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.get() }],
   }));
@@ -75,11 +71,7 @@ export default function TabLayout() {
               <ProfileIcon
                 width={25}
                 height={25}
-                fill={
-                  focused
-                    ? theme.tabIconSelected
-                    : theme.tabIconDefault
-                }
+                fill={focused ? theme.tabIconSelected : theme.tabIconDefault}
               />
             </AnimatedIcon>
           ),
@@ -88,18 +80,13 @@ export default function TabLayout() {
 
       <Tabs.Screen
         name="index"
-
         options={{
           tabBarIcon: ({ focused }) => (
             <AnimatedIcon focused={focused}>
               <HomeIcon
                 width={40}
                 height={40}
-                fill={
-                  focused
-                    ? theme.tabIconSelected
-                    : theme.tabIconDefault
-                }
+                fill={focused ? theme.tabIconSelected : theme.tabIconDefault}
               />
             </AnimatedIcon>
           ),
@@ -107,18 +94,14 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="notifications"
+        name="alerts"
         options={{
           tabBarIcon: ({ focused }) => (
             <AnimatedIcon focused={focused}>
               <NotificationsIcon
                 width={25}
                 height={25}
-                fill={
-                  focused
-                    ? theme.tabIconSelected
-                    : theme.tabIconDefault
-                }
+                fill={focused ? theme.tabIconSelected : theme.tabIconDefault}
               />
             </AnimatedIcon>
           ),

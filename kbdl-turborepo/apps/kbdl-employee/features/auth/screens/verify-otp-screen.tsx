@@ -12,7 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   useColorScheme,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../hooks/useAuth';
@@ -54,15 +54,18 @@ export default function OtpVerificationScreen() {
     const otpString = otp.join('');
     if (otpString.length !== 6) return;
 
-    verifyOtp({ phone_no: phone, otp: otpString }, {
-      onSuccess: (res) => {
-        console.log('OTP Verified successfully', res);
-        router.replace('/(tabs)');
+    verifyOtp(
+      { phone_no: phone, otp: otpString },
+      {
+        onSuccess: (res) => {
+          console.log('OTP Verified successfully', res);
+          router.replace('/(public)/(tabs)');
+        },
+        onError: (err) => {
+          console.error('OTP Verification failed', err);
+        },
       },
-      onError: (err) => {
-        console.error('OTP Verification failed', err);
-      }
-    });
+    );
   };
 
   return (
@@ -72,7 +75,6 @@ export default function OtpVerificationScreen() {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-
           {/* Header Bar */}
           <View style={styles.header}>
             <TouchableOpacity
@@ -86,20 +88,14 @@ export default function OtpVerificationScreen() {
 
           {/* Main Content Section */}
           <View style={styles.contentSection}>
-
             {/* Security Image */}
             <View style={styles.imageContainer}>
-              <Security
-                width={styles.securityImage.width}
-                height={styles.securityImage.height}
-              />
+              <Security width={styles.securityImage.width} height={styles.securityImage.height} />
             </View>
 
             {/* Title & Subtitle */}
             <Text style={styles.title}>Enter OTP</Text>
-            <Text style={styles.subtitle}>
-              We have sent a 6-digit OTP to
-            </Text>
+            <Text style={styles.subtitle}>We have sent a 6-digit OTP to</Text>
             <Text style={styles.phoneNumber}>+91 {phone}</Text>
 
             {/* OTP Input Boxes */}
@@ -107,7 +103,9 @@ export default function OtpVerificationScreen() {
               {otp.map((digit, index) => (
                 <TextInput
                   key={index}
-                  ref={(ref) => { inputRefs.current[index] = ref; }}
+                  ref={(ref) => {
+                    inputRefs.current[index] = ref;
+                  }}
                   style={[
                     styles.otpInput,
                     // Highlight border if input has a value or is active (simplified logic)
@@ -142,7 +140,6 @@ export default function OtpVerificationScreen() {
                 <Text style={styles.verifyButtonText}>Verify</Text>
               )}
             </TouchableOpacity>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

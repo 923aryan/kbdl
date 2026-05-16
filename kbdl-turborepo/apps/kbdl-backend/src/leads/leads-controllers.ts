@@ -3,19 +3,19 @@ import {
   DeleteLeadRequest,
   GetLeadByIdRequest,
   ResolveLeadRequest,
-} from "@repo/types";
+} from '@repo/types';
 
 import {
   createLeadSchema,
   deleteLeadSchema,
   getLeadByIdSchema,
   resolveLeadSchema,
-} from "@repo/validator/shared";
+} from '@repo/validator/shared';
 
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
 
-import { sendSuccess } from "../utils/send-success";
-import { validate } from "../utils/validate";
+import { sendSuccess } from '../utils/send-success';
+import { validate } from '../utils/validate';
 
 import {
   createLeadService,
@@ -23,7 +23,7 @@ import {
   getAllLeadsService,
   getLeadByIdService,
   resolveLeadService,
-} from "./leads-services";
+} from './leads-services';
 
 // A. Create Lead (Public)
 const createLead = async (req: Request, res: Response) => {
@@ -31,14 +31,14 @@ const createLead = async (req: Request, res: Response) => {
 
   const lead = await createLeadService(input.body);
 
-  sendSuccess(res, "Lead created successfully", lead, 201);
+  sendSuccess(res, 'Lead created successfully', lead, 201);
 };
 
 // B. Get All Leads (Admin)
 const getAllLeads = async (_req: Request, res: Response) => {
   const leads = await getAllLeadsService();
 
-  sendSuccess(res, "Leads retrieved successfully", leads, 200);
+  sendSuccess(res, 'Leads retrieved successfully', leads, 200);
 };
 
 // C. Get Lead By ID (Admin)
@@ -47,7 +47,7 @@ const getLeadById = async (req: Request, res: Response) => {
 
   const lead = await getLeadByIdService(input.params.id);
 
-  sendSuccess(res, "Lead retrieved successfully", lead, 200);
+  sendSuccess(res, 'Lead retrieved successfully', lead, 200);
 };
 
 // D. Resolve Lead (Admin)
@@ -56,7 +56,7 @@ const resolveLead = async (req: Request, res: Response) => {
 
   const lead = await resolveLeadService(input.params.id);
 
-  sendSuccess(res, "Lead resolved successfully", lead, 200);
+  sendSuccess(res, 'Lead resolved successfully', lead, 200);
 };
 
 // E. Delete Lead (Admin)
@@ -65,13 +65,7 @@ const deleteLead = async (req: Request, res: Response) => {
 
   const lead = await deleteLeadService(input.params.id);
 
-  sendSuccess(res, "Lead deleted successfully", lead, 200);
+  sendSuccess(res, 'Lead deleted successfully', lead, 200);
 };
 
-export {
-  createLead,
-  deleteLead,
-  getAllLeads,
-  getLeadById,
-  resolveLead
-};
+export { createLead, deleteLead, getAllLeads, getLeadById, resolveLead };

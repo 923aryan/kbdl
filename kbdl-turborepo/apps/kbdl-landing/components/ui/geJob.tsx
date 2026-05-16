@@ -5,20 +5,15 @@ import { useEffect, useState } from 'react';
 // Data structure for the steps
 const steps = [
   {
-    id: "01",
-    title: "Create Your Profile",
-    desc: "Register in Minutes.\n Add your skills... location, work type and experience in minutes.",
-    time: "5 mins",
-    colorHex: "#0658C2",
-    bgClass: "bg-[#EBF3FF]",
-    textClass: "text-primary",
+    id: '01',
+    title: 'Create Your Profile',
+    desc: 'Register in Minutes.\n Add your skills... location, work type and experience in minutes.',
+    time: '5 mins',
+    colorHex: '#0658C2',
+    bgClass: 'bg-[#EBF3FF]',
+    textClass: 'text-primary',
     icon: (
-      <svg
-        className="w-12 h-12 text-primary"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
+      <svg className="w-12 h-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -35,13 +30,13 @@ const steps = [
     ),
   },
   {
-    id: "02",
-    title: "Get Job Matches",
-    desc: "Jobs Across India. \n Find trusted job opportunities in your city or relocate for better work opportunities anywhere in India.",
-    time: "8 mins",
-    colorHex: "#00A650",
-    bgClass: "bg-[#E6F9EC]",
-    textClass: "text-[#00A650]",
+    id: '02',
+    title: 'Get Job Matches',
+    desc: 'Jobs Across India. \n Find trusted job opportunities in your city or relocate for better work opportunities anywhere in India.',
+    time: '8 mins',
+    colorHex: '#00A650',
+    bgClass: 'bg-[#E6F9EC]',
+    textClass: 'text-[#00A650]',
     icon: (
       <svg
         className="w-12 h-12 text-[#00A650]"
@@ -61,23 +56,18 @@ const steps = [
           strokeWidth={1.5}
           d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
         />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-          d="M12 8v2m0 4h.01"
-        />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v2m0 4h.01" />
       </svg>
     ),
   },
   {
-    id: "03",
-    title: "Receive Instant Alerts",
-    desc: "New Work Notification. \nGet alerts for shifts, daily work, replacement jobs and urgent openings.",
-    time: "7 mins",
-    colorHex: "#FF6B00",
-    bgClass: "bg-[#FFF0E6]",
-    textClass: "text-[#FF6B00]",
+    id: '03',
+    title: 'Receive Instant Alerts',
+    desc: 'New Work Notification. \nGet alerts for shifts, daily work, replacement jobs and urgent openings.',
+    time: '7 mins',
+    colorHex: '#FF6B00',
+    bgClass: 'bg-[#FFF0E6]',
+    textClass: 'text-[#FF6B00]',
     icon: (
       <svg
         className="w-12 h-12 text-[#FF6B00]"
@@ -101,13 +91,13 @@ const steps = [
     ),
   },
   {
-    id: "04",
-    title: "Confirm & Start Working",
-    desc: "Employer Approval. \n Factory, contractor or homeowner confirms your profile in one click.",
-    time: "10 mins",
-    colorHex: "#9333EA",
-    bgClass: "bg-[#F3E8FF]",
-    textClass: "text-[#9333EA]",
+    id: '04',
+    title: 'Confirm & Start Working',
+    desc: 'Employer Approval. \n Factory, contractor or homeowner confirms your profile in one click.',
+    time: '10 mins',
+    colorHex: '#9333EA',
+    bgClass: 'bg-[#F3E8FF]',
+    textClass: 'text-[#9333EA]',
     icon: (
       <svg
         className="w-12 h-12 text-[#9333EA]"
@@ -131,13 +121,13 @@ const steps = [
     ),
   },
   {
-    id: "05",
-    title: "Start Earning",
-    desc: "Work Confirmed! \nFactory, contractor or homeowner confirms your profile in one click.",
-    time: "Instant!",
-    colorHex: "#0D9488",
-    bgClass: "bg-[#E0F2FE]",
-    textClass: "text-[#0D9488]",
+    id: '05',
+    title: 'Start Earning',
+    desc: 'Work Confirmed! \nFactory, contractor or homeowner confirms your profile in one click.',
+    time: 'Instant!',
+    colorHex: '#0D9488',
+    bgClass: 'bg-[#E0F2FE]',
+    textClass: 'text-[#0D9488]',
     icon: (
       <svg
         className="w-12 h-12 text-[#0D9488]"
@@ -178,12 +168,7 @@ export default function GetWorkSection() {
       <div className="max-w-[1400px] mx-auto flex flex-col items-center text-center">
         {/* Header Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 text-sm font-bold mb-4 lg:mb-6">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -196,7 +181,7 @@ export default function GetWorkSection() {
 
         {/* Main Heading */}
         <h2 className="text-3xl md:text-5xl font-extrabold text-navy mb-4 lg:mb-6">
-          How to get{" "}
+          How to get{' '}
           <span className="relative inline-block text-primary">
             Work
             <svg
@@ -212,12 +197,12 @@ export default function GetWorkSection() {
                 strokeLinecap="round"
               />
             </svg>
-          </span>{" "}
+          </span>{' '}
         </h2>
 
         {/* Subtitle */}
         <p className="text-gray-500 text-lg max-w-2xl mb-8 lg:mb-16">
-          From login to earning — a simple process designed for skilled workers, {" "}
+          From login to earning — a simple process designed for skilled workers,{' '}
           <br className="hidden md:block" />
           helpers and job seekers.
         </p>
@@ -243,28 +228,27 @@ export default function GetWorkSection() {
                   </div>
 
                   {/* Card */}
-                  <div className={`relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-300 cursor-pointer ${isActive
-                    ? "border-2 border-[#FF6B00] shadow-xl -translate-y-1"
-                    : "border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg hover:-translate-y-1"
-                    }`}>
+                  <div
+                    className={`relative w-full max-w-[280px] lg:max-w-none bg-white rounded-2xl flex flex-col flex-grow text-center transition-all duration-300 cursor-pointer ${
+                      isActive
+                        ? 'border-2 border-[#FF6B00] shadow-xl -translate-y-1'
+                        : 'border border-gray-100 shadow-sm hover:border-2 hover:border-[#FF6B00] hover:shadow-lg hover:-translate-y-1'
+                    }`}
+                  >
                     {/* "You are here" Badge for active step */}
                     {isActive && (
                       <div className="absolute -top-1 -right-1 bg-[#FF6B00] text-white text-[10px] font-bold uppercase tracking-wide px-3 py-1.5 rounded-bl-xl rounded-tr-xl shadow-md z-10">
-                        You are<br />here
+                        You are
+                        <br />
+                        here
                       </div>
                     )}
 
                     {/* Card Content */}
                     <div className="p-6 flex flex-col flex-grow items-center">
-                      <div className="mb-4 h-16 flex items-center justify-center">
-                        {step.icon}
-                      </div>
-                      <h3 className="text-navy font-bold text-lg mb-3">
-                        {step.title}
-                      </h3>
-                      <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                        {step.desc}
-                      </p>
+                      <div className="mb-4 h-16 flex items-center justify-center">{step.icon}</div>
+                      <h3 className="text-navy font-bold text-lg mb-3">{step.title}</h3>
+                      <p className="text-gray-500 text-sm leading-relaxed mb-6">{step.desc}</p>
                     </div>
 
                     {/* Bottom Time Bar */}

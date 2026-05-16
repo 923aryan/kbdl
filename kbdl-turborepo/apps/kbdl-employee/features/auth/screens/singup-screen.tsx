@@ -65,12 +65,12 @@ export default function SignupScreen() {
   const t = isHindi ? translations.hi : translations.en;
 
   const onSubmit = (data: FormData) => {
-    registerUser(data as any, {
+    registerUser(data, {
       onSuccess: (res) => {
         console.log('Registration successful', res);
         const parsed = formSchema.parse(data);
         updateRegisterData(parsed);
-        router.push('/(auth)/verify-otp');
+        router.push('/(public)/(auth)/verify-register-otp');
       },
       onError: (err) => {
         console.error('Registration failed', err);
@@ -85,7 +85,6 @@ export default function SignupScreen() {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-
           {/* Header Image Section */}
           <Image
             source={require('@/assets/images/at-login.png')}
@@ -95,7 +94,6 @@ export default function SignupScreen() {
 
           {/* Form Section */}
           <View style={styles.formSection}>
-
             {/* Language Input */}
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>{t.selectLanguage}</Text>
@@ -142,10 +140,12 @@ export default function SignupScreen() {
                                 setLangModalVisible(false);
                               }}
                             >
-                              <Text style={[
-                                styles.modalOptionText,
-                                value === lang.code && styles.modalOptionTextSelected
-                              ]}>
+                              <Text
+                                style={[
+                                  styles.modalOptionText,
+                                  value === lang.code && styles.modalOptionTextSelected,
+                                ]}
+                              >
                                 {lang.label}
                               </Text>
                               {value === lang.code && (
@@ -158,9 +158,7 @@ export default function SignupScreen() {
                     </Modal>
 
                     {errors.preferences?.language && (
-                      <Text style={styles.errorText}>
-                        {errors.preferences.language.message}
-                      </Text>
+                      <Text style={styles.errorText}>{errors.preferences.language.message}</Text>
                     )}
                   </>
                 )}
@@ -175,12 +173,7 @@ export default function SignupScreen() {
                 name="name"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <>
-                    <View
-                      style={[
-                        styles.inputWrapper,
-                        errors.name && styles.inputError,
-                      ]}
-                    >
+                    <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
                       <Feather name="user" size={20} color={theme.icon} />
                       <View style={styles.divider} />
                       <TextInput
@@ -192,9 +185,7 @@ export default function SignupScreen() {
                         value={value || ''}
                       />
                     </View>
-                    {errors.name && (
-                      <Text style={styles.errorText}>{errors.name.message}</Text>
-                    )}
+                    {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
                   </>
                 )}
               />
@@ -208,12 +199,7 @@ export default function SignupScreen() {
                 name="phone_no"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <>
-                    <View
-                      style={[
-                        styles.inputWrapper,
-                        errors.phone_no && styles.inputError,
-                      ]}
-                    >
+                    <View style={[styles.inputWrapper, errors.phone_no && styles.inputError]}>
                       <Feather name="smartphone" size={20} color={theme.icon} />
                       <Text style={styles.countryCode}>+91</Text>
                       <View style={styles.divider} />
@@ -234,9 +220,7 @@ export default function SignupScreen() {
                       />
                     </View>
                     {errors.phone_no && (
-                      <Text style={styles.errorText}>
-                        {errors.phone_no.message}
-                      </Text>
+                      <Text style={styles.errorText}>{errors.phone_no.message}</Text>
                     )}
                   </>
                 )}
@@ -260,11 +244,10 @@ export default function SignupScreen() {
             {/* Bottom Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t.alreadyHaveAccount}</Text>
-              <TouchableOpacity activeOpacity={0.7}>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(public)/(auth)/login')}>
                 <Text style={styles.footerLink}>{t.loginNow}</Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -287,7 +270,7 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     headerImage: {
       width: '100%',
-      height: SCREEN_HEIGHT * 0.30,
+      height: SCREEN_HEIGHT * 0.3,
     },
     formSection: {
       paddingHorizontal: 24,

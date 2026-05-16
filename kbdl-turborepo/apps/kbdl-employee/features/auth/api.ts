@@ -1,10 +1,17 @@
 import { api } from '@/lib/api/api-client';
 import { User } from '@repo/db/shared';
-import type { UserRegisterRequest, UserSendOTPRequest, UserVerifyOTPRequest, UserVerifyRegisterPayload } from "@repo/types";
-import { useMutation } from '@tanstack/react-query';
+import type {
+  GetPublicUserProfileResponse,
+  UserRegisterPayload,
+  UserSendOTPRequest,
+  UserVerifyOTPPayload,
+  UserVerifyOTPResponse,
+  UserVerifyRegisterPayload
+} from '@repo/types';
+import { useMutation, useQuery } from '@tanstack/react-query';
 export const useRegisterUser = () => {
   return useMutation({
-    mutationFn: async (credentials: UserRegisterRequest) => {
+    mutationFn: async (credentials: UserRegisterPayload) => {
       const response = await api.post<null>('/auth/register/user', credentials);
       return response.data;
     },
@@ -14,10 +21,9 @@ export const useRegisterUser = () => {
 export const useVerifyRegisterUser = () => {
   return useMutation({
     mutationFn: async (credentials: UserVerifyRegisterPayload) => {
-      const response = await api.post<{ data: { user: User, accessToken: string, refreshToken: string } }>(
-        '/auth/register/user/verify',
-        credentials
-      );
+      const response = await api.post<{
+        data: { user: User; accessToken: string; refreshToken: string };
+      }>('/auth/register/user/verify', credentials);
       return response.data; // { user, accessToken, refreshToken }
     },
   });
@@ -41,12 +47,25 @@ export const useSendUserOTP = () => {
  */
 export const useVerifyUserOTP = () => {
   return useMutation({
-    mutationFn: async (credentials: UserVerifyOTPRequest) => {
-      const response = await api.post<{ data: { user: User, accessToken: string, refreshToken: string } }>(
-        '/auth/user/verify-otp',
-        credentials
-      );
+    mutationFn: async (credentials: UserVerifyOTPPayload) => {
+      const response = await api.post<UserVerifyOTPResponse>('/auth/user/verify-otp', credentials);
       return response.data; // { user, accessToken, refreshToken }
     },
+  });
+};
+/**
+ * 5. Verify Login (Validates OTP and logs user in)
+ */
+
+//Plain function for zustand
+export const getMe = async () => {
+  const response = await api.get<GetPublicUserProfileResponse>('/profile/users/me');
+  return response.data;
+};
+
+export const useGetMe = () => {
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
   });
 };

@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/features/auth/hooks/useAuth';
+import { SocketProvider } from '@/features/notifications/providers/socket-provider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/api/query-client';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
@@ -9,31 +11,34 @@ import 'react-native-reanimated';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 export const unstable_settings = {
-  anchor: '(tabs)',
+  initialRouteName: '(public)',
 };
 SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const hydrateAuth = useAuthStore((s) => s.hydrateAuth);
+
   useEffect(() => {
     async function prepare() {
-      await new Promise((r) => setTimeout(r, 4000));
+      await hydrateAuth();
       await SplashScreen.hideAsync();
     }
-
     prepare();
   }, []);
-
 
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <QueryClientProvider client={queryClient}>
-          <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-          </SafeAreaView>
+          <SocketProvider>
+            <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(public)" options={{ headerShown: false }} />
+                <Stack.Screen name="(protected)" options={{ headerShown: false }} />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+            </SafeAreaView>
+          </SocketProvider>
           <Toast />
           <StatusBar style="auto" />
         </QueryClientProvider>

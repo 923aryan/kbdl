@@ -28,15 +28,11 @@ export default function ParallaxScrollView({
           translateY: interpolate(
             scrollOffset.value,
             [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75]
+            [-HEADER_HEIGHT / 2, 0, HEADER_HEIGHT * 0.75],
           ),
         },
         {
-          scale: interpolate(
-            scrollOffset.value,
-            [-HEADER_HEIGHT, 0, HEADER_HEIGHT],
-            [2, 1, 1]
-          ),
+          scale: interpolate(scrollOffset.value, [-HEADER_HEIGHT, 0, HEADER_HEIGHT], [2, 1, 1]),
         },
       ],
     };
@@ -49,18 +45,13 @@ export default function ParallaxScrollView({
       scrollEventThrottle={16}
     >
       <Animated.View
-        style={[
-          { height: HEADER_HEIGHT, overflow: 'hidden' },
-          headerAnimatedStyle,
-        ]}
+        style={[{ height: HEADER_HEIGHT, overflow: 'hidden' }, headerAnimatedStyle]}
         className="bg-gray-200 dark:bg-gray-800"
       >
         {headerImage}
       </Animated.View>
 
-      <Animated.View className="flex-1 p-8 gap-4">
-        {children}
-      </Animated.View>
+      <Animated.View className="flex-1 p-8 gap-4">{children}</Animated.View>
     </Animated.ScrollView>
   );
 }

@@ -8,9 +8,8 @@ import {
   TextInputProps,
   useColorScheme,
   View,
-  ViewStyle
+  ViewStyle,
 } from 'react-native';
-
 
 export interface CustomInputProps extends TextInputProps {
   label?: string;
@@ -45,15 +44,16 @@ export default function CustomInput({
       )}
 
       {/* Main Input Box */}
-      <View style={[
-        styles.inputWrapper,
-        {
-          backgroundColor: themeColors.background,
-          // Highlight border red if there is an error
-          borderColor: error ? errorColor : themeColors.border
-        }
-      ]}>
-
+      <View
+        style={[
+          styles.inputWrapper,
+          {
+            backgroundColor: themeColors.background,
+            // Highlight border red if there is an error
+            borderColor: error ? errorColor : themeColors.border,
+          },
+        ]}
+      >
         {/* Left Section */}
         <View style={styles.leftSection}>
           {icon && <View style={styles.iconContainer}>{icon}</View>}
@@ -65,10 +65,9 @@ export default function CustomInput({
         </View>
 
         {/* Separator */}
-        <View style={[
-          styles.separator,
-          { backgroundColor: error ? errorColor : themeColors.border }
-        ]} />
+        <View
+          style={[styles.separator, { backgroundColor: error ? errorColor : themeColors.border }]}
+        />
 
         {/* Text Input */}
         <TextInput
@@ -134,5 +133,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 6,
     marginLeft: 4,
-  }
+  },
 });

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "549962983597",
+    "project_id": "kaambadlo",
+    "storage_bucket": "kaambadlo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:549962983597:android:edf3eb977c7d03a9bf7e24",
+        "android_client_info": {
+          "package_name": "com.anonymous.kbdlemployee"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANik_dcdfR0dpLqzorPqDoH2tz_Y2pD3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

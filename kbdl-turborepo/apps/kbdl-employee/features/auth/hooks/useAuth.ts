@@ -1,12 +1,13 @@
-// src/features/auth/store/useAuthStore.ts
-import { User } from "@repo/db/shared";
-import { UserRegisterPayload } from "@repo/types";
+// src/features/auth/hooks/useAuth.ts
+import { User } from '@repo/db/shared';
+import { UserRegisterPayload } from '@repo/types';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { getMe } from '../api';
 
 interface AuthState {
   accessToken: string | null;
-  user: User | null;
+  user: Partial<User> | null;
   status: 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
   registerData: UserRegisterPayload;
 
@@ -27,7 +28,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   registerData: {
     name: '',
     phone_no: '',
-    preferences: { theme: "system", language: "en-IN" }
+    preferences: { theme: 'system', language: 'en-IN' },
   },
 
   signIn: async ({ accessToken, refreshToken, user }) => {
@@ -52,20 +53,52 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   hydrateAuth: async () => {
     try {
-      const token = await SecureStore.getItemAsync('accessToken');
-      const userString = await SecureStore.getItemAsync('userProfile');
+      set({ status: 'loading' });
 
-      if (token && userString) {
-        // Parse the stored user string back into an object
-        const user = JSON.parse(userString) as User;
-        set({ accessToken: token, user, status: 'authenticated' });
-      } else {
-        // If either is missing, ensure clean slate and require login
-        set({ status: 'unauthenticated', accessToken: null, user: null });
+      // Check if token exists
+      const token = await SecureStore.getItemAsync('accessToken');
+
+      if (!token) {
+        set({
+          accessToken: null,
+          user: null,
+          status: 'unauthenticated',
+        });
+
+        return;
       }
-    } catch (e) {
-      console.error("Auth Hydration Failed:", e);
-      set({ status: 'unauthenticated', accessToken: null, user: null });
+
+      // Fetch latest profile
+      const response = await getMe();
+
+      const user = response;
+
+      set({
+        accessToken: token,
+        user,
+        status: 'authenticated',
+      });
+
+      // Cache latest profile
+      await SecureStore.setItemAsync(
+        'userProfile',
+        JSON.stringify(user),
+      );
+    } catch (error) {
+      console.error('Auth hydration failed:', error);
+
+      // Clear invalid session
+      await Promise.all([
+        SecureStore.deleteItemAsync('accessToken'),
+        SecureStore.deleteItemAsync('refreshToken'),
+        SecureStore.deleteItemAsync('userProfile'),
+      ]);
+
+      set({
+        accessToken: null,
+        user: null,
+        status: 'unauthenticated',
+      });
     }
   },
 
@@ -86,5 +119,4 @@ export const useAuthStore = create<AuthState>((set) => ({
       const updatedRegisterData = { ...state.registerData, ...updatedFields };
       return { registerData: updatedRegisterData };
     }),
-
 }));
