@@ -6,7 +6,9 @@ import Constants from 'expo-constants';
 
 export async function registerPushToken() {
   if (!Device.isDevice) {
-    console.warn('Push notifications require a physical device. They will not work on a simulator/emulator.');
+    console.warn(
+      'Push notifications require a physical device. They will not work on a simulator/emulator.',
+    );
     return null;
   }
 

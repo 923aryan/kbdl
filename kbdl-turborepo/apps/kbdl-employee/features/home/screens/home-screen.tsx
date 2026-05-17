@@ -79,7 +79,7 @@ export default function HomeScreen() {
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-        // onPress={() => router.push("/refer")}
+          // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
             <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />

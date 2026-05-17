@@ -15,7 +15,8 @@ export const userRegisterSchema = z.object({
       .default({
         language: 'en-IN',
         theme: 'system',
-      }).optional(),
+      })
+      .optional(),
     phone_no: z
       .string()
       .min(10, 'Phone number must be at least 10 characters')

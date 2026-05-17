@@ -80,10 +80,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       // Cache latest profile
-      await SecureStore.setItemAsync(
-        'userProfile',
-        JSON.stringify(user),
-      );
+      await SecureStore.setItemAsync('userProfile', JSON.stringify(user));
     } catch (error) {
       console.error('Auth hydration failed:', error);
 

@@ -105,10 +105,7 @@ export default function VerifyLoginOtpScreen() {
                   ref={(ref) => {
                     inputRefs.current[index] = ref;
                   }}
-                  style={[
-                    styles.otpInput,
-                    digit !== '' ? styles.otpInputActive : null,
-                  ]}
+                  style={[styles.otpInput, digit !== '' ? styles.otpInputActive : null]}
                   value={digit}
                   onChangeText={(text) => handleOtpChange(text, index)}
                   onKeyPress={(e) => handleKeyPress(e, index)}
@@ -151,29 +148,57 @@ const createStyles = (theme: typeof Colors.light) =>
     header: { paddingHorizontal: 16 },
     backButton: { padding: 8, marginLeft: -8 },
     contentSection: { paddingHorizontal: 24, alignItems: 'center' },
-    imageContainer: { marginTop: 20, marginBottom: 24, alignItems: 'center', justifyContent: 'center' },
+    imageContainer: {
+      marginTop: 20,
+      marginBottom: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     securityImage: { width: 140, height: 140 },
     title: { color: theme.text, fontSize: 26, fontWeight: '700', marginBottom: 8 },
     subtitle: { color: theme.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 4 },
-    phoneNumber: { color: theme.primary, fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 32 },
+    phoneNumber: {
+      color: theme.primary,
+      fontSize: 15,
+      fontWeight: '600',
+      textAlign: 'center',
+      marginBottom: 32,
+    },
     otpContainer: {
-      flexDirection: 'row', justifyContent: 'space-between', width: '100%',
-      paddingHorizontal: 10, marginBottom: 32,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      paddingHorizontal: 10,
+      marginBottom: 32,
     },
     otpInput: {
-      width: 45, height: 55, borderWidth: 1, borderColor: theme.border,
-      borderRadius: 10, backgroundColor: theme.card, textAlign: 'center',
-      fontSize: 20, fontWeight: '600', color: theme.text,
+      width: 45,
+      height: 55,
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 10,
+      backgroundColor: theme.card,
+      textAlign: 'center',
+      fontSize: 20,
+      fontWeight: '600',
+      color: theme.text,
     },
     otpInputActive: { borderColor: theme.primary },
     resendContainer: { flexDirection: 'row', justifyContent: 'center', marginBottom: 24 },
     resendText: { color: theme.textSecondary, fontSize: 15 },
     resendTimer: { color: theme.primary, fontSize: 15, fontWeight: '700' },
     verifyButton: {
-      backgroundColor: theme.primary, borderRadius: 10, height: 48, width: '100%',
-      alignItems: 'center', justifyContent: 'center', shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05,
-      shadowRadius: 2, elevation: 2,
+      backgroundColor: theme.primary,
+      borderRadius: 10,
+      height: 48,
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
     },
     verifyButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   });

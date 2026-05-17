@@ -45,11 +45,9 @@ export function initializeSocketServer(httpServer: HttpServer) {
 */
 
 export function emitNotification(userId: string, notification: unknown) {
-
   try {
     io.to(`user:${userId}`).emit('notification:new', notification);
-
   } catch (error) {
-    console.log("error is ", error)
+    console.log('error is ', error);
   }
 }

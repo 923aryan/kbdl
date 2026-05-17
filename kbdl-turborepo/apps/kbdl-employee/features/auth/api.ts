@@ -6,7 +6,7 @@ import type {
   UserSendOTPRequest,
   UserVerifyOTPPayload,
   UserVerifyOTPResponse,
-  UserVerifyRegisterPayload
+  UserVerifyRegisterPayload,
 } from '@repo/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 export const useRegisterUser = () => {

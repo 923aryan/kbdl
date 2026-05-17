@@ -2,12 +2,7 @@
 
 import { router } from 'expo-router';
 import React, { ReactNode } from 'react';
-import {
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, useColorScheme, View } from 'react-native';
 
 import CustomButton from '@/components/ui/button';
 import { Colors, Fonts } from '@/constants/theme';

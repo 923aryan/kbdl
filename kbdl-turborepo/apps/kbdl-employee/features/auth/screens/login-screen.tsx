@@ -58,7 +58,7 @@ export default function LoginScreen() {
         console.log('OTP sent successfully', res);
         // Pass the phone number directly via params to the verify screen
         router.push({
-          pathname: "/verify-login-otp",
+          pathname: '/verify-login-otp',
           params: { phone: data.phone },
         });
       },
@@ -114,9 +114,7 @@ export default function LoginScreen() {
                         value={value ? value.replace(/^\+91/, '') : ''}
                       />
                     </View>
-                    {errors.phone && (
-                      <Text style={styles.errorText}>{errors.phone.message}</Text>
-                    )}
+                    {errors.phone && <Text style={styles.errorText}>{errors.phone.message}</Text>}
                   </>
                 )}
               />
@@ -139,8 +137,13 @@ export default function LoginScreen() {
 
             {/* Bottom Footer */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>{t.dontHaveAccount || "Don't have an account? "}</Text>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(public)/(auth)/register')}>
+              <Text style={styles.footerText}>
+                {t.dontHaveAccount || "Don't have an account? "}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push('/(public)/(auth)/register')}
+              >
                 <Text style={styles.footerLink}>{t.registerNow || 'Sign up now'}</Text>
               </TouchableOpacity>
             </View>
@@ -162,9 +165,14 @@ const createStyles = (theme: typeof Colors.light) =>
     inputContainerLarge: { marginBottom: 20 },
     inputLabel: { color: theme.text, fontSize: 13, fontWeight: '500', marginBottom: 6 },
     inputWrapper: {
-      flexDirection: 'row', alignItems: 'center', borderWidth: 1,
-      borderColor: theme.border, borderRadius: 10, paddingHorizontal: 14,
-      height: 48, backgroundColor: theme.card,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      height: 48,
+      backgroundColor: theme.card,
     },
     divider: { width: 1, height: 20, backgroundColor: theme.border, marginHorizontal: 10 },
     textInput: { flex: 1, color: theme.text, fontSize: 15 },
@@ -172,9 +180,16 @@ const createStyles = (theme: typeof Colors.light) =>
     errorText: { color: 'red', fontSize: 12, marginTop: 4 },
     countryCode: { color: theme.text, fontSize: 15, fontWeight: '500', marginLeft: 6 },
     submitButton: {
-      backgroundColor: theme.primary, borderRadius: 10, height: 48, alignItems: 'center',
-      justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05, shadowRadius: 2, elevation: 2,
+      backgroundColor: theme.primary,
+      borderRadius: 10,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 2,
     },
     submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
     footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },

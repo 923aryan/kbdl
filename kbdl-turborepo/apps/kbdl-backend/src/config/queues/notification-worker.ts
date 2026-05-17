@@ -31,10 +31,10 @@ new Worker(
       */
 
       emitNotification(userId, notification);
-      console.log("sending is completed")
+      console.log('sending is completed');
     } catch (error) {
-      console.log("error is ", error)
-      throw error
+      console.log('error is ', error);
+      throw error;
     }
   },
 
