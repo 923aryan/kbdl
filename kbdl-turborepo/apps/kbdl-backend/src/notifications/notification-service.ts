@@ -48,7 +48,7 @@ export const savePushTokenService = async (
 ): Promise<PushToken> => {
   const pushToken = await prisma.pushToken.upsert({
     where: { token: payload.token },
-    update: { isActive: true },
+    update: { isActive: true, user_id: userId },
     create: {
       user_id: userId,
       token: payload.token,

@@ -30,6 +30,8 @@ export async function sendExpoPushNotification({ pushTokens, title, body, data }
       body,
 
       data,
+
+      channelId: 'default',
     });
   }
 
@@ -41,7 +43,12 @@ export async function sendExpoPushNotification({ pushTokens, title, body, data }
 
   for (const chunk of chunks) {
     try {
-      await expo.sendPushNotificationsAsync(chunk);
+      const tickets = await expo.sendPushNotificationsAsync(chunk);
+      for (const ticket of tickets) {
+        if (ticket.status === 'error') {
+          console.error(`Expo push ticket error:`, ticket.message, ticket.details);
+        }
+      }
     } catch (error) {
       console.error('Expo push error:', error);
     }

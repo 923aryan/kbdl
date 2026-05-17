@@ -1,4 +1,5 @@
-import { PropsWithChildren, useEffect } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
+import { Socket } from 'socket.io-client';
 
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 
@@ -11,10 +12,11 @@ import { cleanupExpoListeners, registerExpoListeners } from '../services/expo-li
 
 export function SocketProvider({ children }: PropsWithChildren) {
   const status = useAuthStore((state) => state.status);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   usePushNotifications();
 
-  useSocketNotifications();
+  useSocketNotifications(socket);
 
   useEffect(() => {
     registerExpoListeners();
@@ -26,15 +28,18 @@ export function SocketProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      socketService.connect();
+      const newSocket = socketService.connect();
+      setSocket(newSocket || null);
     }
 
     if (status === 'unauthenticated') {
       socketService.disconnect();
+      setSocket(null);
     }
 
     return () => {
       socketService.disconnect();
+      setSocket(null);
     };
   }, [status]);
 

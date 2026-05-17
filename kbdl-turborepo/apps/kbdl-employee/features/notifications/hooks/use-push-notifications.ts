@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { Platform } from 'react-native';
 
+import * as Notifications from 'expo-notifications';
 import { registerPushToken } from '../services/push-token-service';
 
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
@@ -16,14 +17,19 @@ export function usePushNotifications() {
         return;
       }
 
+      if (Platform.OS === 'android') {
+        Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+
       const token = await registerPushToken();
 
       if (!token) return;
 
-      await savePushToken({
-        token,
-        platform: Platform.OS,
-      });
       try {
         await savePushToken({
           token,
