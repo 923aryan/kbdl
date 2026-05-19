@@ -1,4 +1,6 @@
-import { Rating, Shift } from '@repo/db/server';
+import { Rating, safeEmployerSelect, Shift } from '@repo/db/server';
+import { safeUserSelect } from '@repo/db/shared';
+
 import {
   acceptShiftSchema,
   cancelShiftSchema,
@@ -29,6 +31,7 @@ export type CancelShiftPayload = z.infer<typeof cancelShiftSchema>['body'];
 export type CancelShiftResponse = Shift;
 
 export type GetEmployeeShiftsResponse = Shift[];
+export type GetScheduledShiftsResponse = Shift[];
 export type GetEmployerShiftsResponse = Shift[];
 
 // C. Extra Shifts
@@ -45,3 +48,9 @@ export type RateShiftResponse = Rating;
 export type getReferredEmployeeRequest = z.infer<typeof getReferredEmployeeSchema>;
 export type getReferredEmployeePayload = z.infer<typeof getReferredEmployeeSchema>['body'];
 export type getReferredEmployeeResponse = { id: string };
+
+//F. Open Shifts
+export type GetOpenShiftsForEmployeeResponse = Shift & {
+  original_employee: typeof safeUserSelect;
+  employer: typeof safeEmployerSelect;
+};

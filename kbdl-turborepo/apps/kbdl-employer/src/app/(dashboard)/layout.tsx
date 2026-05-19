@@ -1,27 +1,19 @@
 // src/app/(dashboard)/layout.tsx
 
-"use client";
+'use client';
 
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 
-import { useAuthStore } from "../../features/auth/store/auth-store";
+import { useAuthStore } from '../../features/auth/store/auth-store';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  const accessToken = useAuthStore(
-    (state) => state.accessToken
-  );
+  const accessToken = useAuthStore((state) => state.accessToken);
 
-  const hydrateAuth = useAuthStore(
-    (state) => state.hydrateAuth
-  );
+  const hydrateAuth = useAuthStore((state) => state.hydrateAuth);
 
   useEffect(() => {
     hydrateAuth();
@@ -29,7 +21,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (accessToken === null) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [accessToken, router]);
 
@@ -37,9 +29,5 @@ export default function DashboardLayout({
     return null;
   }
 
-  return (
-    <div className="min-h-screen">
-      {children}
-    </div>
-  );
+  return <div className="min-h-screen">{children}</div>;
 }

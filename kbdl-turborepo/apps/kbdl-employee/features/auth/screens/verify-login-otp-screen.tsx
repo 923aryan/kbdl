@@ -63,7 +63,7 @@ export default function VerifyLoginOtpScreen() {
             refreshToken: res.refreshToken,
             user: res.user,
           });
-          router.replace('/(public)/(tabs)');
+          router.replace('/(tabs)');
         },
         onError: (err) => {
           console.error('Login OTP Verification failed', err);

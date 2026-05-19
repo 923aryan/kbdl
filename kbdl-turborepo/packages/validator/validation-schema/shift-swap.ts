@@ -4,20 +4,19 @@ export const createShiftSchema = z.object({
   body: z.object({
     original_employee_id: z.string().uuid('Invalid original employee ID format').optional(), // Optional because a worker creating it might rely on their own auth token, while an employer must provide it.
     replacement_employee_id: z.string().uuid('Invalid replacement employee ID format').optional(), // Optional for public shift requests
-    employer_id: z.string().uuid('Invalid employer ID format'),
     payType: z.enum(['HOURLY', 'FIXED'], {
-      message: 'payType must be either HOURLY or FIXED',
+      message: 'Pay Type must be either HOURLY or FIXED',
     }),
     shift_pay: z
       .number({
-        message: 'shift_pay must be a number',
+        message: 'Shift Pay must be a number',
       })
-      .positive('shift_pay must be greater than 0'),
-    shift_date: z.string().datetime({ message: 'shift_date must be a valid ISO datetime string' }),
+      .positive('Shift Pay must be greater than 0'),
+    shift_date: z.string().datetime({ message: 'Shift Date must be a valid ISO datetime string' }),
     shift_start: z
       .string()
-      .datetime({ message: 'shift_start must be a valid ISO datetime string' }),
-    shift_end: z.string().datetime({ message: 'shift_end must be a valid ISO datetime string' }),
+      .datetime({ message: 'Shift Start must be a valid ISO datetime string' }),
+    shift_end: z.string().datetime({ message: 'Shift End must be a valid ISO datetime string' }),
     skill_required: z
       .string()
       .min(1, 'Skill required cannot be empty')

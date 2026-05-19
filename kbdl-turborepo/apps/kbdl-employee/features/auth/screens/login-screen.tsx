@@ -58,7 +58,7 @@ export default function LoginScreen() {
         console.log('OTP sent successfully', res);
         // Pass the phone number directly via params to the verify screen
         router.push({
-          pathname: '/verify-login-otp',
+          pathname: '/auth/verify-login-otp',
           params: { phone: data.phone },
         });
       },

@@ -1,8 +1,8 @@
 // src/features/auth/store/auth.store.ts
 
-"use client";
+'use client';
 
-import { create } from "zustand";
+import { create } from 'zustand';
 
 type User = {
   id: string;
@@ -14,69 +14,49 @@ type AuthState = {
   accessToken: string | null;
   user: User | null;
 
-  setAuth: (
-    token: string,
-    user: User
-  ) => void;
+  setAuth: (token: string, user: User) => void;
 
   logout: () => void;
 
   hydrateAuth: () => void;
 };
 
-export const useAuthStore = create<AuthState>(
-  (set) => ({
-    accessToken: null,
-    user: null,
+export const useAuthStore = create<AuthState>((set) => ({
+  accessToken: null,
+  user: null,
 
-    setAuth: (token, user) => {
-      localStorage.setItem(
-        "accessToken",
-        token
-      );
+  setAuth: (token, user) => {
+    localStorage.setItem('accessToken', token);
 
-      localStorage.setItem(
-        "user",
-        JSON.stringify(user)
-      );
+    localStorage.setItem('user', JSON.stringify(user));
 
-      set({
-        accessToken: token,
-        user,
-      });
-    },
+    set({
+      accessToken: token,
+      user,
+    });
+  },
 
-    logout: () => {
-      localStorage.removeItem(
-        "accessToken"
-      );
+  logout: () => {
+    localStorage.removeItem('accessToken');
 
-      localStorage.removeItem("user");
+    localStorage.removeItem('user');
 
-      set({
-        accessToken: null,
-        user: null,
-      });
-    },
+    set({
+      accessToken: null,
+      user: null,
+    });
+  },
 
-    hydrateAuth: () => {
-      if (typeof window === "undefined")
-        return;
+  hydrateAuth: () => {
+    if (typeof window === 'undefined') return;
 
-      const token =
-        localStorage.getItem(
-          "accessToken"
-        );
+    const token = localStorage.getItem('accessToken');
 
-      const user =
-        localStorage.getItem("user");
+    const user = localStorage.getItem('user');
 
-      set({
-        accessToken: token,
-        user: user
-          ? JSON.parse(user)
-          : null,
-      });
-    },
-  })
-);
+    set({
+      accessToken: token,
+      user: user ? JSON.parse(user) : null,
+    });
+  },
+}));

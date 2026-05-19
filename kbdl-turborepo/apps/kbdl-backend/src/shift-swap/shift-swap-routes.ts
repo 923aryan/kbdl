@@ -5,9 +5,12 @@ import {
   acceptShiftSwap,
   cancelShift,
   createShiftSwap,
+  getEmployeeOpenShifts,
   getEmployeeShifts,
   getEmployerShifts,
   getExtraShifts,
+  getReferredEmployee,
+  getScheduledShifts,
   rateShift,
   updateShift,
 } from './shift-swap-controller';
@@ -19,6 +22,8 @@ shiftSwapRouter.post('/accept', authenticate([ROLES.USER]), acceptShiftSwap);
 
 // --- View Shifts ---
 shiftSwapRouter.get('/employee', authenticate([ROLES.USER]), getEmployeeShifts);
+shiftSwapRouter.get('/employee/open', authenticate([ROLES.USER]), getEmployeeOpenShifts);
+shiftSwapRouter.get('/scheduled', authenticate([ROLES.USER]), getScheduledShifts);
 shiftSwapRouter.get('/employer', authenticate([ROLES.EMPLOYER]), getEmployerShifts);
 shiftSwapRouter.get('/extra', authenticate([ROLES.USER]), getExtraShifts);
 
@@ -28,5 +33,12 @@ shiftSwapRouter.post('/cancel', authenticate([ROLES.EMPLOYER, ROLES.USER]), canc
 
 // --- Ratings ---
 shiftSwapRouter.post('/rate', authenticate([ROLES.EMPLOYER]), rateShift);
+
+//Others
+shiftSwapRouter.post(
+  '/referred-employee',
+  authenticate([ROLES.EMPLOYER, ROLES.USER]),
+  getReferredEmployee,
+);
 
 export default shiftSwapRouter;

@@ -1,11 +1,47 @@
+import { OptionCard } from '@/components/option-card';
+import ShiftCard from '@/components/ui/shift-swap-card';
+import { Colors } from '@/constants/theme';
+import { useGetOpenShifts } from '@/features/shift-swap/api';
+import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+  const { data } = useGetOpenShifts();
+  const setShifts = useShiftSwapStore(
+    (s) => s.setShifts,
+  );
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (data) {
+      console.log("shfits : ", data)
+      setShifts(data);
+    }
+  }, [data, setShifts]);
+
+  // Bounce animation effect to indicate scrollability
+  useEffect(() => {
+    if (data && data.length > 1) {
+      const scrollDownTimeout = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 50, animated: true });
+
+        const scrollUpTimeout = setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }, 400);
+
+        return () => clearTimeout(scrollUpTimeout);
+      }, 600); // 600ms delay gives the user a moment to see the screen first
+
+      return () => clearTimeout(scrollDownTimeout);
+    }
+  }, [data]);
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [location, setLocation] = useState('Chandigarh');
@@ -19,7 +55,7 @@ export default function HomeScreen() {
       icon: 'swap-horizontal',
       iconColor: '#2F80ED',
       bgColor: '#EAF2FF',
-      route: '/(public)/(shift-swap)',
+      route: 'shift-swap',
     },
     {
       id: 2,
@@ -41,45 +77,66 @@ export default function HomeScreen() {
     },
   ];
 
+
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top }]}
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled={true}
+    >
+      {/* Location Dropdown */}
+      <View style={styles.locationWrapper}>
+        <TouchableOpacity onPress={() => setShowDropdown(!showDropdown)}>
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={18} />
+
+            <Text style={styles.locationText}>{location}</Text>
+
+            <Ionicons name={showDropdown ? 'chevron-up' : 'chevron-down'} size={16} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Popup Dropdown */}
+        {showDropdown && (
+          <View style={styles.dropdown}>
+            {['Chandigarh', 'Delhi', 'Mumbai'].map((city) => (
+              <TouchableOpacity
+                key={city}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setLocation(city);
+                  setShowDropdown(false);
+                }}
+              >
+                <Text>{city}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+      {/* Shift Cards List */}
+      <View style={styles.shiftListContainer}>
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+        >
+          {data?.map((shift) => (
+            <ShiftCard key={shift.id} shift={shift} buttonTitle='Approve' />
+          ))}
+        </ScrollView>
+      </View>
+
       {/* Header */}
       <View style={styles.header}>
-        {/* Location Dropdown */}
-        <View style={styles.locationWrapper}>
-          <TouchableOpacity onPress={() => setShowDropdown(!showDropdown)}>
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={18} />
 
-              <Text style={styles.locationText}>{location}</Text>
-
-              <Ionicons name={showDropdown ? 'chevron-up' : 'chevron-down'} size={16} />
-            </View>
-          </TouchableOpacity>
-
-          {/* Popup Dropdown */}
-          {showDropdown && (
-            <View style={styles.dropdown}>
-              {['Chandigarh', 'Delhi', 'Mumbai'].map((city) => (
-                <TouchableOpacity
-                  key={city}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setLocation(city);
-                    setShowDropdown(false);
-                  }}
-                >
-                  <Text>{city}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
 
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-          // onPress={() => router.push("/refer")}
+        // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
             <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
@@ -100,36 +157,35 @@ export default function HomeScreen() {
 
       {/* Cards */}
       {cards.map((item) => (
-        <TouchableOpacity
+        <OptionCard
           key={item.id}
-          style={styles.card}
+          title={item.title}
+          description={item.subtitle}
+          IconComponent={() => <Ionicons name={item.icon as any} size={24} color={item.iconColor} />}
+          iconBgColor={item.bgColor}
           onPress={() => router.push(item.route as any)}
-        >
-          {/* Icon */}
-          <View style={[styles.iconBox, { backgroundColor: item.bgColor }]}>
-            <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
-          </View>
-
-          {/* Text */}
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>{item.title}</Text>
-
-            <Text style={styles.subtitle}>{item.subtitle}</Text>
-          </View>
-
-          {/* Arrow */}
-          <Ionicons name="chevron-forward" size={20} color="#333" />
-        </TouchableOpacity>
+          theme={theme}
+        />
       ))}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 16,
     backgroundColor: '#fff',
+  },
+
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 110, // Gives plenty of space to scroll past the absolute bottom tab bar
+  },
+
+  shiftListContainer: {
+    paddingTop: 12,
+    maxHeight: 240, // Sets the height to roughly show only one card at a time
+    marginBottom: 10,
   },
 
   header: {
@@ -231,47 +287,5 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 14,
-  },
-
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-
-    backgroundColor: '#fff',
-
-    borderWidth: 1,
-    borderColor: '#ddd',
-
-    borderRadius: 16,
-
-    padding: 16,
-    marginBottom: 15,
-  },
-
-  iconBox: {
-    width: 60,
-    height: 60,
-
-    borderRadius: 12,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    marginRight: 12,
-  },
-
-  textContainer: {
-    flex: 1,
-  },
-
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  subtitle: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 4,
   },
 });

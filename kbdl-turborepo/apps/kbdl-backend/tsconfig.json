@@ -7,8 +7,6 @@
   },
   "include": [
     "src/**/*",
-    "../../packages/validator/validation-schema/profile.ts",
-    "../../packages/types/request-response/profile-type.ts"
   ],
   "exclude": [
     "node_modules",

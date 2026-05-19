@@ -11,7 +11,15 @@ export default {
     alreadyHaveAccount: "Already have an account, ",
     loginNow: "Login Now",
     dontHaveAccount: "Don't have an account? ",
-    registerNow: "Sign up now"
+    registerNow: "Sign up now",
+    headerTitle: 'Shifts',
+    chooseOption: 'Choose an option',
+    shiftSwap: 'Shift Swap',
+    shiftSwapDesc: 'Browse job by your preferred shift',
+    scheduledShifts: 'Scheduled Shifts',
+    scheduledShiftsDesc: 'View and manage your scheduled shifts',
+    extraShifts: 'Extra Shifts',
+    extraShiftsDesc: 'Find extra shifts and earn more',
   },
   hi: {
     welcome: "स्वागत है",
@@ -25,6 +33,14 @@ export default {
     alreadyHaveAccount: "पहले से अकाउंट है, ",
     loginNow: "लॉगिन करें",
     dontHaveAccount: "अकाउंट नहीं है? ",
-    registerNow: "अभी रजिस्टर करें"
+    registerNow: "अभी रजिस्टर करें",
+    headerTitle: 'शिफ्ट',
+    chooseOption: 'एक विकल्प चुनें',
+    shiftSwap: 'शिफ्ट स्वैप',
+    shiftSwapDesc: 'अपनी पसंदीदा शिफ्ट के अनुसार नौकरी खोजें',
+    scheduledShifts: 'निर्धारित शिफ्ट',
+    scheduledShiftsDesc: 'अपनी निर्धारित शिफ्ट देखें और प्रबंधित करें',
+    extraShifts: 'अतिरिक्त शिफ्ट',
+    extraShiftsDesc: 'अतिरिक्त शिफ्ट खोजें और अधिक कमाएं',
   }
 };

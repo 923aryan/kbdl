@@ -27,7 +27,9 @@ import {
   getEmployeeShiftsService,
   getEmployerShiftsService,
   getExtraShiftsService,
+  getOpenShiftsForEmployeeService,
   getReferredEmployeeService,
+  getScheduledShiftsService,
   rateShiftService,
   updateShiftService,
 } from './shift-swap-service';
@@ -58,6 +60,13 @@ const getEmployeeShifts = async (req: Request, res: Response) => {
   const employeeId = req.payload.user.id;
   const shifts = await getEmployeeShiftsService(employeeId);
   sendSuccess(res, 'Scheduled shifts retrieved', shifts, 200);
+};
+
+// B. Get Scheduled Shifts (Worker)
+const getScheduledShifts = async (req: Request, res: Response) => {
+  const employeeId = req.payload.user.id;
+  const shifts = await getScheduledShiftsService(employeeId);
+  sendSuccess(res, 'Scheduled shifts retrieved successfully', shifts, 200);
 };
 
 // B2. See Created Shifts (Employer)
@@ -109,13 +118,22 @@ const getReferredEmployee = async (req: Request, res: Response) => {
   const id = await getReferredEmployeeService(input.body);
   sendSuccess(res, 'Id retrieved successfully', id, 200);
 };
+
+const getEmployeeOpenShifts = async (req: Request, res: Response) => {
+  const input = req.payload.user.id;
+  const id = await getOpenShiftsForEmployeeService(input);
+  sendSuccess(res, 'Shifts retrieved successfully', id, 200);
+};
 export {
   acceptShiftSwap,
   cancelShift,
   createShiftSwap,
+  getEmployeeOpenShifts,
   getEmployeeShifts,
   getEmployerShifts,
   getExtraShifts,
+  getReferredEmployee,
+  getScheduledShifts,
   rateShift,
   updateShift,
 };

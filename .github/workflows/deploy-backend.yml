@@ -34,6 +34,7 @@ jobs:
             echo "🧹 Clean old builds"
             rm -rf packages/db/dist
             rm -rf packages/validator/dist
+            rm -rf packages/types/dist
             rm -rf apps/kbdl-backend/dist
 
             echo "📦 Install dependencies"
@@ -47,6 +48,9 @@ jobs:
 
             echo "🔧 Build db package"
             pnpm --filter @repo/db build
+
+            echo "🔧 Build types package"
+            pnpm --filter @repo/types build
 
             echo "🔧 Build backend"
             pnpm --filter kbdl-backend build

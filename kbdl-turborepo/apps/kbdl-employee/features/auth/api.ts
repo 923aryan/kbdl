@@ -1,7 +1,7 @@
 import { api } from '@/lib/api/api-client';
 import { User } from '@repo/db/shared';
 import type {
-  GetPublicUserProfileResponse,
+  AppUser,
   UserRegisterPayload,
   UserSendOTPRequest,
   UserVerifyOTPPayload,
@@ -59,7 +59,7 @@ export const useVerifyUserOTP = () => {
 
 //Plain function for zustand
 export const getMe = async () => {
-  const response = await api.get<GetPublicUserProfileResponse>('/profile/users/me');
+  const response = await api.get<AppUser>('/profile/users/me');
   return response.data;
 };
 

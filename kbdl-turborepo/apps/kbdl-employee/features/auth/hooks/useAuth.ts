@@ -1,23 +1,22 @@
 // src/features/auth/hooks/useAuth.ts
-import { User } from '@repo/db/shared';
-import { UserRegisterPayload } from '@repo/types';
+import { AppUser, UserRegisterPayload } from '@repo/types';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { getMe } from '../api';
 
 interface AuthState {
   accessToken: string | null;
-  user: Partial<User> | null;
+  user: Partial<AppUser> | null;
   status: 'idle' | 'loading' | 'authenticated' | 'unauthenticated';
   registerData: UserRegisterPayload;
 
   // Actions
-  signIn: (payload: { accessToken: string; refreshToken: string; user: User }) => Promise<void>;
+  signIn: (payload: { accessToken: string; refreshToken: string; user: AppUser }) => Promise<void>;
   signOut: () => Promise<void>;
   hydrateAuth: () => Promise<void>;
 
   // Helper to update user profile locally (e.g., if they change their name or theme)
-  updateUser: (updatedFields: Partial<User>) => void;
+  updateUser: (updatedFields: Partial<AppUser>) => void;
   updateRegisterData: (updatedFields: UserRegisterPayload) => void;
 }
 

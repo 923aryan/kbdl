@@ -1,0 +1,19 @@
+{
+  "extends": "@repo/typescript-config/base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": ".",
+    "strictNullChecks": true,
+    "declaration": true,
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "esModuleInterop": true
+  },
+  "include": [
+    "."
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

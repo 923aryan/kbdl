@@ -26,10 +26,13 @@ const FALLBACK_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
 const BASE_URL = apiUrl || FALLBACK_URL;
 
-async function http<T>(path: string, config: RequestInit): Promise<ApiSuccess<T>> {
+async function http<T>(
+  path: string,
+  config: RequestInit,
+  showToast: boolean = false,
+): Promise<ApiSuccess<T>> {
   const url = `${BASE_URL}${path}`;
 
-  // 2. Mobile apps typically use Bearer tokens instead of strictly relying on cookies
   const accessToken = await SecureStore.getItemAsync('accessToken');
 
   const requestConfig: RequestInit = {
@@ -43,35 +46,39 @@ async function http<T>(path: string, config: RequestInit): Promise<ApiSuccess<T>
 
   try {
     console.log('url was ', url);
+
     let response = await fetch(url, requestConfig);
 
+    // TOKEN REFRESH
     if (response.status === 401) {
       try {
-        // Handle token refresh
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
 
         const refreshResponse = await fetch(`${BASE_URL}/auth/token-refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            refresh_token: refreshToken,
+          }),
         });
 
         if (!refreshResponse.ok) {
-          // If refresh fails, clear tokens so your Auth Director redirects to login
           await SecureStore.deleteItemAsync('accessToken');
           await SecureStore.deleteItemAsync('refreshToken');
-          throw new Error('Refresh failed');
+
+          throw new Error('Session expired');
         }
 
         const newTokens = await refreshResponse.json();
 
-        // Save new tokens
         await SecureStore.setItemAsync('accessToken', newTokens.accessToken);
+
         if (newTokens.refreshToken) {
           await SecureStore.setItemAsync('refreshToken', newTokens.refreshToken);
         }
 
-        // Retry the original request with the new token
         requestConfig.headers = {
           ...requestConfig.headers,
           Authorization: `Bearer ${newTokens.accessToken}`,
@@ -83,6 +90,7 @@ async function http<T>(path: string, config: RequestInit): Promise<ApiSuccess<T>
       }
     }
 
+    // HTTP ERROR
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
 
@@ -90,24 +98,35 @@ async function http<T>(path: string, config: RequestInit): Promise<ApiSuccess<T>
         success: false,
         error: {
           code: errorBody.error?.code || 'HTTP_ERROR',
+
           message: errorBody.error?.message || response.statusText || 'Something went wrong',
+
           details: errorBody.error?.details || errorBody,
         },
       };
 
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: errorResponse.error.message,
-      });
+      if (showToast) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: errorResponse.error.message,
+        });
+      }
 
-      throw errorResponse;
+      // IMPORTANT FIX
+      const customError = new Error(errorResponse.error.message);
+
+      (customError as any).code = errorResponse.error.code;
+
+      (customError as any).details = errorResponse.error.details;
+
+      (customError as any).raw = errorResponse;
+
+      throw customError;
     }
 
+    // NO CONTENT
     if (response.status === 204) {
-      if (config.method !== 'GET') {
-        Toast.show({ type: 'success', text1: 'Success', text2: 'Operation successful' });
-      }
       return {
         success: true,
         message: 'Operation successful',
@@ -115,21 +134,38 @@ async function http<T>(path: string, config: RequestInit): Promise<ApiSuccess<T>
       };
     }
 
+    // SUCCESS
     const data = await response.json();
+
     const typedData = data as ApiSuccess<T>;
 
-    if (config.method !== 'GET' && typedData.message) {
-      Toast.show({ type: 'success', text1: 'Success', text2: typedData.message });
+    if (config.method !== 'GET' && typedData.message && showToast) {
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: typedData.message,
+      });
     }
 
     return typedData;
   } catch (error: any) {
-    // 3. React Native throws a different error string for network failures
+    // NETWORK ERROR
     if (error instanceof TypeError && error.message === 'Network request failed') {
       const msg = 'Network Error: Unable to connect to server';
-      Toast.show({ type: 'error', text1: 'Network Error', text2: msg });
-      throw { success: false, error: { code: 'NETWORK', message: msg } };
+
+      Toast.show({
+        type: 'error',
+        text1: 'Network Error',
+        text2: msg,
+      });
+
+      const networkError = new Error(msg);
+
+      (networkError as any).code = 'NETWORK';
+
+      throw networkError;
     }
+
     throw error;
   }
 }

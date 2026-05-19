@@ -66,7 +66,7 @@ export function ProtectedScreen({ children }: Props) {
           <CustomButton
             title="Login"
             size="medium"
-            onPress={() => router.push('/login')}
+            onPress={() => router.push('/auth/login')}
             containerStyle={styles.button}
           />
         </View>

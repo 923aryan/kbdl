@@ -18,7 +18,7 @@ export const createShiftService = async (
   userType: Extract<Role, 'user' | 'employer'>,
   payload: CreateShiftPayload,
 ): Promise<Shift> => {
-  let employerId = payload.employer_id;
+  let employerId;
   let originalEmployeeId = payload.original_employee_id;
 
   if (payload.replacement_employee_id) {
@@ -32,15 +32,29 @@ export const createShiftService = async (
       throw new AppError(
         403,
         'DONT_WANT_SHIFTS',
-        'This worker dont want shifts right now , ask them to enable it in Profile -> Extra Shifts',
+        'This user dont want shifts right now, ask them to enable it in Profile -> Extra Shifts',
       );
     }
+  }
+
+  if (payload.replacement_employee_id && payload.replacement_employee_id === userId) {
+    throw new AppError(403, 'SELF_SHIFT_NOT_ALLOWED', 'You cant swap a shift with yourself');
   }
   // 1. If created by an employee (user)
   if (userType === 'user') {
     originalEmployeeId = userId; // Enforce that the user is the original employeeS
     console.log('origian ', userId);
     // Validate that the user is actually employed by the specified employer
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    employerId = user?.employer_id;
+    if (!employerId) {
+      throw new AppError(403, 'NOT_EMPLOYED', 'You are not an employee of any organization');
+    }
     const employment = await prisma.employeeEmployment.findFirst({
       where: {
         employee_id: userId,
@@ -115,6 +129,7 @@ export const createShiftService = async (
     },
   });
 
+  //Specific shift to a employee / Not public shift
   if (payload.replacement_employee_id) {
     await createNotificationService({
       userId: payload.replacement_employee_id,
@@ -130,10 +145,11 @@ export const createShiftService = async (
         shiftId: newShift.id,
         employerId,
         originalEmployeeId,
+        replacementEmployeeId: payload.replacement_employee_id,
       },
     });
   } else {
-    //create pubic shift via message broker BullMQ
+    //Public Shit : create pubic shift via message broker BullMQ
     await publicShiftQueue.add('broadcast-public-shift', {
       shiftId: newShift.id,
       employerId,
@@ -230,6 +246,28 @@ export const getEmployerShiftsService = async (employerId: string): Promise<Shif
     },
     orderBy: {
       created_at: 'desc',
+    },
+  });
+
+  return shifts;
+};
+
+export const getScheduledShiftsService = async (employeeId: string): Promise<Shift[]> => {
+  const shifts = await prisma.shift.findMany({
+    where: {
+      replacement_employee_id: employeeId,
+      status: 'matched',
+    },
+    include: {
+      employer: {
+        select: { company_name: true, company_address: true },
+      },
+      original_employee: {
+        select: { name: true, phone_no: true },
+      },
+    },
+    orderBy: {
+      shift_start: 'asc',
     },
   });
 
@@ -423,12 +461,125 @@ export const getReferredEmployeeService = async (
     },
     select: {
       id: true,
+      extra_shift: true,
     },
   });
   if (!employee) {
     throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found.');
   }
+  if (!employee.extra_shift) {
+    throw new AppError(
+      400,
+      'DONT_WANT_SHIFTS',
+      'This user dont want shifts right now, ask them to enable it in Profile -> Extra Shifts',
+    );
+  }
   return {
     id: employee.id,
   };
+};
+
+// F. Get Open shifts for employee (specific shifts -> check shifs table, public shifts -> check notificaion table)
+export const getOpenShiftsForEmployeeService = async (userId: string): Promise<Shift[]> => {
+  /*
+    1. Specific shifts directly assigned
+  */
+  const requestedSpecificShifts = await prisma.shift.findMany({
+    where: {
+      replacement_employee_id: userId,
+      status: 'open',
+    },
+
+    include: {
+      original_employee: {
+        select: {
+          id: true,
+          name: true,
+          phone_no: true,
+          city: true,
+          area: true,
+          skills: true,
+          rating_avg: true,
+        },
+      },
+
+      employer: {
+        select: {
+          id: true,
+          company_name: true,
+          phone_no: true,
+          company_address: true,
+          is_verified: true,
+        },
+      },
+    },
+  });
+
+  /*
+    2. Public shift notifications received by this user
+  */
+  const publicShiftNotifications = await prisma.notification.findMany({
+    where: {
+      user_id: userId,
+      type: 'public_shift',
+    },
+
+    select: {
+      data: true,
+    },
+  });
+
+  /*
+    3. Extract shiftIds from notification JSON
+  */
+  const publicShiftIds = publicShiftNotifications
+    .map((notification) => {
+      const data = notification.data as { shiftId?: string };
+
+      return data?.shiftId;
+    })
+    .filter((shiftId): shiftId is string => Boolean(shiftId));
+
+  /*
+    4. Fetch public shifts
+  */
+  const publicShifts =
+    publicShiftIds.length > 0
+      ? await prisma.shift.findMany({
+          where: {
+            id: {
+              in: publicShiftIds,
+            },
+
+            status: 'open',
+
+            // Safety check:
+            // Ensure still public
+            replacement_employee_id: null,
+          },
+
+          include: {
+            original_employee: true,
+            employer: true,
+          },
+        })
+      : [];
+
+  /*
+    5. Merge + remove duplicates
+  */
+  const uniqueShiftsMap = new Map<string, Shift>();
+
+  [...requestedSpecificShifts, ...publicShifts].forEach((shift) => {
+    uniqueShiftsMap.set(shift.id, shift);
+  });
+
+  const shifts = Array.from(uniqueShiftsMap.values());
+
+  /*
+    6. Sort newest first
+  */
+  shifts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  return shifts;
 };

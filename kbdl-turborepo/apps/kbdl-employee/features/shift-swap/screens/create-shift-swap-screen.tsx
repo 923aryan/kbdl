@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -9,18 +10,23 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
   useColorScheme,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
 // Adjust these imports to match your project structure
+import DateTimePickerInput from '@/components/ui/date-time-picker';
+import ErrorMessageBox from '@/components/ui/error-message-box';
 import { Colors } from '@/constants/theme';
-import CustomButton from '../../components/ui/button';
-import CustomInput from '../../components/ui/input';
-
+import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { createShiftSchema } from '@repo/validator/shared';
+import CustomButton from '../../../components/ui/button';
+import CustomInput from '../../../components/ui/input';
+import { SuccessCard } from '../../../components/ui/success-card';
+import { useCreateShiftSwap, useGetReferredEmployee } from '../api';
 
 const formSchema = createShiftSchema.shape.body;
 type FormData = z.infer<typeof formSchema>;
@@ -29,13 +35,20 @@ export default function CreateShiftScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
+  const router = useRouter();
 
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [employeeMobile, setEmployeeMobile] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const { user } = useAuthStore();
+  const { mutate: getReferredEmployee } = useGetReferredEmployee();
+  const { mutate: createShift, isSuccess, reset: resetCreateShift } = useCreateShiftSwap();
 
   const {
     control,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -49,9 +62,100 @@ export default function CreateShiftScreen() {
     },
   });
 
+  console.log('errors', errors);
+  console.log('values', watch());
+
   const onSubmit = (data: FormData) => {
-    console.log('Form Data Submitted:', data);
-    // Handle API call here
+    console.log('data is ', data);
+
+    setErrorMessage('');
+
+    const proceedWithShiftCreation = (replacement_employee_id?: string) => {
+      const baseDate = new Date(data.shift_date);
+      const startTime = new Date(data.shift_start);
+      const endTime = new Date(data.shift_end);
+
+      startTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+
+      endTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+
+      const payload = {
+        original_employee_id: user?.id || '',
+        payType: data.payType,
+        shift_pay: Number(data.shift_pay),
+        skill_required: data.skill_required,
+        shift_date: baseDate.toISOString(),
+        shift_start: startTime.toISOString(),
+        shift_end: endTime.toISOString(),
+        ...(replacement_employee_id && {
+          replacement_employee_id,
+        }),
+      };
+
+      console.log('payload', payload);
+
+      createShift(payload as any, {
+        onSuccess: (res) => {
+          console.log('createShift success', res);
+        },
+
+        onError: (error: any) => {
+          console.log('createShift error', error);
+
+          const msg = error?.message || 'Failed to create shift swap';
+
+          setErrorMessage(msg);
+
+          // Toast.show({
+          //   type: 'error',
+          //   text1: 'Error',
+          //   text2: msg,
+          // });
+        },
+      });
+    };
+
+    if (showAddEmployee && !employeeMobile.trim()) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: 'Please enter employee mobile number',
+      });
+      return;
+    }
+
+    // no replacement employee flow
+    if (!showAddEmployee) {
+      proceedWithShiftCreation();
+      return;
+    }
+
+    const phone_no = employeeMobile.startsWith('+91') ? employeeMobile : `+91${employeeMobile}`;
+
+    getReferredEmployee(
+      { phone_no },
+      {
+        onSuccess: (res) => {
+          console.log('employee found', res);
+
+          proceedWithShiftCreation(res.data.id);
+        },
+
+        onError: (error: any) => {
+          console.log('getReferredEmployee error', error);
+
+          const msg = error?.message || 'Error fetching referred employee';
+
+          setErrorMessage(msg);
+
+          // Toast.show({
+          //   type: 'error',
+          //   text1: 'Error',
+          //   text2: msg,
+          // });
+        },
+      },
+    );
   };
 
   return (
@@ -61,21 +165,20 @@ export default function CreateShiftScreen() {
         style={styles.keyboardView}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-          {/* Header Section */}
           <View style={styles.headerContainer}>
             <Text style={styles.title}>Shift details</Text>
             <Text style={styles.subtitle}>Enter the shift Information</Text>
           </View>
 
-          {/* Form Section */}
           <View style={styles.formSection}>
-            {/* Domain / Skill Required Input */}
+            <ErrorMessageBox message={errorMessage} onClose={() => setErrorMessage('')} />
+
             <Controller
               control={control}
               name="skill_required"
               render={({ field: { onChange, onBlur, value } }) => (
                 <CustomInput
-                  label="Enter Domain :"
+                  label="Enter Skills :"
                   placeholder="Exp: Welder"
                   icon={<Feather name="tool" size={18} color={theme.icon} />}
                   onBlur={onBlur}
@@ -149,19 +252,19 @@ export default function CreateShiftScreen() {
               )}
             />
 
-            {/* Shift Date Input */}
+            {/* Shift Date Input (Replaced with DateTimePickerInput) */}
             <Controller
               control={control}
               name="shift_date"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <CustomInput
+              render={({ field: { onChange, value } }) => (
+                <DateTimePickerInput
                   label="Enter Date :"
-                  placeholder="Exp: 12/05/2026"
+                  mode="date"
+                  value={value ? new Date(value) : null}
+                  onChange={(date) => onChange(date.toISOString())}
                   icon={<Feather name="calendar" size={18} color={theme.icon} />}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
                   error={errors.shift_date?.message}
+                  theme={theme}
                 />
               )}
             />
@@ -169,36 +272,38 @@ export default function CreateShiftScreen() {
             {/* Time Row (Shift From & Shift To) */}
             <View style={styles.rowContainer}>
               <View style={styles.halfWidth}>
+                {/* Shift Start (Replaced with DateTimePickerInput) */}
                 <Controller
                   control={control}
                   name="shift_start"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <CustomInput
+                  render={({ field: { onChange, value } }) => (
+                    <DateTimePickerInput
                       label="Shift From :"
-                      placeholder="9:00 AM"
+                      mode="time"
+                      value={value ? new Date(value) : null}
+                      onChange={(date) => onChange(date.toISOString())}
                       icon={<Feather name="clock" size={18} color={theme.icon} />}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
                       error={errors.shift_start?.message}
+                      theme={theme}
                     />
                   )}
                 />
               </View>
 
               <View style={styles.halfWidth}>
+                {/* Shift End (Replaced with DateTimePickerInput) */}
                 <Controller
                   control={control}
                   name="shift_end"
-                  render={({ field: { onChange, onBlur, value } }) => (
-                    <CustomInput
+                  render={({ field: { onChange, value } }) => (
+                    <DateTimePickerInput
                       label="Shift To :"
-                      placeholder="5:00 PM"
+                      mode="time"
+                      value={value ? new Date(value) : null}
+                      onChange={(date) => onChange(date.toISOString())}
                       icon={<Feather name="clock" size={18} color={theme.icon} />}
-                      onBlur={onBlur}
-                      onChangeText={onChange}
-                      value={value}
                       error={errors.shift_end?.message}
+                      theme={theme}
                     />
                   )}
                 />
@@ -221,14 +326,17 @@ export default function CreateShiftScreen() {
 
             {/* Bottom Action Buttons */}
             <View style={styles.actionRow}>
-              {!showAddEmployee && (
-                <CustomButton
-                  title="Add Employee"
-                  variant="outline"
-                  containerStyle={styles.halfButton}
-                  onPress={() => setShowAddEmployee(true)}
-                />
-              )}
+              <CustomButton
+                title={showAddEmployee ? 'Remove Employee' : 'Add Employee'}
+                variant="outline"
+                containerStyle={styles.halfButton}
+                onPress={() => {
+                  setShowAddEmployee(!showAddEmployee);
+                  if (showAddEmployee) {
+                    setEmployeeMobile(''); // Clear out previous input
+                  }
+                }}
+              />
               <CustomButton
                 title="Confirm"
                 variant="primary"
@@ -240,10 +348,19 @@ export default function CreateShiftScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <SuccessCard
+        visible={isSuccess}
+        message="Shift swap created successfully!"
+        onClose={() => {
+          resetCreateShift(); // Resets the React Query mutation state
+          router.back(); // Navigates the user back to the main Shifts menu
+        }}
+      />
     </SafeAreaView>
   );
 }
-
 // Dynamic theme styles
 const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
@@ -259,12 +376,12 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     headerContainer: {
       paddingHorizontal: 24,
-      paddingTop: 32,
+      paddingTop: 12,
       paddingBottom: 24,
     },
     title: {
       fontSize: 24,
-      fontWeight: '700',
+      fontWeight: '500',
       color: theme.text,
       marginBottom: 6,
     },
@@ -288,6 +405,7 @@ const createStyles = (theme: typeof Colors.light) =>
       flexDirection: 'row',
       gap: 16,
     },
+
     payTypeButton: {
       flex: 1,
       paddingVertical: 12,
@@ -318,7 +436,7 @@ const createStyles = (theme: typeof Colors.light) =>
     rowContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      gap: 16, // If your RN version doesn't support gap, use margin on child elements
+      gap: 16,
     },
     halfWidth: {
       flex: 1,
