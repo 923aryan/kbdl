@@ -18,9 +18,9 @@ export default function TermsPage() {
           {/* INTRO */}
           <div className="mb-14">
             <div className="mb-8">
-              <p className="text-gray-700 text-[15px] leading-8">
+              {/* <p className="text-gray-700 text-[15px] leading-8">
                 <span className="font-semibold text-black">Effective Date:</span> [Insert Date]
-              </p>
+              </p> */}
 
               <p className="text-gray-700 text-[15px] leading-8">
                 <span className="font-semibold text-black">Website:</span>{' '}

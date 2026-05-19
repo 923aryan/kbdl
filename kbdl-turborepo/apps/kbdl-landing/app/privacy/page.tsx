@@ -17,10 +17,10 @@ export default function PrivacyPolicyPage() {
         <div className="max-w-6xl mx-auto">
           {/* TOP INFO */}
           <div className="mb-16">
-            <p className="text-[#111827] text-lg mb-5">
+            {/* <p className="text-[#111827] text-lg mb-5">
               <span className="font-bold">Effective Date:</span>{' '}
               <span className="text-gray-600">[Comming Soon]</span>
-            </p>
+            </p> */}
 
             <p className="text-[#111827] text-lg">
               <span className="font-bold">Website:</span>{' '}
