@@ -27,6 +27,7 @@ export default function OtpVerificationScreen() {
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
   const { mutate: verifyOtp, isPending } = useVerifyRegisterUser();
+  const { signIn } = useAuthStore();
 
   // State to hold the 6 OTP digits
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -57,8 +58,13 @@ export default function OtpVerificationScreen() {
     verifyOtp(
       { phone_no: phone, otp: otpString },
       {
-        onSuccess: (res) => {
+        onSuccess: async (res) => {
           console.log('OTP Verified successfully', res);
+          await signIn({
+            accessToken: res.accessToken,
+            refreshToken: res.refreshToken,
+            user: res.user,
+          });
           router.replace('/(tabs)');
         },
         onError: (err) => {

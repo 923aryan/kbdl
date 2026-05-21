@@ -37,10 +37,16 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       await hydrateAuth();
+
+      // Keep splash screen visible for 2 seconds
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       await SplashScreen.hideAsync();
     }
+
     prepare();
   }, []);
+
   if (!fontsLoaded) return null;
   return (
     <SafeAreaProvider>

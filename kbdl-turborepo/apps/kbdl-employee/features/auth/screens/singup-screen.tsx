@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 import translations from '../../../translations';
 import { useRegisterUser } from '../api';
@@ -73,7 +74,11 @@ export default function SignupScreen() {
         router.push('/auth/verify-register-otp');
       },
       onError: (err) => {
-        console.error('Registration failed', err);
+        Toast.show({
+          text1: err.message,
+          type: "error"
+        })
+        // console.error('Registration failed', err);
       },
     });
   };

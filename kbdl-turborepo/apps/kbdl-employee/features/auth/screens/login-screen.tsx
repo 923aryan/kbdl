@@ -20,6 +20,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 import translations from '../../../translations';
 import { useSendUserOTP } from '../api';
@@ -63,7 +64,11 @@ export default function LoginScreen() {
         });
       },
       onError: (err) => {
-        console.error('Failed to send OTP', err);
+        Toast.show({
+          text1: err.message,
+          type: "error"
+        })
+        // console.error('Failed to send OTP', err);
       },
     });
   };
