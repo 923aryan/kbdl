@@ -70,7 +70,7 @@ export default function SignupScreen() {
         console.log('Registration successful', res);
         const parsed = formSchema.parse(data);
         updateRegisterData(parsed);
-        router.push('/(public)/(auth)/verify-register-otp');
+        router.push('/auth/verify-register-otp');
       },
       onError: (err) => {
         console.error('Registration failed', err);
@@ -246,7 +246,7 @@ export default function SignupScreen() {
               <Text style={styles.footerText}>{t.alreadyHaveAccount}</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => router.push('/(public)/(auth)/login')}
+                onPress={() => router.push('/auth/login')}
               >
                 <Text style={styles.footerLink}>{t.loginNow}</Text>
               </TouchableOpacity>

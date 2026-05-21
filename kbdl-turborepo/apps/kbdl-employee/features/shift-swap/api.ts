@@ -7,7 +7,6 @@ import type {
   CreateShiftPayload,
   CreateShiftResponse,
   GetEmployeeShiftsResponse,
-  GetExtraShiftsQuery,
   GetExtraShiftsResponse,
   UpdateShiftPayload,
   UpdateShiftResponse,
@@ -37,16 +36,13 @@ export const useAcceptShiftSwap = () => {
   });
 };
 
-// B1. See Accepted Shifts (Worker)
-export const getEmployeeShifts = async () => {
-  const response = await api.get<GetEmployeeShiftsResponse>('/shift-swap/employee');
-  return response.data;
-};
-
 export const useGetEmployeeShifts = () => {
   return useQuery({
     queryKey: ['employee-shifts'],
-    queryFn: getEmployeeShifts,
+    queryFn: async () => {
+      const response = await api.get<GetEmployeeShiftsResponse>('/shift-swap/employee');
+      return response.data;
+    }
   });
 };
 
@@ -70,19 +66,21 @@ export const useUpdateShift = () => {
   });
 };
 
-// C. Get Extra Shifts (Public matching)
-export const getExtraShifts = async (query?: GetExtraShiftsQuery) => {
-  const response = await api.get<GetExtraShiftsResponse>('/shift-swap/extra', { params: query });
-  return response.data;
-};
+export const useGetExtraShifts = (query?: string) => {
+  console.log('extra shift query: ', query);
 
-export const useGetExtraShifts = (query?: GetExtraShiftsQuery) => {
   return useQuery({
     queryKey: ['extra-shifts', query],
-    queryFn: () => getExtraShifts(query),
+
+    queryFn: async () => {
+      const response = await api.get<GetExtraShiftsResponse>(
+        `/shift-swap/extra?${query}`
+      );
+
+      return response.data;
+    },
   });
 };
-
 // E.Others: Get Referred Employee ID
 export const useGetReferredEmployee = () => {
   return useMutation({

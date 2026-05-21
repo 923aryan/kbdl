@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, useColorScheme } from 'react-native';
 
 // Import your custom UI components and theme
@@ -7,13 +8,38 @@ import CustomButton from '@/components/ui/button'; // Adjust path
 import { Typography } from '@/components/ui/typography'; // Adjust path
 import { ShiftStatus } from '@/constants/constants';
 import { Colors } from '@/constants/theme';
-import { OpenShift } from '@/features/shift-swap/types/shift-swap-types';
+import { markNotificationRead } from '@/features/notifications/api';
+import { useNotificationStore } from '@/features/notifications/store/notification-store';
+import { useAcceptShiftSwap, useCancelShift } from '@/features/shift-swap/api';
+import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
+import { Shift } from '@repo/db';
+import Toast from 'react-native-toast-message';
+import { SuccessCard } from './success-card';
+
+type ShiftCardShift = Pick<
+  Shift,
+  | 'id'
+  | 'shift_date'
+  | 'shift_start'
+  | 'shift_end'
+  | 'skill_required'
+  | 'shift_pay'
+  | 'payType'
+  | 'status'
+> & {
+  notificationId?: string | null;
+
+  employer: {
+    company_name: string;
+    company_address: string | null;
+  };
+};
+
 interface ShiftCardProps {
-  shift: OpenShift;
+  shift: ShiftCardShift;
   distance?: string;
   buttonTitle?: string;
 }
-
 // Helper functions for Date & Time Formatting
 const formatDate = (dateInput: string | Date) => {
   if (!dateInput) return '';
@@ -29,15 +55,18 @@ const formatTime = (dateInput: string | Date) => {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-export default function ShiftCard({
-  shift,
-  distance,
-  buttonTitle,
-}: ShiftCardProps) {
+export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
+
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   // console.log("inside card: ", shift)
-  console.log("button title ", buttonTitle)
+  console.log('button title ', buttonTitle);
+  const queryClient = useQueryClient();
+  const { mutate: acceptShift } = useAcceptShiftSwap();
+  const { mutate: cancelShift } = useCancelShift();
+  const removeShift = useShiftSwapStore((state) => state.removeShift);
+  const markAsRead = useNotificationStore((state) => state.markAsRead);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   // Destructure the needed fields from the shift object
   const {
     skill_required,
@@ -63,31 +92,73 @@ export default function ShiftCard({
   const getStatusConfig = (shiftStatus: ShiftStatus | string) => {
     switch (shiftStatus) {
       case ShiftStatus.open:
-      case 'open':
         return { text: 'Open', bg: '#E5EFFF', color: '#0658C2' };
       case ShiftStatus.matched:
-      case 'matched':
-      case 'approved': // Grouping approved with matched as 'Upcoming'
+      case ShiftStatus.approved: // Grouping approved with matched as 'Upcoming'
         return { text: 'Upcoming', bg: '#FFF0E3', color: '#F97316' };
       case ShiftStatus.completed:
-      case 'completed':
         return { text: 'Completed', bg: '#E6FBEB', color: '#22C55E' };
       case ShiftStatus.cancelled:
-      case 'cancelled':
         return { text: 'CANCELLED', bg: '#FFE5E5', color: '#EF4444' };
       default:
         return { text: String(shiftStatus), bg: theme.surface, color: theme.text };
     }
   };
+  useEffect(() => {
+    console.log("now its: ", isSuccessModalVisible)
+  }, [isSuccessModalVisible])
+  const onAcceptPress = () => {
+    acceptShift(
+      { shift_id: shift.id },
+      {
+        onSuccess: (data) => {
+          console.log('Shift accepted successfully!', data);
+          setIsSuccessModalVisible(true);
+        },
+        onError: (error) => {
+          console.error('Failed to accept the shift:', error);
+          // TODO: Add your error UI logic here (e.g., show an error toast)
+        },
+      },
+    );
+  };
 
-  const onButtonPress = () => {
-
-  }
-
-  const onCancelPress = () => {
-
-  }
-
+  const onCancelPress = async () => {
+    if (shift?.notificationId) {
+      // Condition A: If notificationId is present, mark the notification as read
+      try {
+        await markNotificationRead(shift.notificationId);
+        console.log('Notification marked as read successfully');
+        markAsRead(shift.notificationId);
+        queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error);
+      }
+    } else {
+      // Condition B: If notificationId is NOT present, cancel the shift itself
+      cancelShift(
+        { shift_id: shift.id },
+        {
+          onSuccess: (data) => {
+            console.log('Shift cancelled successfully!', data);
+            Toast.show({
+              type: 'success',
+              text1: 'Shift cancelled successfully!',
+            });
+            queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
+            queryClient.invalidateQueries({ queryKey: ['employee-shifts'] });
+          },
+          onError: (error) => {
+            console.error('Failed to cancel the shift:', error);
+            Toast.show({
+              type: 'error',
+              text1: error.message,
+            })
+          },
+        },
+      );
+    }
+  };
   const statusConfig = getStatusConfig(status);
 
   return (
@@ -171,24 +242,43 @@ export default function ShiftCard({
         {/* Action Buttons (Conditional) */}
         {buttonTitle && (
           <View style={styles.buttonContainer}>
-            <CustomButton
-              title="Cancel"
-              variant="outline"
-              size="small"
-              onPress={onCancelPress}
-              containerStyle={{ flex: 1 }}
-            />
-            <CustomButton
-              title="Approve Request"
-              variant="primary"
-              size="small"
-              onPress={onButtonPress}
-              containerStyle={{ flex: 1 }}
-            />
-
+            {buttonTitle !== 'Apply' && (
+              <CustomButton
+                title="Cancel shift"
+                variant="destructive"
+                size="small"
+                onPress={onCancelPress}
+                containerStyle={{ flex: 1 }}
+              />
+            )}
+            {status !== ShiftStatus.matched && status !== ShiftStatus.approved && (
+              <CustomButton
+                title={buttonTitle === 'Apply' ? 'Apply' : 'Approve Request'}
+                variant="primary"
+                size="small"
+                onPress={onAcceptPress}
+                containerStyle={{ flex: 1 }}
+              />
+            )}
           </View>
         )}
       </View>
+
+      <SuccessCard
+        visible={isSuccessModalVisible}
+        message="Shift accepted successfully!"
+        onClose={async () => {
+          setIsSuccessModalVisible(false);
+
+          await queryClient.invalidateQueries({
+            queryKey: ['employee-open-shifts'],
+          });
+
+          await queryClient.invalidateQueries({
+            queryKey: ['extra-shifts'],
+          });
+        }}
+      />
     </View>
   );
 }
@@ -216,7 +306,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     marginLeft: 8,
     fontSize: 14,
-    fontWeight: "800"
+    fontWeight: '800',
   },
   headerRight: {
     flexDirection: 'row',

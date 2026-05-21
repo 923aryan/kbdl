@@ -7,15 +7,15 @@ export const toastConfig = {
   // We override the default 'error' type
   error: (props: BaseToastProps) => (
     <View style={styles.errorBox}>
-      <View style={styles.errorIconContainer}>
+      <View style={styles.iconContainer}>
         <Ionicons name="warning" size={32} color="#F43F5E" />
       </View>
 
       {/* We use props.text2 because in your API client you pass the actual error message there */}
-      <Text style={styles.errorBoxText}>{props.text2 || props.text1}</Text>
+      <Text style={styles.boxText}>{props.text2 || props.text1}</Text>
 
       <TouchableOpacity
-        style={styles.errorCloseButton}
+        style={styles.closeButton}
         onPress={() => Toast.hide()}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
@@ -24,7 +24,25 @@ export const toastConfig = {
     </View>
   ),
 
-  // You can also add custom UI for 'success' or 'info' types here later
+  // We override the default 'success' type
+  success: (props: BaseToastProps) => (
+    <View style={styles.successBox}>
+      <View style={styles.iconContainer}>
+        <Feather name="check-circle" size={32} color="#22C55E" />
+      </View>
+
+      {/* We use props.text1 for the success message */}
+      <Text style={styles.boxText}>{props.text1}</Text>
+
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={() => Toast.hide()}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Feather name="x" size={20} color="#374151" />
+      </TouchableOpacity>
+    </View>
+  ),
 };
 
 const styles = StyleSheet.create({
@@ -43,17 +61,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  errorIconContainer: {
+  successBox: {
+    backgroundColor: '#E6FBEB',
+    borderColor: '#22C55E',
+    borderWidth: 1,
+    padding: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  iconContainer: {
     marginRight: 12,
   },
-  errorBoxText: {
+  boxText: {
     color: '#374151',
     fontSize: 15,
     lineHeight: 22,
     flex: 1,
     paddingRight: 8,
   },
-  errorCloseButton: {
+  closeButton: {
     padding: 4,
   },
 });

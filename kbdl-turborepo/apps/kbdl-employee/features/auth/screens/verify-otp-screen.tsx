@@ -59,7 +59,7 @@ export default function OtpVerificationScreen() {
       {
         onSuccess: (res) => {
           console.log('OTP Verified successfully', res);
-          router.replace('/(public)/(tabs)');
+          router.replace('/(tabs)');
         },
         onError: (err) => {
           console.error('OTP Verification failed', err);

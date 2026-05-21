@@ -83,7 +83,6 @@ async function http<T>(
           ...requestConfig.headers,
           Authorization: `Bearer ${newTokens.accessToken}`,
         };
-
         response = await fetch(url, requestConfig);
       } catch (error) {
         throw error;
@@ -104,7 +103,7 @@ async function http<T>(
           details: errorBody.error?.details || errorBody,
         },
       };
-
+      console.log("when error ", errorResponse)
       if (showToast) {
         Toast.show({
           type: 'error',

@@ -15,7 +15,8 @@ export default {
     headerTitle: 'Shifts',
     chooseOption: 'Choose an option',
     shiftSwap: 'Shift Swap',
-    shiftSwapDesc: 'Browse job by your preferred shift',
+    // Modify it for create shift
+    shiftSwapDesc: 'Post a new shift requirement',
     scheduledShifts: 'Scheduled Shifts',
     scheduledShiftsDesc: 'View and manage your scheduled shifts',
     extraShifts: 'Extra Shifts',
@@ -37,7 +38,7 @@ export default {
     headerTitle: 'शिफ्ट',
     chooseOption: 'एक विकल्प चुनें',
     shiftSwap: 'शिफ्ट स्वैप',
-    shiftSwapDesc: 'अपनी पसंदीदा शिफ्ट के अनुसार नौकरी खोजें',
+    shiftSwapDesc: 'नई शिफ्ट की आवश्यकता पोस्ट करें',
     scheduledShifts: 'निर्धारित शिफ्ट',
     scheduledShiftsDesc: 'अपनी निर्धारित शिफ्ट देखें और प्रबंधित करें',
     extraShifts: 'अतिरिक्त शिफ्ट',

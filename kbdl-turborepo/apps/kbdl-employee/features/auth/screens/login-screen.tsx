@@ -142,7 +142,7 @@ export default function LoginScreen() {
               </Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => router.push('/(public)/(auth)/register')}
+                onPress={() => router.push('/auth/register')}
               >
                 <Text style={styles.footerLink}>{t.registerNow || 'Sign up now'}</Text>
               </TouchableOpacity>

@@ -1,5 +1,10 @@
-import { Text } from 'react-native';
+import { ProtectedScreen } from '@/features/auth/screens/protected-screen';
+import ExtraShiftScreen from '@/features/shift-swap/screens/extra-shifts-screen';
+export default function ExtraShiftRoute() {
+  return (
+    <ProtectedScreen>
+      <ExtraShiftScreen />
+    </ProtectedScreen>
+  );
 
-export default function ExtraShifts() {
-  <Text>Extra Shifts</Text>;
 }

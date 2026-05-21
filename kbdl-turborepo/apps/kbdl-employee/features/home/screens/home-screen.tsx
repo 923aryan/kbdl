@@ -73,7 +73,7 @@ export default function HomeScreen() {
       icon: 'search',
       iconColor: '#F2994A',
       bgColor: '#FFF4E5',
-      route: '/find-job',
+      route: '/jobs/find-jobs',
     },
   ];
 
@@ -116,6 +116,15 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+
+      {/* Search Box */}
+      <View style={styles.searchBox}>
+        <Ionicons name="search" size={18} color="#666" />
+
+        <View style={styles.divider} />
+
+        <TextInput placeholder="Search" placeholderTextColor="#999" style={styles.input} />
+      </View>
       {/* Shift Cards List */}
       <View style={styles.shiftListContainer}>
         <ScrollView
@@ -146,14 +155,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Search Box */}
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={18} color="#666" />
 
-        <View style={styles.divider} />
-
-        <TextInput placeholder="Search" placeholderTextColor="#999" style={styles.input} />
-      </View>
 
       {/* Cards */}
       {cards.map((item) => (
@@ -183,7 +185,6 @@ const styles = StyleSheet.create({
   },
 
   shiftListContainer: {
-    paddingTop: 12,
     maxHeight: 240, // Sets the height to roughly show only one card at a time
     marginBottom: 10,
   },
@@ -198,6 +199,7 @@ const styles = StyleSheet.create({
 
   locationWrapper: {
     position: 'relative',
+    paddingBottom: 10,
   },
 
   locationRow: {
@@ -265,16 +267,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-
     borderWidth: 1,
     borderColor: '#ddd',
-
     borderRadius: 12,
-
     paddingHorizontal: 12,
-    paddingVertical: 10,
-
-    marginBottom: 20,
+    paddingVertical: 5,
+    marginBottom: 10,
   },
 
   divider: {

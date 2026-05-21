@@ -10,6 +10,7 @@ export type SafeEmployer = Prisma.EmployerGetPayload<{
 
 
 export type OpenShift = Shift & {
+  notificationId?: string,
   original_employee: SafeUser;
   employer: SafeEmployer;
 };

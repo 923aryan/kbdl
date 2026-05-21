@@ -22,7 +22,7 @@ const BUTTON_SIZES = {
 
 export interface CustomButtonProps extends TouchableOpacityProps {
   title: string;
-  variant?: 'primary' | 'outline';
+  variant?: 'primary' | 'outline' | 'destructive';
   size?: 'small' | 'medium' | 'large';
   loading?: boolean;
   leftIcon?: ReactNode;
@@ -49,10 +49,16 @@ export default function CustomButton({
 
   // 1. Determine Dynamic Colors based on variant
   const isPrimary = variant === 'primary';
-  const backgroundColor = isPrimary ? themeColors.primary : 'transparent';
+  const isDestructive = variant === 'destructive';
+  const isFilled = isPrimary || isDestructive;
+
+  let backgroundColor = 'transparent';
+  if (isPrimary) backgroundColor = themeColors.primary;
+  if (isDestructive) backgroundColor = '#EF4444';
+
   // Note: Your image shows dark text for the outline button, so we use themeColors.text
-  const textColor = isPrimary ? '#FFFFFF' : themeColors.text;
-  const borderColor = isPrimary ? 'transparent' : themeColors.primary;
+  const textColor = isFilled ? '#FFFFFF' : themeColors.text;
+  const borderColor = isFilled ? 'transparent' : themeColors.primary;
 
   // 2. Grab sizing values
   const { paddingVertical, fontSize, height } = BUTTON_SIZES[size];
@@ -72,7 +78,7 @@ export default function CustomButton({
           paddingVertical,
           height,
           opacity,
-          borderWidth: isPrimary ? 0 : 1.5,
+          borderWidth: isFilled ? 0 : 1.5,
         },
         containerStyle,
       ]}
