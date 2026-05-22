@@ -6,7 +6,15 @@ import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -14,14 +22,12 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { data } = useGetOpenShifts();
-  const setShifts = useShiftSwapStore(
-    (s) => s.setShifts,
-  );
+  const setShifts = useShiftSwapStore((s) => s.setShifts);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (data) {
-      console.log("shfits : ", data)
+      console.log('shfits : ', data);
       setShifts(data);
     }
   }, [data, setShifts]);
@@ -77,8 +83,6 @@ export default function HomeScreen() {
     },
   ];
 
-
-
   return (
     <ScrollView
       style={styles.container}
@@ -133,19 +137,17 @@ export default function HomeScreen() {
           nestedScrollEnabled={true}
         >
           {data?.map((shift) => (
-            <ShiftCard key={shift.id} shift={shift} buttonTitle='Approve' />
+            <ShiftCard key={shift.id} shift={shift} buttonTitle="Approve" />
           ))}
         </ScrollView>
       </View>
 
       {/* Header */}
       <View style={styles.header}>
-
-
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-        // onPress={() => router.push("/refer")}
+          // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
             <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
@@ -155,15 +157,15 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-
-
       {/* Cards */}
       {cards.map((item) => (
         <OptionCard
           key={item.id}
           title={item.title}
           description={item.subtitle}
-          IconComponent={() => <Ionicons name={item.icon as any} size={24} color={item.iconColor} />}
+          IconComponent={() => (
+            <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
+          )}
           iconBgColor={item.bgColor}
           onPress={() => router.push(item.route as any)}
           theme={theme}

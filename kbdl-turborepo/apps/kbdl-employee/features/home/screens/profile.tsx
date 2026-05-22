@@ -45,7 +45,7 @@ export default function Profile() {
 
   const onChangeLanguage = (langCode: string) => {
     const preferences = {
-      theme: (user?.preferences?.theme || 'system') as "light" | "dark" | "system",
+      theme: (user?.preferences?.theme || 'system') as 'light' | 'dark' | 'system',
       language: langCode,
     };
 
@@ -81,7 +81,7 @@ export default function Profile() {
             type: 'error',
           });
         },
-      }
+      },
     );
   };
 
@@ -107,16 +107,19 @@ export default function Profile() {
       }
     }
     if (editForm.skills !== undefined) {
-      payload.skills = editForm.skills.split(',').map((s) => s.trim()).filter(Boolean);
+      payload.skills = editForm.skills
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
     }
 
     updateProfile(payload, {
       onSuccess: () => {
         updateUser(payload);
         Toast.show({
-          text1: "Profile updated successfully!",
-          type: "success"
-        })
+          text1: 'Profile updated successfully!',
+          type: 'success',
+        });
         setEditProfileModalVisible(false);
       },
     });
@@ -125,7 +128,10 @@ export default function Profile() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingBottom: Math.max(insets.bottom + 80, 100) }]}
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: Math.max(insets.bottom + 80, 100) },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
@@ -157,7 +163,10 @@ export default function Profile() {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={openEditProfile}
-                style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border, marginBottom: 12 }]}
+                style={[
+                  styles.settingRow,
+                  { backgroundColor: theme.card, borderColor: theme.border, marginBottom: 12 },
+                ]}
               >
                 <View style={styles.settingRowLeft}>
                   <View style={[styles.iconContainer, { backgroundColor: theme.primary + '10' }]}>
@@ -173,7 +182,10 @@ export default function Profile() {
               </TouchableOpacity>
 
               <View
-                style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border, marginBottom: 12 }]}
+                style={[
+                  styles.settingRow,
+                  { backgroundColor: theme.card, borderColor: theme.border, marginBottom: 12 },
+                ]}
               >
                 <View style={styles.settingRowLeft}>
                   <View style={[styles.iconContainer, { backgroundColor: theme.primary + '10' }]}>
@@ -195,7 +207,10 @@ export default function Profile() {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setLangModalVisible(true)}
-                style={[styles.settingRow, { backgroundColor: theme.card, borderColor: theme.border }]}
+                style={[
+                  styles.settingRow,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}
               >
                 <View style={styles.settingRowLeft}>
                   <View style={[styles.iconContainer, { backgroundColor: theme.primary + '10' }]}>
@@ -206,7 +221,10 @@ export default function Profile() {
                   </Typography>
                 </View>
                 <View style={styles.settingRowRight}>
-                  <Typography variant="bodySmall" style={{ color: theme.textSecondary, marginRight: 8 }}>
+                  <Typography
+                    variant="bodySmall"
+                    style={{ color: theme.textSecondary, marginRight: 8 }}
+                  >
                     {LANGUAGES.find((l) => l.code === currentLangCode)?.label || 'English'}
                   </Typography>
                   <Feather name="chevron-right" size={20} color={theme.icon} />
@@ -250,7 +268,15 @@ export default function Profile() {
           activeOpacity={1}
           onPress={() => setLangModalVisible(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.background, paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: theme.background,
+                paddingBottom: Math.max(insets.bottom + 16, 24),
+              },
+            ]}
+          >
             <Typography variant="h3" style={[styles.modalTitle, { color: theme.text }]}>
               Select Language
             </Typography>
@@ -293,7 +319,16 @@ export default function Profile() {
             activeOpacity={1}
             onPress={() => setEditProfileModalVisible(false)}
           />
-          <View style={[styles.modalContent, { backgroundColor: theme.background, maxHeight: '85%', paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: theme.background,
+                maxHeight: '85%',
+                paddingBottom: Math.max(insets.bottom + 16, 24),
+              },
+            ]}
+          >
             <ScrollView
               showsVerticalScrollIndicator={false}
               bounces={false}

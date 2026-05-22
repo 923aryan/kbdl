@@ -225,7 +225,7 @@ export const acceptShiftService = async (
 
 // B1. See Accepted Shifts (Worker)
 export const getEmployeeShiftsService = async (
-  employeeId: string
+  employeeId: string,
 ): Promise<GetEmployeeShiftsResponse> => {
   const shifts = await prisma.$queryRaw`
     SELECT
@@ -305,7 +305,7 @@ export const getScheduledShiftsService = async (employeeId: string): Promise<Shi
       shift_start: 'asc',
     },
   });
-  console.log("shifts are ", shifts)
+  console.log('shifts are ', shifts);
   return shifts;
 };
 
@@ -400,16 +400,10 @@ export const updateShiftService = async (
 
 // C. Get Extra Shifts (Public matching)
 export const getExtraShiftsService = async (
-  query: GetExtraShiftsQuery, userId: string
+  query: GetExtraShiftsQuery,
+  userId: string,
 ): Promise<GetExtraShiftsResponse> => {
-  const {
-    skill,
-    date,
-    latitude,
-    longitude,
-    limit = 10,
-    page = 1,
-  } = query;
+  const { skill, date, latitude, longitude, limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
 
   const conditions: string[] = [
@@ -479,7 +473,8 @@ export const getExtraShiftsService = async (
   const offsetIndex = paramIndex;
   values.push(skip);
 
-  const shifts = await prisma.$queryRawUnsafe<Shift[]>(`
+  const shifts = await prisma.$queryRawUnsafe<Shift[]>(
+    `
     SELECT
       s.*,
 
@@ -499,7 +494,9 @@ export const getExtraShiftsService = async (
 
     LIMIT $${limitIndex}
     OFFSET $${offsetIndex}
-  `, ...values);
+  `,
+    ...values,
+  );
 
   return shifts as GetExtraShiftsResponse;
 };
@@ -576,7 +573,9 @@ export const getReferredEmployeeService = async (
 };
 
 // F. Get Open shifts for employee (specific shifts -> check shifs table, public shifts -> check notificaion table)
-export const getOpenShiftsForEmployeeService = async (userId: string): Promise<GetOpenShiftsForEmployeeResponse> => {
+export const getOpenShiftsForEmployeeService = async (
+  userId: string,
+): Promise<GetOpenShiftsForEmployeeResponse> => {
   /*
     1. Specific shifts directly assigned
   */
@@ -588,11 +587,11 @@ export const getOpenShiftsForEmployeeService = async (userId: string): Promise<G
 
     include: {
       original_employee: {
-        select: safeUserSelect
+        select: safeUserSelect,
       },
 
       employer: {
-        select: safeEmployerSelect
+        select: safeEmployerSelect,
       },
     },
   });
@@ -637,27 +636,27 @@ export const getOpenShiftsForEmployeeService = async (userId: string): Promise<G
   const publicShifts =
     publicShiftIds.length > 0
       ? await prisma.shift.findMany({
-        where: {
-          id: {
-            in: publicShiftIds,
+          where: {
+            id: {
+              in: publicShiftIds,
+            },
+
+            status: 'open',
+
+            // Ensure still public
+            replacement_employee_id: null,
           },
 
-          status: 'open',
+          include: {
+            original_employee: {
+              select: safeUserSelect,
+            },
 
-          // Ensure still public
-          replacement_employee_id: null,
-        },
-
-        include: {
-          original_employee: {
-            select: safeUserSelect
+            employer: {
+              select: safeEmployerSelect,
+            },
           },
-
-          employer: {
-            select: safeEmployerSelect
-          },
-        },
-      })
+        })
       : [];
 
   /*
@@ -686,11 +685,7 @@ export const getOpenShiftsForEmployeeService = async (userId: string): Promise<G
   /*
     7. Sort newest first
   */
-  shifts.sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() -
-      new Date(a.created_at).getTime()
-  );
+  shifts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return shifts;
 };

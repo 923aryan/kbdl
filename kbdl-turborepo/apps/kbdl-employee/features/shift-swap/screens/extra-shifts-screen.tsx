@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Text,
   useColorScheme,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
@@ -66,11 +66,29 @@ export default function ExtraShiftScreen() {
         const lat = location.coords.latitude;
         const lon = location.coords.longitude;
 
-        setLocationMsg(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-
         setValue('latitude', lat);
         setValue('longitude', lon);
-        console.log("fetched locaiton: ", `${lat}, ${lon}`)
+
+        const geocode = await Location.reverseGeocodeAsync({
+          latitude: lat,
+          longitude: lon,
+        });
+
+        if (geocode && geocode.length > 0) {
+          const place = geocode[0];
+          const cityName =
+            place.street ||
+            place.name ||
+            place.city ||
+            place.district ||
+            place.subregion ||
+            place.region ||
+            'Unknown Location';
+          setLocationMsg(`${cityName} ✓`);
+        } else {
+          setLocationMsg('Location Fetched ✓');
+        }
+        console.log('fetched locaiton: ', `${lat}, ${lon}`);
       } catch (e) {
         setLocationMsg('Error fetching location');
       }
@@ -88,16 +106,10 @@ export default function ExtraShiftScreen() {
       const selectedDate = new Date(data.date);
 
       const utcDate = new Date(
-        Date.UTC(
-          selectedDate.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate()
-        )
+        Date.UTC(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()),
       );
 
-      params.push(
-        `date=${encodeURIComponent(utcDate.toISOString())}`
-      );
+      params.push(`date=${encodeURIComponent(utcDate.toISOString())}`);
     }
 
     params.push(`limit=${data.limit ?? 10}`);
@@ -176,7 +188,9 @@ export default function ExtraShiftScreen() {
             {filterQuery ? (
               <ShiftResults query={filterQuery} styles={styles} />
             ) : (
-              <Text style={styles.noResultsText}>Tap "Search Shifts" to find available shifts.</Text>
+              <Text style={styles.noResultsText}>
+                Tap "Search Shifts" to find available shifts.
+              </Text>
             )}
           </View>
         </ScrollView>
@@ -229,7 +243,7 @@ const createStyles = (theme: typeof Colors.light) =>
     },
   });
 function ShiftResults({ query, styles }: { query: string; styles: any }) {
-  console.log("getting it: ", query)
+  console.log('getting it: ', query);
   const { data: response, isLoading, isError, error } = useGetExtraShifts(query);
 
   // Safely grab the `data` array out of the backend's response object
@@ -240,7 +254,9 @@ function ShiftResults({ query, styles }: { query: string; styles: any }) {
   }
 
   if (isError) {
-    return <ErrorMessageBox message={error?.message || 'Error fetching shifts'} onClose={() => { }} />;
+    return (
+      <ErrorMessageBox message={error?.message || 'Error fetching shifts'} onClose={() => {}} />
+    );
   }
 
   if (shifts.length === 0) {

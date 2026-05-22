@@ -34,7 +34,7 @@ export type GetEmployeeShiftsResponse = (Shift & {
   employer: Pick<Employer, 'company_name' | 'company_address'> & {
     company_location: [number, number];
   };
-  original_employee: Pick<User, 'name' | 'phone_no'>
+  original_employee: Pick<User, 'name' | 'phone_no'>;
 })[];
 export type GetScheduledShiftsResponse = GetEmployeeShiftsResponse;
 export type GetEmployerShiftsResponse = Shift[];

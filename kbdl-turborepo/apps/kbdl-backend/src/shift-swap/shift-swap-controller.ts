@@ -100,7 +100,7 @@ const updateShift = async (req: Request, res: Response) => {
 // C. Get Extra Shifts (Public matching)
 const getExtraShifts = async (req: Request, res: Response) => {
   const input: GetExtraShiftsRequest = validate(getExtraShiftsSchema, req);
-  const userId = req.payload.user.id
+  const userId = req.payload.user.id;
   const shifts = await getExtraShiftsService(input.query, userId);
   sendSuccess(res, 'Extra shifts retrieved', shifts, 200);
 };
@@ -137,6 +137,5 @@ export {
   getReferredEmployee,
   getScheduledShifts,
   rateShift,
-  updateShift
+  updateShift,
 };
-

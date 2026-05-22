@@ -12,7 +12,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { Feather } from '@expo/vector-icons';
 
-function AnimatedIcon({ focused, theme, children }: { focused: boolean; theme: any; children: React.ReactNode }) {
+function AnimatedIcon({
+  focused,
+  theme,
+  children,
+}: {
+  focused: boolean;
+  theme: any;
+  children: React.ReactNode;
+}) {
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
 
@@ -37,10 +45,9 @@ function AnimatedIcon({ focused, theme, children }: { focused: boolean; theme: a
 
   return (
     <Animated.View style={[{ alignItems: 'center', justifyContent: 'center' }, animatedStyle]}>
-      <View style={[
-        styles.iconCircle,
-        { backgroundColor: focused ? theme.primary : 'transparent' }
-      ]}>
+      <View
+        style={[styles.iconCircle, { backgroundColor: focused ? theme.primary : 'transparent' }]}
+      >
         {children}
       </View>
     </Animated.View>
@@ -75,11 +82,7 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <AnimatedIcon focused={focused} theme={theme}>
-              <Feather
-                name="user"
-                size={24}
-                color={focused ? '#FFFFFF' : theme.tabIconDefault}
-              />
+              <Feather name="user" size={24} color={focused ? '#FFFFFF' : theme.tabIconDefault} />
             </AnimatedIcon>
           ),
         }}
@@ -90,11 +93,7 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <AnimatedIcon focused={focused} theme={theme}>
-              <Feather
-                name="home"
-                size={24}
-                color={focused ? '#FFFFFF' : theme.tabIconDefault}
-              />
+              <Feather name="home" size={24} color={focused ? '#FFFFFF' : theme.tabIconDefault} />
             </AnimatedIcon>
           ),
         }}
@@ -105,11 +104,7 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ focused }) => (
             <AnimatedIcon focused={focused} theme={theme}>
-              <Feather
-                name="bell"
-                size={24}
-                color={focused ? '#FFFFFF' : theme.tabIconDefault}
-              />
+              <Feather name="bell" size={24} color={focused ? '#FFFFFF' : theme.tabIconDefault} />
             </AnimatedIcon>
           ),
         }}

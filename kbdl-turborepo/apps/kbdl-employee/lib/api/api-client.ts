@@ -103,7 +103,7 @@ async function http<T>(
           details: errorBody.error?.details || errorBody,
         },
       };
-      console.log("when error ", errorResponse)
+      console.log('when error ', errorResponse);
       if (showToast) {
         Toast.show({
           type: 'error',

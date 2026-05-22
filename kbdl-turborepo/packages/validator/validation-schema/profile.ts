@@ -12,47 +12,26 @@ const locationSchema = z.object({
 
 export const updateUserProfileSchema = z.object({
   body: z.object({
-    name: z
-      .string()
-      .min(1, 'Name is too short')
-      .max(255, 'Name is too long')
-      .optional(),
+    name: z.string().min(1, 'Name is too short').max(255, 'Name is too long').optional(),
 
-    default_address: z
-      .string()
-      .max(500, 'Address is too long')
-      .optional(),
+    default_address: z.string().max(500, 'Address is too long').optional(),
 
-    experience: z
-      .number()
-      .int()
-      .min(0, 'Experience cannot be negative')
-      .optional(),
+    experience: z.number().int().min(0, 'Experience cannot be negative').optional(),
 
-    city: z
-      .string()
-      .max(100, 'City name is too long')
-      .optional(),
+    city: z.string().max(100, 'City name is too long').optional(),
 
-    area: z
-      .string()
-      .max(100, 'Area name is too long')
-      .optional(),
+    area: z.string().max(100, 'Area name is too long').optional(),
 
     skills: z
       .array(z.string().min(1, 'Skill cannot be empty'))
       .max(20, 'Too many skills')
       .optional(),
 
-    extra_shift: z
-      .boolean()
-      .optional(),
+    extra_shift: z.boolean().optional(),
 
-    preferences: userPreferencesSchema
-      .optional(),
+    preferences: userPreferencesSchema.optional(),
 
-    location: locationSchema
-      .optional(),
+    location: locationSchema.optional(),
   }),
 });
 

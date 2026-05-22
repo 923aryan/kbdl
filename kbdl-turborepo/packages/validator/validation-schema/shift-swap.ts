@@ -61,15 +61,9 @@ export const getExtraShiftsSchema = z.object({
   query: z.object({
     skill: z.string().optional(),
     date: z.string().datetime({ message: 'Date must be a valid ISO datetime string' }).optional(),
-    latitude: z.coerce
-      .number()
-      .min(-90)
-      .max(90),
+    latitude: z.coerce.number().min(-90).max(90),
 
-    longitude: z.coerce
-      .number()
-      .min(-180)
-      .max(180),
+    longitude: z.coerce.number().min(-180).max(180),
     limit: z
       .string()
       .regex(/^\d+$/, 'Limit must be a number')

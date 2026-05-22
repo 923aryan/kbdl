@@ -6,5 +6,4 @@ export default function ExtraShiftRoute() {
       <ExtraShiftScreen />
     </ProtectedScreen>
   );
-
 }

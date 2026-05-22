@@ -11,7 +11,7 @@ import type {
   UpdateShiftPayload,
   UpdateShiftResponse,
   getReferredEmployeePayload,
-  getReferredEmployeeResponse
+  getReferredEmployeeResponse,
 } from '@repo/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { OpenShift } from './types/shift-swap-types';
@@ -42,7 +42,7 @@ export const useGetEmployeeShifts = () => {
     queryFn: async () => {
       const response = await api.get<GetEmployeeShiftsResponse>('/shift-swap/employee');
       return response.data;
-    }
+    },
   });
 };
 
@@ -73,9 +73,7 @@ export const useGetExtraShifts = (query?: string) => {
     queryKey: ['extra-shifts', query],
 
     queryFn: async () => {
-      const response = await api.get<GetExtraShiftsResponse>(
-        `/shift-swap/extra?${query}`
-      );
+      const response = await api.get<GetExtraShiftsResponse>(`/shift-swap/extra?${query}`);
 
       return response.data;
     },

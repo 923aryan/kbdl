@@ -13,11 +13,7 @@ interface Loader {
   fullScreen?: boolean;
 }
 
-export default function Loader({
-  size = 40,
-  message,
-  fullScreen = false
-}: Loader) {
+export default function Loader({ size = 40, message, fullScreen = false }: Loader) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
@@ -32,7 +28,7 @@ export default function Loader({
         duration: 1000,
         easing: Easing.linear, // Constant speed
         useNativeDriver: true, // Offloads animation to native UI thread for smooth performance
-      })
+      }),
     ).start();
   }, [spinValue]);
 
@@ -43,11 +39,13 @@ export default function Loader({
   });
 
   return (
-    <View style={[
-      styles.container,
-      fullScreen && styles.fullScreenContainer,
-      fullScreen && { backgroundColor: theme.background }
-    ]}>
+    <View
+      style={[
+        styles.container,
+        fullScreen && styles.fullScreenContainer,
+        fullScreen && { backgroundColor: theme.background },
+      ]}
+    >
       <Animated.View
         style={[
           {
@@ -66,10 +64,7 @@ export default function Loader({
 
       {/* Conditionally render the typography component if a message is passed */}
       {message && (
-        <Typography
-          variant="caption"
-          style={[styles.message, { color: theme.textSecondary }]}
-        >
+        <Typography variant="caption" style={[styles.message, { color: theme.textSecondary }]}>
           {message}
         </Typography>
       )}

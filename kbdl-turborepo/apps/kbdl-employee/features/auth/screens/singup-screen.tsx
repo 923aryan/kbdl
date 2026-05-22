@@ -76,8 +76,8 @@ export default function SignupScreen() {
       onError: (err) => {
         Toast.show({
           text1: err.message,
-          type: "error"
-        })
+          type: 'error',
+        });
         // console.error('Registration failed', err);
       },
     });
@@ -249,10 +249,7 @@ export default function SignupScreen() {
             {/* Bottom Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t.alreadyHaveAccount}</Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.push('/auth/login')}
-              >
+              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/auth/login')}>
                 <Text style={styles.footerLink}>{t.loginNow}</Text>
               </TouchableOpacity>
             </View>

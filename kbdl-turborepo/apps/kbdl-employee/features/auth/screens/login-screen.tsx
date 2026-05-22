@@ -66,8 +66,8 @@ export default function LoginScreen() {
       onError: (err) => {
         Toast.show({
           text1: err.message,
-          type: "error"
-        })
+          type: 'error',
+        });
         // console.error('Failed to send OTP', err);
       },
     });
@@ -145,10 +145,7 @@ export default function LoginScreen() {
               <Text style={styles.footerText}>
                 {t.dontHaveAccount || "Don't have an account? "}
               </Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.push('/auth/register')}
-              >
+              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/auth/register')}>
                 <Text style={styles.footerLink}>{t.registerNow || 'Sign up now'}</Text>
               </TouchableOpacity>
             </View>

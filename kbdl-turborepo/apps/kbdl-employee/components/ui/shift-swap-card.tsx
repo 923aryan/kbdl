@@ -56,7 +56,6 @@ const formatTime = (dateInput: string | Date) => {
 };
 
 export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
-
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   // console.log("inside card: ", shift)
@@ -105,8 +104,8 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
     }
   };
   useEffect(() => {
-    console.log("now its: ", isSuccessModalVisible)
-  }, [isSuccessModalVisible])
+    console.log('now its: ', isSuccessModalVisible);
+  }, [isSuccessModalVisible]);
   const onAcceptPress = () => {
     acceptShift(
       { shift_id: shift.id },
@@ -153,7 +152,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             Toast.show({
               type: 'error',
               text1: error.message,
-            })
+            });
           },
         },
       );
