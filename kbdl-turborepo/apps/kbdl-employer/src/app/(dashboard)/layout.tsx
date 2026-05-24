@@ -2,30 +2,36 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useAuthStore } from '../../features/auth/store/auth-store';
+import { useAuthStore } from '../../features/auth/stores/use-auth-store';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+
+  console.log("this is src/app/(dashboard)/layout.tsx")
+
   const router = useRouter();
 
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const employer = useAuthStore((state) => state.employer);
 
   const hydrateAuth = useAuthStore((state) => state.hydrateAuth);
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
     hydrateAuth();
+    setIsMounted(true);
   }, [hydrateAuth]);
 
   useEffect(() => {
-    if (accessToken === null) {
+    if (isMounted && !employer) {
       router.replace('/login');
     }
-  }, [accessToken, router]);
+  }, [employer, isMounted, router]);
 
-  if (!accessToken) {
+  if (!isMounted || !employer) {
     return null;
   }
 

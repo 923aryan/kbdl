@@ -24,9 +24,7 @@ export const useShiftSwapStore = create<ShiftSwapStore>((set) => ({
 
   addShift: (shift) =>
     set((state) => {
-      const exists = state.shifts.some(
-        (s) => s.id === shift.id,
-      );
+      const exists = state.shifts.some((s) => s.id === shift.id);
 
       if (exists) {
         return state;
@@ -39,9 +37,7 @@ export const useShiftSwapStore = create<ShiftSwapStore>((set) => ({
 
   removeShift: (shiftId) =>
     set((state) => ({
-      shifts: state.shifts.filter(
-        (shift) => shift.id !== shiftId,
-      ),
+      shifts: state.shifts.filter((shift) => shift.id !== shiftId),
     })),
 
   clearShifts: () =>

@@ -29,15 +29,11 @@ const formatTime = (dateInput: string | Date) => {
   return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-export default function ShiftCard({
-  shift,
-  distance,
-  buttonTitle,
-}: ShiftCardProps) {
+export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   // console.log("inside card: ", shift)
-  console.log("button title ", buttonTitle)
+  console.log('button title ', buttonTitle);
   // Destructure the needed fields from the shift object
   const {
     skill_required,
@@ -80,13 +76,9 @@ export default function ShiftCard({
     }
   };
 
-  const onButtonPress = () => {
+  const onButtonPress = () => {};
 
-  }
-
-  const onCancelPress = () => {
-
-  }
+  const onCancelPress = () => {};
 
   const statusConfig = getStatusConfig(status);
 
@@ -185,7 +177,6 @@ export default function ShiftCard({
               onPress={onButtonPress}
               containerStyle={{ flex: 1 }}
             />
-
           </View>
         )}
       </View>
@@ -216,7 +207,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     marginLeft: 8,
     fontSize: 14,
-    fontWeight: "800"
+    fontWeight: '800',
   },
   headerRight: {
     flexDirection: 'row',

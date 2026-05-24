@@ -12,7 +12,7 @@ import type {
   UpdateShiftPayload,
   UpdateShiftResponse,
   getReferredEmployeePayload,
-  getReferredEmployeeResponse
+  getReferredEmployeeResponse,
 } from '@repo/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { OpenShift } from './types/shift-swap-types';

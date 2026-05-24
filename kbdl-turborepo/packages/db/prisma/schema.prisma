@@ -451,16 +451,35 @@ model Order {
   @@map("orders")
 }
 
-model OtpVerification {
-  id          String   @id @default(uuid()) @db.Uuid
-  phone_no    String?  @unique @db.VarChar
-  email       String?  @unique @db.VarChar
-  otp         String   @db.VarChar
-  expires_at  DateTime @db.Timestamptz()
-  name        String?
-  preferences Json?    @default("{}")
-  created_at  DateTime @default(now()) @db.Timestamptz()
+// model OtpVerification {
+//   id          String   @id @default(uuid()) @db.Uuid
+//   phone_no    String?  @unique @db.VarChar
+//   email       String?  @unique @db.VarChar
+//   otp         String   @db.VarChar
+//   expires_at  DateTime @db.Timestamptz()
+//   name        String?
+//   preferences Json?    @default("{}")
+//   created_at  DateTime @default(now()) @db.Timestamptz()
 
+//   @@map("otp_verifications")
+// }
+
+model OtpVerification {
+  id String @id @default(uuid()) @db.Uuid
+
+  phone_no String? @db.VarChar
+  email    String? @db.VarChar
+
+  otp  String @db.VarChar
+  role String @db.VarChar
+
+  payload Json? @default("{}")
+
+  expires_at DateTime @db.Timestamptz()
+  created_at DateTime @default(now()) @db.Timestamptz()
+
+  @@unique([phone_no, role])
+  @@unique([email, role])
   @@map("otp_verifications")
 }
 

@@ -52,6 +52,8 @@ async function bootstrap() {
   try {
     await prisma.$connect();
 
+    await prisma.$queryRaw`SELECT 1`;
+
     console.log('✅ Database connected');
 
     await redis.ping();

@@ -1,20 +1,21 @@
 import {
   EmployerRegisterRequest,
-  EmployerRegisterResponse,
   EmployerVerifyOTPResponse,
+  EmployerVerifyRegisterRequest,
   EmpployerSendOTPRequest,
   EmpployerVerifyOTPRequest,
   TokenRefreshResponse,
   UserRegisterRequest,
   UserSendOTPRequest,
   UserVerifyOTPRequest,
-  UserVerifyRegisterRequest,
+  UserVerifyRegisterRequest
 } from '@repo/types';
 import { env } from '@repo/validator/server';
 import {
   employerRegisterSchema,
   employerSendOtpSchema,
   employerVerifyOtpSchema,
+  employerVerifyRegisterSchema,
   userRegisterSchema,
   userSendOtpSchema,
   userVerifyOtpSchema,
@@ -26,20 +27,16 @@ import { sendSuccess } from '../utils/send-success';
 import { validate } from '../utils/validate';
 import {
   generateRefreshTokenService,
-  registerOrgService,
+  registerEmployerService,
   registerUserService,
   sendEmployerOtpService,
   sendUserOtpService,
   verifyEmployerOtpService,
-  verifyRegistrationOtpService,
+  verifyEmployerRegistrationOtpService,
   verifyUserOtpService,
+  verifyUserRegistrationOtpService,
 } from './auth-service';
 
-const registerOrg = async (req: Request, res: Response) => {
-  const registerInput: EmployerRegisterRequest = validate(employerRegisterSchema, req);
-  const org: EmployerRegisterResponse = await registerOrgService(registerInput.body);
-  sendSuccess(res, 'Org Created', org, 201);
-};
 
 const registerUser = async (req: Request, res: Response) => {
   const registerInput: UserRegisterRequest = validate(userRegisterSchema, req);
@@ -49,7 +46,7 @@ const registerUser = async (req: Request, res: Response) => {
 
 const verifyRegisteredUser = async (req: Request, res: Response) => {
   const registerInput: UserVerifyRegisterRequest = validate(userVerifyRegisterSchema, req);
-  const response = await verifyRegistrationOtpService(registerInput.body);
+  const response = await verifyUserRegistrationOtpService(registerInput.body);
   const { accessToken, user, refreshToken } = response;
   setAuthCookies(res, accessToken, refreshToken);
   sendSuccess(res, 'User Created', { accessToken, user, refreshToken }, 201);
@@ -61,12 +58,27 @@ const sendUserOtp = async (req: Request, res: Response) => {
   sendSuccess(res, 'OTP sent successfully to phone', null, 200);
 };
 
+
 const verifyUserOtp = async (req: Request, res: Response) => {
   const input: UserVerifyOTPRequest = validate(userVerifyOtpSchema, req);
   const response = await verifyUserOtpService(input.body);
   const { accessToken, user, refreshToken } = response;
   setAuthCookies(res, accessToken, refreshToken);
   sendSuccess(res, 'User login successful', { user, accessToken, refreshToken }, 200);
+};
+
+const registerEmployer = async (req: Request, res: Response) => {
+  const registerInput: EmployerRegisterRequest = validate(employerRegisterSchema, req);
+  await registerEmployerService(registerInput.body);
+  sendSuccess(res, 'Org Created', `OTP sent to ${registerInput.body.email}`, 201);
+};
+
+const verifyRegisteredEmployer = async (req: Request, res: Response) => {
+  const registerInput: EmployerVerifyRegisterRequest = validate(employerVerifyRegisterSchema, req);
+  const response = await verifyEmployerRegistrationOtpService(registerInput.body);
+  const { accessToken, employer, refreshToken } = response;
+  setAuthCookies(res, accessToken, refreshToken);
+  sendSuccess(res, 'Employer Created', { accessToken, employer, refreshToken }, 201);
 };
 
 const sendEmployerOtp = async (req: Request, res: Response) => {
@@ -142,7 +154,7 @@ const employerTokenRefresh = async (req: Request, res: Response) => {
   );
 };
 
-const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
+export const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
@@ -173,12 +185,12 @@ const clearAuthCookies = (res: Response) => {
 export {
   employerTokenRefresh,
   logout,
-  registerOrg,
+  registerEmployer as registerOrg,
   registerUser,
   sendEmployerOtp,
   sendUserOtp,
   userTokenRefresh,
-  verifyEmployerOtp,
-  verifyRegisteredUser,
-  verifyUserOtp,
+  verifyEmployerOtp, verifyRegisteredEmployer, verifyRegisteredUser,
+  verifyUserOtp
 };
+

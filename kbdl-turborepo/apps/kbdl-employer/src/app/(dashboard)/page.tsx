@@ -1,5 +1,6 @@
 // src/app/(dashboard)/page.tsx
-
+'use client'
 export default function DashboardPage() {
-  return <div>Dashboard</div>;
+  console.log("this is src/app/(dashboard)/page.tsx")
+  return <div>Dashboardddd</div>;
 }

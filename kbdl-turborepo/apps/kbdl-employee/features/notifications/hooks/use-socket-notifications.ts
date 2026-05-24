@@ -18,10 +18,7 @@ export function useSocketNotifications(socket: Socket | null) {
 
       addNotification(notification);
 
-      if (
-        notification.type === 'public_shift' ||
-        notification.type === 'shift_swap_request'
-      ) {
+      if (notification.type === 'public_shift' || notification.type === 'shift_swap_request') {
         queryClient.invalidateQueries({
           queryKey: ['employee-open-shifts'],
         });
