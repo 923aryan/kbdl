@@ -15,23 +15,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
 
   const employer = useAuthStore((state) => state.employer);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
 
   const hydrateAuth = useAuthStore((state) => state.hydrateAuth);
 
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    hydrateAuth();
+    if (!isHydrated) {
+      hydrateAuth();
+    }
     setIsMounted(true);
-  }, [hydrateAuth]);
+  }, [hydrateAuth, isHydrated]);
 
   useEffect(() => {
-    if (isMounted && !employer) {
+    if (isMounted && isHydrated && !employer) {
+      console.log("navigating to login")
       router.replace('/login');
     }
-  }, [employer, isMounted, router]);
+  }, [employer, isMounted, isHydrated, router]);
 
-  if (!isMounted || !employer) {
+  if (!isMounted || !isHydrated || !employer) {
     return null;
   }
 
