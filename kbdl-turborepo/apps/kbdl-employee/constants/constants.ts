@@ -6,5 +6,4 @@ export const ShiftStatus = {
   cancelled: 'cancelled',
 } as const;
 
-export type ShiftStatus =
-  (typeof ShiftStatus)[keyof typeof ShiftStatus];
+export type ShiftStatus = (typeof ShiftStatus)[keyof typeof ShiftStatus];

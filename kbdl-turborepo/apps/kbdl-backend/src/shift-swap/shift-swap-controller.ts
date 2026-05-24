@@ -2,6 +2,7 @@ import {
   AcceptShiftRequest,
   CancelShiftRequest,
   CreateShiftRequest,
+  GetEmployeeShiftsResponse,
   GetExtraShiftsRequest,
   getReferredEmployeeRequest,
   RateShiftRequest,
@@ -59,7 +60,7 @@ const acceptShiftSwap = async (req: Request, res: Response) => {
 const getEmployeeShifts = async (req: Request, res: Response) => {
   const employeeId = req.payload.user.id;
   const shifts = await getEmployeeShiftsService(employeeId);
-  sendSuccess(res, 'Scheduled shifts retrieved', shifts, 200);
+  sendSuccess<GetEmployeeShiftsResponse>(res, 'Scheduled shifts retrieved', shifts, 200);
 };
 
 // B. Get Scheduled Shifts (Worker)
@@ -99,7 +100,8 @@ const updateShift = async (req: Request, res: Response) => {
 // C. Get Extra Shifts (Public matching)
 const getExtraShifts = async (req: Request, res: Response) => {
   const input: GetExtraShiftsRequest = validate(getExtraShiftsSchema, req);
-  const shifts = await getExtraShiftsService(input.query);
+  const userId = req.payload.user.id;
+  const shifts = await getExtraShiftsService(input.query, userId);
   sendSuccess(res, 'Extra shifts retrieved', shifts, 200);
 };
 

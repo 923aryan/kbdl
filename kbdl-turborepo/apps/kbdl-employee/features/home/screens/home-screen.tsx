@@ -6,7 +6,15 @@ import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useColorScheme } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -14,14 +22,12 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const { data } = useGetOpenShifts();
-  const setShifts = useShiftSwapStore(
-    (s) => s.setShifts,
-  );
+  const setShifts = useShiftSwapStore((s) => s.setShifts);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (data) {
-      console.log("shfits : ", data)
+      console.log('shfits : ', data);
       setShifts(data);
     }
   }, [data, setShifts]);
@@ -73,11 +79,9 @@ export default function HomeScreen() {
       icon: 'search',
       iconColor: '#F2994A',
       bgColor: '#FFF4E5',
-      route: '/find-job',
+      route: '/jobs/find-jobs',
     },
   ];
-
-
 
   return (
     <ScrollView
@@ -116,35 +120,6 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
-      {/* Shift Cards List */}
-      <View style={styles.shiftListContainer}>
-        <ScrollView
-          ref={scrollViewRef}
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
-        >
-          {data?.map((shift) => (
-            <ShiftCard key={shift.id} shift={shift} buttonTitle='Approve' />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Header */}
-      <View style={styles.header}>
-
-
-        {/* Refer Button */}
-        <TouchableOpacity
-          style={styles.referBtn}
-        // onPress={() => router.push("/refer")}
-        >
-          <View style={styles.referContent}>
-            <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
-
-            <Text style={styles.referText}>Refer</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
 
       {/* Search Box */}
       <View style={styles.searchBox}>
@@ -154,6 +129,33 @@ export default function HomeScreen() {
 
         <TextInput placeholder="Search" placeholderTextColor="#999" style={styles.input} />
       </View>
+      {/* Shift Cards List */}
+      <View style={styles.shiftListContainer}>
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+        >
+          {data?.map((shift) => (
+            <ShiftCard key={shift.id} shift={shift} buttonTitle="Approve" />
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Header */}
+      <View style={styles.header}>
+        {/* Refer Button */}
+        <TouchableOpacity
+          style={styles.referBtn}
+          // onPress={() => router.push("/refer")}
+        >
+          <View style={styles.referContent}>
+            <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
+
+            <Text style={styles.referText}>Refer</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Cards */}
       {cards.map((item) => (
@@ -161,7 +163,9 @@ export default function HomeScreen() {
           key={item.id}
           title={item.title}
           description={item.subtitle}
-          IconComponent={() => <Ionicons name={item.icon as any} size={24} color={item.iconColor} />}
+          IconComponent={() => (
+            <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
+          )}
           iconBgColor={item.bgColor}
           onPress={() => router.push(item.route as any)}
           theme={theme}
@@ -183,7 +187,6 @@ const styles = StyleSheet.create({
   },
 
   shiftListContainer: {
-    paddingTop: 12,
     maxHeight: 240, // Sets the height to roughly show only one card at a time
     marginBottom: 10,
   },
@@ -198,6 +201,7 @@ const styles = StyleSheet.create({
 
   locationWrapper: {
     position: 'relative',
+    paddingBottom: 10,
   },
 
   locationRow: {
@@ -265,16 +269,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-
     borderWidth: 1,
     borderColor: '#ddd',
-
     borderRadius: 12,
-
     paddingHorizontal: 12,
-    paddingVertical: 10,
-
-    marginBottom: 20,
+    paddingVertical: 5,
+    marginBottom: 10,
   },
 
   divider: {

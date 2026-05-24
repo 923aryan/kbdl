@@ -21,9 +21,10 @@ export const useRegisterUser = () => {
 export const useVerifyRegisterUser = () => {
   return useMutation({
     mutationFn: async (credentials: UserVerifyRegisterPayload) => {
-      const response = await api.post<{
-        data: { user: User; accessToken: string; refreshToken: string };
-      }>('/auth/register/user/verify', credentials);
+      const response = await api.post<{ user: User; accessToken: string; refreshToken: string }>(
+        '/auth/register/user/verify',
+        credentials,
+      );
       return response.data; // { user, accessToken, refreshToken }
     },
   });

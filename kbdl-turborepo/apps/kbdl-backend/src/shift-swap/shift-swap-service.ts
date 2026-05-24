@@ -1,11 +1,15 @@
-import { prisma, Rating, Shift } from '@repo/db/server';
+import { prisma, Rating, safeEmployerSelect, safeUserSelect, Shift } from '@repo/db/server';
 import {
   AcceptShiftPayload,
   CreateShiftPayload,
+  GetEmployeeShiftsResponse,
   GetExtraShiftsQuery,
+  GetExtraShiftsResponse,
+  GetOpenShiftsForEmployeeResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
   RateShiftPayload,
+  ShiftWithNotification,
   UpdateShiftPayload,
 } from '@repo/types';
 import { publicShiftQueue } from '../config/queues/public-shift-queue';
@@ -191,6 +195,21 @@ export const acceptShiftService = async (
     );
   }
 
+  if (!shift?.replacement_employee_id) {
+    await prisma.notification.updateMany({
+      where: {
+        type: 'public_shift',
+        user_id: workerId,
+        data: {
+          path: ['shiftId'],
+          equals: shift.id,
+        },
+      },
+      data: {
+        isRead: true,
+      },
+    });
+  }
   // Accept the shift
   const updatedShift = await prisma.shift.update({
     where: { id: payload.shift_id },
@@ -205,31 +224,47 @@ export const acceptShiftService = async (
 };
 
 // B1. See Accepted Shifts (Worker)
-export const getEmployeeShiftsService = async (employeeId: string): Promise<Shift[]> => {
-  const shifts = await prisma.shift.findMany({
-    where: {
-      replacement_employee_id: employeeId,
-      request_accepted: true,
-      status: {
-        in: ['matched', 'approved'], // Fetching scheduled/accepted shifts
-      },
-    },
-    include: {
-      employer: {
-        select: { company_name: true, company_address: true },
-      },
-      original_employee: {
-        select: { name: true, phone_no: true },
-      },
-    },
-    orderBy: {
-      shift_start: 'asc',
-    },
-  });
+export const getEmployeeShiftsService = async (
+  employeeId: string,
+): Promise<GetEmployeeShiftsResponse> => {
+  const shifts = await prisma.$queryRaw`
+    SELECT
+      s.*,
 
-  return shifts;
+      json_build_object(
+        'company_name', e.company_name,
+        'company_address', e.company_address,
+
+        'company_location',
+        ARRAY[
+          ST_X(e.company_location::geometry),
+          ST_Y(e.company_location::geometry)
+        ]
+      ) as employer,
+
+      json_build_object(
+        'name', u.name,
+        'phone_no', u.phone_no
+      ) as original_employee
+
+    FROM shifts s
+
+    INNER JOIN employers e
+      ON e.id = s.employer_id
+
+    INNER JOIN users u
+      ON u.id = s.original_employee_id
+
+    WHERE
+      s.replacement_employee_id = ${employeeId}
+      AND s.request_accepted = true
+      AND s.status IN ('matched', 'approved')
+
+    ORDER BY s.shift_start ASC
+  `;
+
+  return shifts as GetEmployeeShiftsResponse;
 };
-
 // B2. See Created Shifts (Employer)
 export const getEmployerShiftsService = async (employerId: string): Promise<Shift[]> => {
   const shifts = await prisma.shift.findMany({
@@ -270,7 +305,7 @@ export const getScheduledShiftsService = async (employeeId: string): Promise<Shi
       shift_start: 'asc',
     },
   });
-
+  console.log('shifts are ', shifts);
   return shifts;
 };
 
@@ -296,7 +331,7 @@ export const cancelShiftService = async (
   }
 
   // Authorization check
-  if (userType === 'user') {
+  if (userType === ROLES.USER) {
     // A user can cancel if they are the one who requested it OR the one who accepted it
     if (shift.original_employee_id !== userId && shift.replacement_employee_id !== userId) {
       throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to cancel this shift.');
@@ -364,49 +399,107 @@ export const updateShiftService = async (
 };
 
 // C. Get Extra Shifts (Public matching)
-export const getExtraShiftsService = async (query: GetExtraShiftsQuery): Promise<Shift[]> => {
-  const { skill, date, limit = 10, page = 1 } = query;
+export const getExtraShiftsService = async (
+  query: GetExtraShiftsQuery,
+  userId: string,
+): Promise<GetExtraShiftsResponse> => {
+  const { skill, date, latitude, longitude, limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
-  console.log('skill is ', skill);
-  // Build dynamic where clause for public matching
-  const whereClause: any = {
-    status: 'open',
-    request_accepted: false,
-    replacement_employee_id: null, // Ensures it's public, not directed at a specific user
-  };
 
+  const conditions: string[] = [
+    `s.status = 'open'`,
+    `s.request_accepted = false`,
+    `s.replacement_employee_id IS NULL`,
+    `e.company_location IS NOT NULL`,
+  ];
+
+  const values: any[] = [];
+  let paramIndex = 1;
+
+  // Nearby filter (10km radius)
+  conditions.push(`
+    ST_DWithin(
+      e.company_location,
+      ST_SetSRID(
+        ST_MakePoint($${paramIndex}, $${paramIndex + 1}),
+        4326
+      )::geography,
+      10000
+    )
+  `);
+
+  // IMPORTANT:
+  // ST_MakePoint(longitude, latitude)
+  values.push(longitude, latitude);
+
+  paramIndex += 2;
+
+  conditions.push(`
+    s.original_employee_id != $${paramIndex}
+  `);
+
+  values.push(userId);
+
+  paramIndex++;
+
+  // Skill filter
   if (skill) {
-    whereClause.skill_required = {
-      contains: skill,
-      mode: 'insensitive', // Postgres-specific ILIKE via Prisma
-    };
+    conditions.push(`
+      s.skill_required ILIKE $${paramIndex}
+    `);
+
+    values.push(`%${skill}%`);
+
+    paramIndex++;
   }
 
+  // Date filter
   if (date) {
-    const targetDate = new Date(date);
-    // Find shifts occurring on or after the queried date
-    whereClause.shift_date = {
-      gte: targetDate,
-    };
+    conditions.push(`
+      s.shift_date >= $${paramIndex}
+    `);
+
+    values.push(new Date(date));
+
+    paramIndex++;
   }
 
-  const shifts = await prisma.shift.findMany({
-    where: whereClause,
-    include: {
-      employer: {
-        select: { company_name: true, company_address: true },
-      },
-    },
-    skip,
-    take: limit,
-    orderBy: {
-      shift_date: 'asc',
-    },
-  });
+  // Pagination
+  const limitIndex = paramIndex;
+  values.push(limit);
 
-  return shifts;
+  paramIndex++;
+
+  const offsetIndex = paramIndex;
+  values.push(skip);
+
+  const shifts = await prisma.$queryRawUnsafe<Shift[]>(
+    `
+    SELECT
+      s.*,
+
+      json_build_object(
+        'company_name', e.company_name,
+        'company_address', e.company_address
+      ) AS employer
+
+    FROM shifts s
+
+    INNER JOIN employers e
+      ON s.employer_id = e.id
+
+    WHERE ${conditions.join(' AND ')}
+
+    ORDER BY s.shift_date ASC
+
+    LIMIT $${limitIndex}
+    OFFSET $${offsetIndex}
+  `,
+    ...values,
+  );
+
+  return shifts as GetExtraShiftsResponse;
 };
-
 // D. Rate Employee/Employer
 export const rateShiftService = async (
   raterId: string,
@@ -480,7 +573,9 @@ export const getReferredEmployeeService = async (
 };
 
 // F. Get Open shifts for employee (specific shifts -> check shifs table, public shifts -> check notificaion table)
-export const getOpenShiftsForEmployeeService = async (userId: string): Promise<Shift[]> => {
+export const getOpenShiftsForEmployeeService = async (
+  userId: string,
+): Promise<GetOpenShiftsForEmployeeResponse> => {
   /*
     1. Specific shifts directly assigned
   */
@@ -492,25 +587,11 @@ export const getOpenShiftsForEmployeeService = async (userId: string): Promise<S
 
     include: {
       original_employee: {
-        select: {
-          id: true,
-          name: true,
-          phone_no: true,
-          city: true,
-          area: true,
-          skills: true,
-          rating_avg: true,
-        },
+        select: safeUserSelect,
       },
 
       employer: {
-        select: {
-          id: true,
-          company_name: true,
-          phone_no: true,
-          company_address: true,
-          is_verified: true,
-        },
+        select: safeEmployerSelect,
       },
     },
   });
@@ -522,21 +603,30 @@ export const getOpenShiftsForEmployeeService = async (userId: string): Promise<S
     where: {
       user_id: userId,
       type: 'public_shift',
+      isRead: false,
     },
 
     select: {
+      id: true,
       data: true,
     },
   });
 
   /*
-    3. Extract shiftIds from notification JSON
+    3. Extract shiftIds + build notification map
   */
+  const notificationMap = new Map<string, string>();
+
   const publicShiftIds = publicShiftNotifications
     .map((notification) => {
       const data = notification.data as { shiftId?: string };
 
-      return data?.shiftId;
+      if (!data?.shiftId) return null;
+
+      // shiftId -> notificationId
+      notificationMap.set(data.shiftId, notification.id);
+
+      return data.shiftId;
     })
     .filter((shiftId): shiftId is string => Boolean(shiftId));
 
@@ -553,31 +643,47 @@ export const getOpenShiftsForEmployeeService = async (userId: string): Promise<S
 
             status: 'open',
 
-            // Safety check:
             // Ensure still public
             replacement_employee_id: null,
           },
 
           include: {
-            original_employee: true,
-            employer: true,
+            original_employee: {
+              select: safeUserSelect,
+            },
+
+            employer: {
+              select: safeEmployerSelect,
+            },
           },
         })
       : [];
 
   /*
-    5. Merge + remove duplicates
+    5. Attach notificationId to public shifts
   */
-  const uniqueShiftsMap = new Map<string, Shift>();
+  const publicShiftsWithNotificationId = publicShifts.map((shift) => ({
+    ...shift,
+    notificationId: notificationMap.get(shift.id) ?? null,
+  }));
 
-  [...requestedSpecificShifts, ...publicShifts].forEach((shift) => {
+  /*
+    6. Merge + remove duplicates
+  */
+  const uniqueShiftsMap = new Map<string, ShiftWithNotification>();
+
+  requestedSpecificShifts.forEach((shift) => {
+    uniqueShiftsMap.set(shift.id, shift);
+  });
+
+  publicShiftsWithNotificationId.forEach((shift) => {
     uniqueShiftsMap.set(shift.id, shift);
   });
 
   const shifts = Array.from(uniqueShiftsMap.values());
 
   /*
-    6. Sort newest first
+    7. Sort newest first
   */
   shifts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 

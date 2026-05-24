@@ -1,4 +1,4 @@
-import { Rating, safeEmployerSelect, Shift } from '@repo/db/server';
+import { Employer, Prisma, Rating, safeEmployerSelect, Shift, User } from '@repo/db/server';
 import { safeUserSelect } from '@repo/db/shared';
 
 import {
@@ -30,14 +30,23 @@ export type CancelShiftRequest = z.infer<typeof cancelShiftSchema>;
 export type CancelShiftPayload = z.infer<typeof cancelShiftSchema>['body'];
 export type CancelShiftResponse = Shift;
 
-export type GetEmployeeShiftsResponse = Shift[];
-export type GetScheduledShiftsResponse = Shift[];
+export type GetEmployeeShiftsResponse = (Shift & {
+  employer: Pick<Employer, 'company_name' | 'company_address'> & {
+    company_location: [number, number];
+  };
+  original_employee: Pick<User, 'name' | 'phone_no'>;
+})[];
+export type GetScheduledShiftsResponse = GetEmployeeShiftsResponse;
 export type GetEmployerShiftsResponse = Shift[];
 
 // C. Extra Shifts
 export type GetExtraShiftsRequest = z.infer<typeof getExtraShiftsSchema>;
 export type GetExtraShiftsQuery = z.infer<typeof getExtraShiftsSchema>['query'];
-export type GetExtraShiftsResponse = Shift[];
+export type GetExtraShiftsResponse = (Shift & {
+  employer: Pick<Employer, 'company_name' | 'company_address'> & {
+    company_location: [number, number];
+  };
+})[];
 
 // D. Rating
 export type RateShiftRequest = z.infer<typeof rateShiftSchema>;
@@ -50,7 +59,16 @@ export type getReferredEmployeePayload = z.infer<typeof getReferredEmployeeSchem
 export type getReferredEmployeeResponse = { id: string };
 
 //F. Open Shifts
-export type GetOpenShiftsForEmployeeResponse = Shift & {
-  original_employee: typeof safeUserSelect;
-  employer: typeof safeEmployerSelect;
+export type ShiftWithNotification = Shift & {
+  notificationId?: string | null;
+
+  original_employee: Prisma.UserGetPayload<{
+    select: typeof safeUserSelect;
+  }>;
+
+  employer: Prisma.EmployerGetPayload<{
+    select: typeof safeEmployerSelect;
+  }>;
 };
+
+export type GetOpenShiftsForEmployeeResponse = ShiftWithNotification[];

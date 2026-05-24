@@ -7,6 +7,12 @@ config.transformer.babelTransformerPath = require.resolve(
   "react-native-svg-transformer"
 );
 
+
+config.resolver.blockList = [
+  /android\/build\/.*/,
+];
+
+
 config.resolver.assetExts = config.resolver.assetExts.filter(
   (ext) => ext !== "svg"
 );

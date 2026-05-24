@@ -22,6 +22,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 import translations from '../../../translations';
 import { useRegisterUser } from '../api';
@@ -70,10 +71,14 @@ export default function SignupScreen() {
         console.log('Registration successful', res);
         const parsed = formSchema.parse(data);
         updateRegisterData(parsed);
-        router.push('/(public)/(auth)/verify-register-otp');
+        router.push('/auth/verify-register-otp');
       },
       onError: (err) => {
-        console.error('Registration failed', err);
+        Toast.show({
+          text1: err.message,
+          type: 'error',
+        });
+        // console.error('Registration failed', err);
       },
     });
   };
@@ -244,10 +249,7 @@ export default function SignupScreen() {
             {/* Bottom Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t.alreadyHaveAccount}</Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.push('/(public)/(auth)/login')}
-              >
+              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/auth/login')}>
                 <Text style={styles.footerLink}>{t.loginNow}</Text>
               </TouchableOpacity>
             </View>

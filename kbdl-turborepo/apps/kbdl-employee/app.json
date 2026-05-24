@@ -4,7 +4,7 @@
     "slug": "kbdl-employee",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "kbdlemployee",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -13,12 +13,6 @@
       "bundleIdentifier": "com.anonymous.kbdlemployee"
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.kbdlemployee",
@@ -37,7 +31,15 @@
       "expo-localization",
       "expo-dev-client",
       "expo-font",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#01122E",
+          "image": "./assets/images/splash-logo.png",
+          "resizeMode": "contain"
+        }
+      ]
     ],
     "owner": "aryanraj923s-organization",
     "extra": {

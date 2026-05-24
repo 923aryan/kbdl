@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
-import { StyleSheet, useColorScheme } from 'react-native';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,33 +9,47 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import HomeIcon from '@/assets/icons/home.svg';
-import NotificationsIcon from '@/assets/icons/notification.svg';
-import ProfileIcon from '@/assets/icons/profile.svg';
 import { Colors } from '@/constants/theme';
+import { Feather } from '@expo/vector-icons';
 
-function AnimatedIcon({ focused, children }: { focused: boolean; children: React.ReactNode }) {
+function AnimatedIcon({
+  focused,
+  theme,
+  children,
+}: {
+  focused: boolean;
+  theme: any;
+  children: React.ReactNode;
+}) {
   const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
 
   useEffect(() => {
     translateY.set(
-      withTiming(focused ? -25 : 0, {
+      withTiming(focused ? -12 : 0, {
         duration: 250,
-        easing: Easing.out(Easing.quad),
+        easing: Easing.out(Easing.back(1.5)),
+      }),
+    );
+    scale.set(
+      withTiming(focused ? 1.1 : 1, {
+        duration: 250,
+        easing: Easing.out(Easing.back(1.5)),
       }),
     );
   }, [focused]);
 
-  useEffect(() => {
-    console.log('focus ');
-  }, [focused]);
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.get() }],
+    transform: [{ translateY: translateY.get() }, { scale: scale.get() }],
   }));
 
   return (
     <Animated.View style={[{ alignItems: 'center', justifyContent: 'center' }, animatedStyle]}>
-      {children}
+      <View
+        style={[styles.iconCircle, { backgroundColor: focused ? theme.primary : 'transparent' }]}
+      >
+        {children}
+      </View>
     </Animated.View>
   );
 }
@@ -53,9 +67,9 @@ export default function TabLayout() {
         tabBarStyle: [
           styles.tabBar,
           {
-            backgroundColor: '#0658C2',
-            // 👇 use inset OR a small gap (not both)
-            bottom: Math.max(insets.bottom, 12),
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+            bottom: Math.max(insets.bottom, 16),
           },
         ],
 
@@ -67,12 +81,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           tabBarIcon: ({ focused }) => (
-            <AnimatedIcon focused={focused}>
-              <ProfileIcon
-                width={25}
-                height={25}
-                fill={focused ? theme.tabIconSelected : theme.tabIconDefault}
-              />
+            <AnimatedIcon focused={focused} theme={theme}>
+              <Feather name="user" size={24} color={focused ? '#FFFFFF' : theme.tabIconDefault} />
             </AnimatedIcon>
           ),
         }}
@@ -82,12 +92,8 @@ export default function TabLayout() {
         name="index"
         options={{
           tabBarIcon: ({ focused }) => (
-            <AnimatedIcon focused={focused}>
-              <HomeIcon
-                width={40}
-                height={40}
-                fill={focused ? theme.tabIconSelected : theme.tabIconDefault}
-              />
+            <AnimatedIcon focused={focused} theme={theme}>
+              <Feather name="home" size={24} color={focused ? '#FFFFFF' : theme.tabIconDefault} />
             </AnimatedIcon>
           ),
         }}
@@ -97,12 +103,8 @@ export default function TabLayout() {
         name="alerts"
         options={{
           tabBarIcon: ({ focused }) => (
-            <AnimatedIcon focused={focused}>
-              <NotificationsIcon
-                width={25}
-                height={25}
-                fill={focused ? theme.tabIconSelected : theme.tabIconDefault}
-              />
+            <AnimatedIcon focused={focused} theme={theme}>
+              <Feather name="bell" size={24} color={focused ? '#FFFFFF' : theme.tabIconDefault} />
             </AnimatedIcon>
           ),
         }}
@@ -116,17 +118,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    height: 50,
-    borderRadius: 50,
-    borderTopWidth: 0,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderTopWidth: 1,
     paddingBottom: 0,
     paddingTop: 0,
-    elevation: 5,
+    elevation: 8,
 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
 
   tabBarItem: {
@@ -136,6 +139,14 @@ const styles = StyleSheet.create({
 
   tabBarIcon: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
