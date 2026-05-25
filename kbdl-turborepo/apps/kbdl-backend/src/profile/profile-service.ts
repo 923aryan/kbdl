@@ -1,22 +1,37 @@
-import { Employer, prisma } from '@repo/db/server';
+import { Employer, prisma, safeEmployerSelect } from '@repo/db/server';
 import {
+  GetCurrentEmployerProfileResponse,
+  GetPublicEmployerProfileResponse,
+  GetPublicUserProfileResponse,
   RegisterPushTokenPayload,
   RemovePushTokenPayload,
   UpdateEmployerLocationPayload,
-  UpdateEmployerPreferencesPayload,
+  UpdateEmployerLocationResponse,
+  UpdateEmployerPreferencesResponse,
   UpdateEmployerProfilePayload,
+  UpdateEmployerProfileResponse,
   UpdateUserAvailabilityPayload,
+  UpdateUserAvailabilityResponse,
   UpdateUserLocationPayload,
+  UpdateUserLocationResponse,
   UpdateUserPreferencesPayload,
+  UpdateUserPreferencesResponse,
   UpdateUserProfilePayload,
+  UpdateUserProfileResponse,
   UpdateUserSkillsPayload,
+  UpdateUserSkillsResponse,
 } from '@repo/types';
 import { AppError } from '../utils/api-error';
 
 import { User } from '@repo/db/server';
 
-export const getCurrentEmployerProfileService = async (employerId: string): Promise<Employer> => {
-  const employer = await prisma.employer.findUnique({ where: { id: employerId } });
+export const getCurrentEmployerProfileService = async (
+  employerId: string,
+): Promise<GetCurrentEmployerProfileResponse> => {
+  const employer = await prisma.employer.findUnique({
+    where: { id: employerId },
+    select: safeEmployerSelect,
+  });
   if (!employer) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
@@ -26,10 +41,11 @@ export const getCurrentEmployerProfileService = async (employerId: string): Prom
 export const updateEmployerProfileService = async (
   employerId: string,
   payload: UpdateEmployerProfilePayload,
-): Promise<Employer> => {
+): Promise<UpdateEmployerProfileResponse> => {
   return prisma.employer.update({
     where: { id: employerId },
     data: payload,
+    select: safeEmployerSelect,
   });
 };
 
@@ -39,7 +55,7 @@ export const deleteEmployerProfileService = async (employerId: string): Promise<
 
 export const updateEmployerPreferencesService = async (
   employerId: string,
-  payload: UpdateEmployerPreferencesPayload,
+  payload: UpdateEmployerPreferencesResponse,
 ): Promise<Employer> => {
   const employer = await getCurrentEmployerProfileService(employerId);
   const newPreferences = { ...(employer.preferences as object), ...payload };
@@ -52,7 +68,7 @@ export const updateEmployerPreferencesService = async (
 export const updateEmployerLocationService = async (
   employerId: string,
   payload: UpdateEmployerLocationPayload,
-): Promise<Employer> => {
+): Promise<UpdateEmployerLocationResponse> => {
   const { latitude, longitude } = payload;
   await prisma.$executeRaw`
     UPDATE employers
@@ -89,7 +105,7 @@ export const getEmployerVerificationStatusService = async (
 
 export const getPublicEmployerProfileService = async (
   employerId: string,
-): Promise<Partial<Employer>> => {
+): Promise<Partial<GetPublicEmployerProfileResponse>> => {
   const employer = await prisma.employer.findUnique({
     where: { id: employerId },
     select: {
@@ -116,7 +132,7 @@ export const getCurrentUserProfileService = async (userId: string): Promise<User
 export const updateUserProfileService = async (
   userId: string,
   payload: UpdateUserProfilePayload,
-): Promise<User> => {
+): Promise<UpdateUserProfileResponse> => {
   return prisma.user.update({
     where: { id: userId },
     data: payload,
@@ -130,7 +146,7 @@ export const deleteUserProfileService = async (userId: string): Promise<void> =>
 export const updateUserSkillsService = async (
   userId: string,
   payload: UpdateUserSkillsPayload,
-): Promise<User> => {
+): Promise<UpdateUserSkillsResponse> => {
   return prisma.user.update({
     where: { id: userId },
     data: { skills: payload.skills },
@@ -140,7 +156,7 @@ export const updateUserSkillsService = async (
 export const updateUserPreferencesService = async (
   userId: string,
   payload: UpdateUserPreferencesPayload,
-): Promise<User> => {
+): Promise<UpdateUserPreferencesResponse> => {
   const user = await getCurrentUserProfileService(userId);
   const newPreferences = { ...(user.preferences as object), ...payload };
   return prisma.user.update({
@@ -152,7 +168,7 @@ export const updateUserPreferencesService = async (
 export const updateUserLocationService = async (
   userId: string,
   payload: UpdateUserLocationPayload,
-): Promise<User> => {
+): Promise<UpdateUserLocationResponse> => {
   const { latitude, longitude } = payload;
   await prisma.$executeRaw`
         UPDATE users
@@ -165,7 +181,7 @@ export const updateUserLocationService = async (
 export const updateUserAvailabilityService = async (
   userId: string,
   payload: UpdateUserAvailabilityPayload,
-): Promise<User> => {
+): Promise<UpdateUserAvailabilityResponse> => {
   return prisma.user.update({
     where: { id: userId },
     data: { extra_shift: payload.extra_shift },
@@ -207,7 +223,9 @@ export const removePushTokenService = async (
   }
 };
 
-export const getPublicUserProfileService = async (userId: string): Promise<Partial<User>> => {
+export const getPublicUserProfileService = async (
+  userId: string,
+): Promise<Partial<GetPublicUserProfileResponse>> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {

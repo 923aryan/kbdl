@@ -3,6 +3,7 @@ import { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 
 import { env } from '@repo/validator/server';
+import { ROLES } from '../../utils/constants';
 import { JwtPayload } from '../../utils/jwt-payload';
 
 interface SocketUser {
@@ -27,9 +28,12 @@ export async function socketAuthMiddleware(
 
     const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as JwtPayload;
 
+    if (decoded.role !== ROLES.USER) {
+      return next(new Error('Unauthorized'));
+    }
+
     socket.user = {
       id: decoded.payload.user.id,
-
       role: decoded.role,
     };
 

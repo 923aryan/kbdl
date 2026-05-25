@@ -31,6 +31,7 @@ const formSchema = userSendOtpSchema.shape.body;
 type FormData = z.input<typeof formSchema>;
 
 export default function LoginScreen() {
+  console.log("this is login")
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);

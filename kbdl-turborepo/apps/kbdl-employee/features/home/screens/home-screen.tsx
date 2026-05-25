@@ -15,6 +15,15 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -27,6 +36,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (data) {
+      console.log('shfits : ', data);
       console.log('shfits : ', data);
       setShifts(data);
     }
@@ -138,6 +148,7 @@ export default function HomeScreen() {
         >
           {data?.map((shift) => (
             <ShiftCard key={shift.id} shift={shift} buttonTitle="Approve" />
+            <ShiftCard key={shift.id} shift={shift} buttonTitle="Approve" />
           ))}
         </ScrollView>
       </View>
@@ -147,7 +158,7 @@ export default function HomeScreen() {
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-          // onPress={() => router.push("/refer")}
+        // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
             <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
@@ -163,6 +174,9 @@ export default function HomeScreen() {
           key={item.id}
           title={item.title}
           description={item.subtitle}
+          IconComponent={() => (
+            <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
+          )}
           IconComponent={() => (
             <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
           )}
