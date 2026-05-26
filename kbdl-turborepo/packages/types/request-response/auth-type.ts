@@ -3,6 +3,7 @@ import {
   employerRegisterSchema,
   employerSendOtpSchema,
   employerVerifyOtpSchema,
+  employerVerifyRegisterSchema,
   userRegisterSchema,
   userSendOtpSchema,
   userVerifyOtpSchema,
@@ -17,7 +18,9 @@ export type UserVerifyRegisterResponse = User;
 
 export type EmployerRegisterRequest = z.infer<typeof employerRegisterSchema>;
 export type EmployerRegisterPayload = z.infer<typeof employerRegisterSchema>['body'];
-export type EmployerRegisterResponse = Employer;
+export type EmployerVerifyRegisterRequest = z.infer<typeof employerVerifyRegisterSchema>;
+export type EmployerVerifyRegisterPayload = z.infer<typeof employerVerifyRegisterSchema>['body'];
+export type EmployerVerifyRegisterResponse = Employer;
 
 export type UserSendOTPRequest = z.infer<typeof userSendOtpSchema>;
 export type UserSendOTPResponse = null;

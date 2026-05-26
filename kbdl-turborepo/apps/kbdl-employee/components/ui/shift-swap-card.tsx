@@ -56,9 +56,11 @@ const formatTime = (dateInput: string | Date) => {
 };
 
 export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
+export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   // console.log("inside card: ", shift)
+  console.log('button title ', buttonTitle);
   console.log('button title ', buttonTitle);
   const queryClient = useQueryClient();
   const { mutate: acceptShift } = useAcceptShiftSwap();
@@ -103,6 +105,11 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         return { text: String(shiftStatus), bg: theme.surface, color: theme.text };
     }
   };
+
+  const onButtonPress = () => {};
+
+  const onCancelPress = () => {};
+
   useEffect(() => {
     console.log('now its: ', isSuccessModalVisible);
   }, [isSuccessModalVisible]);
@@ -241,6 +248,20 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         {/* Action Buttons (Conditional) */}
         {buttonTitle && (
           <View style={styles.buttonContainer}>
+            <CustomButton
+              title="Cancel"
+              variant="outline"
+              size="small"
+              onPress={onCancelPress}
+              containerStyle={{ flex: 1 }}
+            />
+            <CustomButton
+              title="Approve Request"
+              variant="primary"
+              size="small"
+              onPress={onButtonPress}
+              containerStyle={{ flex: 1 }}
+            />
             {buttonTitle !== 'Apply' && (
               <CustomButton
                 title="Cancel shift"
@@ -306,6 +327,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '800',
+    fontWeight: '800',
   },
   headerRight: {
     flexDirection: 'row',
@@ -350,3 +372,4 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 });
+

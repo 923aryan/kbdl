@@ -1,12 +1,15 @@
+import { prisma } from '@repo/db/server';
 import { env } from '@repo/validator/server';
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { setAuthCookies } from '../auth/auth-controller';
+import { generateAccessToken, generateRefreshToken } from '../auth/auth-service';
 import { AppError } from '../utils/api-error';
 import { ROLES } from '../utils/constants';
 import { JwtPayload } from '../utils/jwt-payload';
 
 export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     let token: string | undefined;
 
     // 1. Authorization header
@@ -15,8 +18,8 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
     }
 
     // 2. Cookies fallback
-    else if (req.cookies?.authToken) {
-      token = req.cookies.authToken;
+    else if (req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
     }
 
     // 3. No token
@@ -44,8 +47,68 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
           new AppError(403, 'FORBIDDEN', 'You do not have permission to access this resource'),
         );
       }
-      if (user.role == ROLES.EMPLOYER && user.payload.employer.is_verified == false) {
-        return next(new AppError(403, 'UNVERIFIED', 'Verification required.'));
+      if (
+        user.role === ROLES.EMPLOYER &&
+        user.payload.employer.is_verified === false
+      ) {
+        console.log("inside auth middleware: role : employer id =  ", user.payload.employer.id)
+        const currentEmployer = await prisma.employer.findUnique({
+          where: { id: user.payload.employer.id },
+          select: {
+            id: true,
+            email: true,
+            is_verified: true,
+          },
+        });
+        console.log("curent employer ", currentEmployer)
+        if (!currentEmployer?.is_verified) {
+          return next(new AppError(403, 'UNVERIFIED', 'Verification pending.'));
+        }
+
+        // employer became verified in DB
+        // issue fresh token
+        const payload: JwtPayload = {
+          role: ROLES.EMPLOYER,
+          payload: {
+            employer: {
+              id: currentEmployer.id,
+              email: currentEmployer.email,
+              is_verified: true,
+            },
+          },
+        };
+
+        const newAccessToken =
+          generateAccessToken(payload);
+
+        const newRefreshToken =
+          generateRefreshToken(payload);
+
+        /*
+          Persist refresh token
+        */
+
+        await prisma.employer.update({
+          where: {
+            id: currentEmployer.id,
+          },
+          data: {
+            refresh_token: newRefreshToken,
+          },
+        });
+
+        /*
+          Set fresh cookies
+        */
+
+        setAuthCookies(
+          res,
+          newAccessToken,
+          newRefreshToken,
+        );
+
+        // optional for mobile clients
+        res.setHeader('x-access-token', newAccessToken);
       }
 
       next();
