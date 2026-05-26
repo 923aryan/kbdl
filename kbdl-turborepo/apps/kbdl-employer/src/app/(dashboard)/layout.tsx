@@ -17,8 +17,8 @@ import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 
 const menuItems = [
   { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { path: '/dashboard/shifts', label: 'Shifts', icon: Clock },
-  { path: '/dashboard/employees', label: 'Employees', icon: Users },
+  { path: '/shifts', label: 'Shifts', icon: Clock },
+  { path: '/employees', label: 'Employees', icon: Users },
   { path: '/dashboard/jobs', label: 'Jobs', icon: Briefcase },
   { path: '/dashboard/billing', label: 'Billing', icon: CreditCard },
 ];
