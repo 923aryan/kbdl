@@ -8,7 +8,7 @@ import { AppError } from '../utils/api-error';
 import { ROLES } from '../utils/constants';
 import { JwtPayload } from '../utils/jwt-payload';
 
-export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>) => {
+export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>, bypass: boolean = false) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     let token: string | undefined;
 
@@ -51,6 +51,9 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
         user.role === ROLES.EMPLOYER &&
         user.payload.employer.is_verified === false
       ) {
+        if (bypass) {
+          return next();
+        }
         console.log("inside auth middleware: role : employer id =  ", user.payload.employer.id)
         const currentEmployer = await prisma.employer.findUnique({
           where: { id: user.payload.employer.id },

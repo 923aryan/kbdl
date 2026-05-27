@@ -15,15 +15,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -148,7 +140,6 @@ export default function HomeScreen() {
         >
           {data?.map((shift) => (
             <ShiftCard key={shift.id} shift={shift} buttonTitle="Approve" />
-            <ShiftCard key={shift.id} shift={shift} buttonTitle="Approve" />
           ))}
         </ScrollView>
       </View>
@@ -177,9 +168,7 @@ export default function HomeScreen() {
           IconComponent={() => (
             <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
           )}
-          IconComponent={() => (
-            <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
-          )}
+
           iconBgColor={item.bgColor}
           onPress={() => router.push(item.route as any)}
           theme={theme}

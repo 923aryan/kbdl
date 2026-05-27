@@ -34,7 +34,7 @@ export type UpdateUserPreferencesResponse = UserDTO;
 
 export type UpdateUserLocationRequest = z.infer<typeof updateUserLocationSchema>;
 export type UpdateUserLocationPayload = z.infer<typeof updateUserLocationSchema>['body'];
-export type UpdateUserLocationResponse = UserDTO;
+export type UpdateUserLocationResponse = Partial<UserDTO>;
 
 export type UpdateUserAvailabilityRequest = z.infer<typeof updateUserAvailabilitySchema>;
 export type UpdateUserAvailabilityPayload = z.infer<typeof updateUserAvailabilitySchema>['body'];
