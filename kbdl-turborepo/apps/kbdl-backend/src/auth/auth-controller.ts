@@ -158,13 +158,13 @@ export const setAuthCookies = (res: Response, accessToken: string, refreshToken:
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 15 * 24 * 60 * 60 * 1000,
   });
 };
@@ -173,12 +173,12 @@ const clearAuthCookies = (res: Response) => {
   res.clearCookie('accessToken', {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
   });
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
   });
 };
 
