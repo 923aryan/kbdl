@@ -1,224 +1,224 @@
-import { Router } from 'express';
-import { authenticate } from '../middleware/auth-middleware'; // Protects endpoints
-import { ROLES } from '../utils/constants';
+// import { Router } from 'express';
+// import { authenticate } from '../middleware/auth-middleware'; // Protects endpoints
+// import { ROLES } from '../utils/constants';
 
-import {
-  cancelUserSubscription,
-  createSubscriptionPlan,
-  deleteLead,
-  getAllActiveSubscriptions,
-  getAllEmployers,
-  getAllJobs,
-  getAllLeads,
-  getAllOrders,
-  getAllShifts,
-  getAllSubscriptionPlans,
-  getAllTransactions,
-  getAllWorkers,
-  getApplicationsForJob,
-  getEmployerById,
-  getEmployerJobs,
-  getEmployerShifts,
-  getEmployerTransactions,
-  getEmployerWorkforce,
-  getJobById,
-  getLeadById,
-  getShiftById,
-  getTransactionById,
-  getWorkerApplications,
-  getWorkerById,
-  getWorkerRatings,
-  getWorkerShiftHistory,
-  matchShiftManually,
-  resolveNoShow,
-  togglePlanStatus,
-  updateApplicationStatus,
-  updateEmployerProfile,
-  updateEmployerSubscription,
-  updateJobStatus,
-  updateLeadStatus,
-  updateOrderStatus,
-  updateShiftStatus,
-  updateSubscriptionPlan,
-  updateWorkerProfile,
-  updateWorkerVerification,
-  verifyEmployer
-} from './admin-controller';
+// import {
+//   cancelUserSubscription,
+//   createSubscriptionPlan,
+//   deleteLead,
+//   getAllActiveSubscriptions,
+//   getAllEmployers,
+//   getAllJobs,
+//   getAllLeads,
+//   getAllOrders,
+//   getAllShifts,
+//   getAllSubscriptionPlans,
+//   getAllTransactions,
+//   getAllWorkers,
+//   getApplicationsForJob,
+//   getEmployerById,
+//   getEmployerJobs,
+//   getEmployerShifts,
+//   getEmployerTransactions,
+//   getEmployerWorkforce,
+//   getJobById,
+//   getLeadById,
+//   getShiftById,
+//   getTransactionById,
+//   getWorkerApplications,
+//   getWorkerById,
+//   getWorkerRatings,
+//   getWorkerShiftHistory,
+//   matchShiftManually,
+//   resolveNoShow,
+//   togglePlanStatus,
+//   updateApplicationStatus,
+//   updateEmployerProfile,
+//   updateEmployerSubscription,
+//   updateJobStatus,
+//   updateLeadStatus,
+//   updateOrderStatus,
+//   updateShiftStatus,
+//   updateSubscriptionPlan,
+//   updateWorkerProfile,
+//   updateWorkerVerification,
+//   verifyEmployer
+// } from './admin-controller';
 
-const adminRouter: Router = Router();
+// const adminRouter: Router = Router();
 
-// Apply administrative guard checking across all operations globally
-adminRouter.use(authenticate([ROLES.ADMIN]));
+// // Apply administrative guard checking across all operations globally
+// adminRouter.use(authenticate([ROLES.ADMIN]));
 
-// ==========================================
-// 👷 WORKERS MANAGEMENT ROUTES
-// ==========================================
-const adminWorkerRouter: Router = Router();
+// // ==========================================
+// // 👷 WORKERS MANAGEMENT ROUTES
+// // ==========================================
+// const adminWorkerRouter: Router = Router();
 
-// --- Core Data & Search Management ---
-// Supports pagination, text search (?q=phone/name/karigari_id), and filters (?city=&extra_shift=)
-adminWorkerRouter.get('/', getAllWorkers);
+// // --- Core Data & Search Management ---
+// // Supports pagination, text search (?q=phone/name/karigari_id), and filters (?city=&extra_shift=)
+// adminWorkerRouter.get('/', getAllWorkers);
 
-// Fetches deep-dive telemetry profile info for a single user item
-adminWorkerRouter.get('/:id', getWorkerById);
+// // Fetches deep-dive telemetry profile info for a single user item
+// adminWorkerRouter.get('/:id', getWorkerById);
 
-// --- Profile Overrides & Approvals (Mutations) ---
-// Modifies baseline operational constraints (skills, city, extra_shift flag)
-adminWorkerRouter.patch('/:id/profile', updateWorkerProfile);
+// // --- Profile Overrides & Approvals (Mutations) ---
+// // Modifies baseline operational constraints (skills, city, extra_shift flag)
+// adminWorkerRouter.patch('/:id/profile', updateWorkerProfile);
 
-// Explicitly updates verification_level based on physical document vetting
-adminWorkerRouter.patch('/:id/verify', updateWorkerVerification);
+// // Explicitly updates verification_level based on physical document vetting
+// adminWorkerRouter.patch('/:id/verify', updateWorkerVerification);
 
-// --- Sub-Resource Audits & Analytics ---
-// Fetches chronological timelines of both Original and Replacement shifts
-adminWorkerRouter.get('/:id/shifts', getWorkerShiftHistory);
+// // --- Sub-Resource Audits & Analytics ---
+// // Fetches chronological timelines of both Original and Replacement shifts
+// adminWorkerRouter.get('/:id/shifts', getWorkerShiftHistory);
 
-// Monitors historical or current job tracking (applied, shortlisted, hired, rejected)
-adminWorkerRouter.get('/:id/applications', getWorkerApplications);
+// // Monitors historical or current job tracking (applied, shortlisted, hired, rejected)
+// adminWorkerRouter.get('/:id/applications', getWorkerApplications);
 
-// Compares given vs received scores along with flagged disputes
-adminWorkerRouter.get('/:id/ratings', getWorkerRatings);
+// // Compares given vs received scores along with flagged disputes
+// adminWorkerRouter.get('/:id/ratings', getWorkerRatings);
 
-adminRouter.use('/workers', adminWorkerRouter);
-
-
-// ==========================================
-// 🏢 EMPLOYERS MANAGEMENT ROUTES
-// ==========================================
-const adminEmployerRouter: Router = Router();
-
-// --- Core Data & Search Management ---
-adminEmployerRouter.get('/', getAllEmployers);
-
-// Fetches deep-dive profile details for a single employer
-adminEmployerRouter.get('/:id', getEmployerById);
-
-// --- Profile Overrides & Approvals (Mutations) ---
-// Modifies baseline info (name, address, email, phone)
-adminEmployerRouter.patch('/:id/profile', updateEmployerProfile);
-
-// Toggles is_verified status based on GST or document verification by admin
-adminEmployerRouter.patch('/:id/verify', verifyEmployer);
-
-// Manually overrides the string-based subscription_tier 
-adminEmployerRouter.patch('/:id/subscription', updateEmployerSubscription);
-
-// --- Sub-Resource Audits & Analytics ---
-// Fetches the 'EmployeeEmployment' records to see the active/past workforce for this client
-adminEmployerRouter.get('/:id/workforce', getEmployerWorkforce);
-
-// Retrieves all Jobs posted by this employer (can filter by JobStatus)
-adminEmployerRouter.get('/:id/jobs', getEmployerJobs);
-
-// Retrieves all Shifts created by this employer (can filter by ShiftStatus)
-adminEmployerRouter.get('/:id/shifts', getEmployerShifts);
-
-// Financial audit log: Fetches Transactions and Orders tied to this employer's id
-adminEmployerRouter.get('/:id/transactions', getEmployerTransactions);
-
-adminRouter.use('/employers', adminEmployerRouter);
+// adminRouter.use('/workers', adminWorkerRouter);
 
 
-// ==========================================
-// ⚙️ OPERATIONS MANAGEMENT ROUTES
-// ==========================================
-const adminOperationsRouter: Router = Router();
+// // ==========================================
+// // 🏢 EMPLOYERS MANAGEMENT ROUTES
+// // ==========================================
+// const adminEmployerRouter: Router = Router();
 
-// --- Shifts ---
-// List shifts with filters (?status=open&date=YYYY-MM-DD)
-adminOperationsRouter.get('/shifts', getAllShifts);
+// // --- Core Data & Search Management ---
+// adminEmployerRouter.get('/', getAllEmployers);
 
-// Deep dive into a single shift
-adminOperationsRouter.get('/shifts/:id', getShiftById);
+// // Fetches deep-dive profile details for a single employer
+// adminEmployerRouter.get('/:id', getEmployerById);
 
-// Admin manually assigns a worker to an unfulfilled shift
-adminOperationsRouter.patch('/shifts/:id/match', matchShiftManually);
+// // --- Profile Overrides & Approvals (Mutations) ---
+// // Modifies baseline info (name, address, email, phone)
+// adminEmployerRouter.patch('/:id/profile', updateEmployerProfile);
 
-// Generic status updates (e.g., forcing a completion or cancellation)
-adminOperationsRouter.patch('/shifts/:id/status', updateShiftStatus);
+// // Toggles is_verified status based on GST or document verification by admin
+// adminEmployerRouter.patch('/:id/verify', verifyEmployer);
 
-// Specialized route to handle disputes where no_show_reported is true
-adminOperationsRouter.post('/shifts/:id/resolve-dispute', resolveNoShow);
+// // Manually overrides the string-based subscription_tier 
+// adminEmployerRouter.patch('/:id/subscription', updateEmployerSubscription);
 
-// --- Job Board ---
-// List jobs with filters (?status=open&employer_id=...)
-adminOperationsRouter.get('/jobs', getAllJobs);
+// // --- Sub-Resource Audits & Analytics ---
+// // Fetches the 'EmployeeEmployment' records to see the active/past workforce for this client
+// adminEmployerRouter.get('/:id/workforce', getEmployerWorkforce);
 
-// View specific job details
-adminOperationsRouter.get('/jobs/:id', getJobById);
+// // Retrieves all Jobs posted by this employer (can filter by JobStatus)
+// adminEmployerRouter.get('/:id/jobs', getEmployerJobs);
 
-// Pause or close a job (moderation)
-adminOperationsRouter.patch('/jobs/:id/status', updateJobStatus);
+// // Retrieves all Shifts created by this employer (can filter by ShiftStatus)
+// adminEmployerRouter.get('/:id/shifts', getEmployerShifts);
 
-// --- Job Applications ---
-// Get all applications for a specific job
-adminOperationsRouter.get('/jobs/:jobId/applications', getApplicationsForJob);
+// // Financial audit log: Fetches Transactions and Orders tied to this employer's id
+// adminEmployerRouter.get('/:id/transactions', getEmployerTransactions);
 
-// Admin overrides an application status (e.g., pushing from shortlisted to hired)
-adminOperationsRouter.patch('/applications/:appId/status', updateApplicationStatus);
-
-adminRouter.use('/operations', adminOperationsRouter);
+// adminRouter.use('/employers', adminEmployerRouter);
 
 
-// ==========================================
-// 💸 FINANCE & SUBSCRIPTIONS ROUTES
-// ==========================================
-const adminFinanceRouter: Router = Router();
+// // ==========================================
+// // ⚙️ OPERATIONS MANAGEMENT ROUTES
+// // ==========================================
+// const adminOperationsRouter: Router = Router();
 
-// --- Master Ledger (Transactions) ---
-// List all transactions with filters (?type=payment&status=success&mode=upi)
-adminFinanceRouter.get('/transactions', getAllTransactions);
+// // --- Shifts ---
+// // List shifts with filters (?status=open&date=YYYY-MM-DD)
+// adminOperationsRouter.get('/shifts', getAllShifts);
 
-// View Razorpay details and relations for a single transaction
-adminFinanceRouter.get('/transactions/:id', getTransactionById);
+// // Deep dive into a single shift
+// adminOperationsRouter.get('/shifts/:id', getShiftById);
 
-// --- Subscription Plans ---
-// Get all plans (both active and inactive)
-adminFinanceRouter.get('/plans', getAllSubscriptionPlans);
+// // Admin manually assigns a worker to an unfulfilled shift
+// adminOperationsRouter.patch('/shifts/:id/match', matchShiftManually);
 
-// Create a new pricing tier
-adminFinanceRouter.post('/plans', createSubscriptionPlan);
+// // Generic status updates (e.g., forcing a completion or cancellation)
+// adminOperationsRouter.patch('/shifts/:id/status', updateShiftStatus);
 
-// Edit pricing, billing cycle, or feature list of a plan
-adminFinanceRouter.patch('/plans/:id', updateSubscriptionPlan);
+// // Specialized route to handle disputes where no_show_reported is true
+// adminOperationsRouter.post('/shifts/:id/resolve-dispute', resolveNoShow);
 
-// Soft-delete: toggle `is_active` so users can no longer buy it
-adminFinanceRouter.patch('/plans/:id/status', togglePlanStatus);
+// // --- Job Board ---
+// // List jobs with filters (?status=open&employer_id=...)
+// adminOperationsRouter.get('/jobs', getAllJobs);
 
-// --- Active Subscriptions ---
-// See who is currently paying for what (?status=active)
-adminFinanceRouter.get('/subscriptions', getAllActiveSubscriptions);
+// // View specific job details
+// adminOperationsRouter.get('/jobs/:id', getJobById);
 
-// Admin manually cancels a subscription (due to dispute or terms violation)
-adminFinanceRouter.patch('/subscriptions/:id/cancel', cancelUserSubscription);
+// // Pause or close a job (moderation)
+// adminOperationsRouter.patch('/jobs/:id/status', updateJobStatus);
 
-// --- Orders Management ---
-// View physical/service orders 
-adminFinanceRouter.get('/orders', getAllOrders);
+// // --- Job Applications ---
+// // Get all applications for a specific job
+// adminOperationsRouter.get('/jobs/:jobId/applications', getApplicationsForJob);
 
-// Manually override payment_status (e.g., if paid via cash offline)
-adminFinanceRouter.patch('/orders/:id/payment-status', updateOrderStatus);
+// // Admin overrides an application status (e.g., pushing from shortlisted to hired)
+// adminOperationsRouter.patch('/applications/:appId/status', updateApplicationStatus);
 
-adminRouter.use('/finance', adminFinanceRouter);
+// adminRouter.use('/operations', adminOperationsRouter);
 
 
-// ==========================================
-// 📥 LEADS CRM ROUTES
-// ==========================================
-const adminLeadsRouter: Router = Router();
+// // ==========================================
+// // 💸 FINANCE & SUBSCRIPTIONS ROUTES
+// // ==========================================
+// const adminFinanceRouter: Router = Router();
 
-// List all leads with filters (?resolved=true/false&search=xyz)
-adminLeadsRouter.get('/', getAllLeads);
+// // --- Master Ledger (Transactions) ---
+// // List all transactions with filters (?type=payment&status=success&mode=upi)
+// adminFinanceRouter.get('/transactions', getAllTransactions);
 
-// Fetch a single lead (useful if the message is too large for the initial list payload)
-adminLeadsRouter.get('/:id', getLeadById);
+// // View Razorpay details and relations for a single transaction
+// adminFinanceRouter.get('/transactions/:id', getTransactionById);
 
-// Toggle the isResolved boolean
-adminLeadsRouter.patch('/:id/status', updateLeadStatus);
+// // --- Subscription Plans ---
+// // Get all plans (both active and inactive)
+// adminFinanceRouter.get('/plans', getAllSubscriptionPlans);
 
-// Delete spam or junk submissions
-adminLeadsRouter.delete('/:id', deleteLead);
+// // Create a new pricing tier
+// adminFinanceRouter.post('/plans', createSubscriptionPlan);
 
-adminRouter.use('/leads', adminLeadsRouter);
+// // Edit pricing, billing cycle, or feature list of a plan
+// adminFinanceRouter.patch('/plans/:id', updateSubscriptionPlan);
 
-export default adminRouter;
+// // Soft-delete: toggle `is_active` so users can no longer buy it
+// adminFinanceRouter.patch('/plans/:id/status', togglePlanStatus);
+
+// // --- Active Subscriptions ---
+// // See who is currently paying for what (?status=active)
+// adminFinanceRouter.get('/subscriptions', getAllActiveSubscriptions);
+
+// // Admin manually cancels a subscription (due to dispute or terms violation)
+// adminFinanceRouter.patch('/subscriptions/:id/cancel', cancelUserSubscription);
+
+// // --- Orders Management ---
+// // View physical/service orders 
+// adminFinanceRouter.get('/orders', getAllOrders);
+
+// // Manually override payment_status (e.g., if paid via cash offline)
+// adminFinanceRouter.patch('/orders/:id/payment-status', updateOrderStatus);
+
+// adminRouter.use('/finance', adminFinanceRouter);
+
+
+// // ==========================================
+// // 📥 LEADS CRM ROUTES
+// // ==========================================
+// const adminLeadsRouter: Router = Router();
+
+// // List all leads with filters (?resolved=true/false&search=xyz)
+// adminLeadsRouter.get('/', getAllLeads);
+
+// // Fetch a single lead (useful if the message is too large for the initial list payload)
+// adminLeadsRouter.get('/:id', getLeadById);
+
+// // Toggle the isResolved boolean
+// adminLeadsRouter.patch('/:id/status', updateLeadStatus);
+
+// // Delete spam or junk submissions
+// adminLeadsRouter.delete('/:id', deleteLead);
+
+// adminRouter.use('/leads', adminLeadsRouter);
+
+// export default adminRouter;
