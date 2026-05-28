@@ -15,6 +15,7 @@ import {
   View,
   useColorScheme,
 } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
@@ -27,6 +28,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (data) {
+      console.log('shfits : ', data);
       console.log('shfits : ', data);
       setShifts(data);
     }
@@ -147,7 +149,7 @@ export default function HomeScreen() {
         {/* Refer Button */}
         <TouchableOpacity
           style={styles.referBtn}
-          // onPress={() => router.push("/refer")}
+        // onPress={() => router.push("/refer")}
         >
           <View style={styles.referContent}>
             <FontAwesome name="whatsapp" size={17} color="#25D366" style={{ marginTop: 2 }} />
@@ -166,6 +168,7 @@ export default function HomeScreen() {
           IconComponent={() => (
             <Ionicons name={item.icon as any} size={24} color={item.iconColor} />
           )}
+
           iconBgColor={item.bgColor}
           onPress={() => router.push(item.route as any)}
           theme={theme}

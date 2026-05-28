@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 
-type ShiftStatus = 'open' | 'filled' | 'completed' | 'cancelled' | 'all';
+export type ShiftStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'open'
+  | 'filled'
+  | 'completed'
+  | 'all';
 
 interface ShiftState {
   isCreateModalOpen: boolean;

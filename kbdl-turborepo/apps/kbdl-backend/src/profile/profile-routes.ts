@@ -76,7 +76,7 @@ profileRouter.post(
 
 profileRouter.get(
   '/employers/me/verification-status',
-  authenticate([ROLES.EMPLOYER]),
+  authenticate([ROLES.EMPLOYER], true),
   getEmployerVerificationStatus,
 );
 

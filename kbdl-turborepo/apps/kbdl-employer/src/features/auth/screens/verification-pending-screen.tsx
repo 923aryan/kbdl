@@ -3,6 +3,9 @@
 import { Button } from '@repo/ui/button';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
+import { useGetEmployerVerificationStatus } from '../../profile/hooks/use-profile-hook';
 import { useLogout } from '../hooks/use-auth-hook';
 import { useAuthStore } from '../stores/use-auth-store';
 
@@ -10,6 +13,7 @@ export default function VerificationPendingScreen() {
   const router = useRouter();
   const logoutAction = useAuthStore((state) => state.logout);
   const { mutate: logout, isPending } = useLogout();
+  const { data, refetch, isFetching } = useGetEmployerVerificationStatus();
 
   const handleLogout = () => {
     logout(undefined, {
@@ -23,6 +27,30 @@ export default function VerificationPendingScreen() {
         router.replace('/login');
       },
     });
+  };
+
+  // Redirect to dashboard automatically if verified on initial fetch
+  useEffect(() => {
+    const isVerified = (data as any)?.data?.is_verified ?? data?.is_verified;
+    if (isVerified) {
+      router.replace('/');
+    }
+  }, [data, router]);
+
+  const handleRefresh = async () => {
+    const { data: refreshData, isSuccess, isError } = await refetch();
+
+    if (isSuccess) {
+      const isVerified = (refreshData as any)?.data?.is_verified ?? refreshData?.is_verified;
+      if (isVerified) {
+        toast.success('Your account is verified!');
+        router.replace('/');
+      } else {
+        toast.info('Your account is still pending verification.');
+      }
+    } else if (isError) {
+      toast.error('Failed to check verification status');
+    }
   };
 
   return (
@@ -55,12 +83,21 @@ export default function VerificationPendingScreen() {
           notified once your account is verified and approved.
         </p>
 
-        <div className="mt-8">
+        <div className="mt-8 flex flex-col gap-4">
+          <Button
+            type="button"
+            disabled={isFetching}
+            onClick={handleRefresh}
+            className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white transition-all duration-300 hover:bg-[#0047B3]"
+          >
+            {isFetching ? 'Checking Status...' : 'Check Status'}
+          </Button>
+
           <Button
             type="button"
             disabled={isPending}
             onClick={handleLogout}
-            className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white transition-all duration-300 hover:bg-[#0047B3]"
+            className="w-full rounded-xl border border-zinc-200 bg-white py-3 font-semibold text-zinc-700 transition-all duration-300 hover:bg-zinc-50"
           >
             {isPending ? 'Logging out...' : 'Logout'}
           </Button>

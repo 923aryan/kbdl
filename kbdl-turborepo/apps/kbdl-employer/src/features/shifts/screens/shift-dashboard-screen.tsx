@@ -1,34 +1,73 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ShiftListScreen } from './shift-list-screen';
-import { CreateShiftModal } from './create-shift-modal';
+import { CreateShiftModal } from './create-shift-swap-screen';
 import { ShiftDetailsModal } from './shift-details-modal';
-import { useShiftStore } from '../stores/use-shift-store';
+import { type ShiftStatus, useShiftStore } from '../stores/use-shift-store';
 import { Plus, Calendar, Clock, Users } from 'lucide-react';
+import { useGetEmployerShifts } from '../hooks/use-shift-hook';
+
+const getApprovalStatus = (shift: {
+  created_by?: string;
+  organization_approved?: boolean;
+  status: string;
+}) => {
+  if (shift.created_by === 'user' && !shift.organization_approved && shift.status === 'cancelled') {
+    return 'rejected';
+  }
+
+  if (shift.created_by === 'user' && !shift.organization_approved) {
+    return 'pending';
+  }
+
+  return 'approved';
+};
+
+const FILTER_STATUSES: ShiftStatus[] = [
+  'all',
+  'pending',
+  'approved',
+  'rejected',
+  'open',
+  'filled',
+  'completed',
+];
 
 export const ShiftDashboardScreen = () => {
   const { toggleCreateModal, filters, setFilters } = useShiftStore();
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const { data: shifts = [] } = useGetEmployerShifts();
 
-  // Mock stats - replace with actual API data
-  const stats = [
-    { title: 'Open Shifts', value: '8', change: '+3 today', icon: Calendar, color: 'bg-green-500' },
-    {
-      title: 'Pending Approvals',
-      value: '6',
-      change: 'Requires action',
-      icon: Clock,
-      color: 'bg-yellow-500',
-    },
-    {
-      title: 'Total Workers',
-      value: '24',
-      change: '+2 this month',
-      icon: Users,
-      color: 'bg-blue-500',
-    },
-  ];
+  const stats = useMemo(() => {
+    const pending = shifts.filter((shift) => getApprovalStatus(shift) === 'pending').length;
+    const approved = shifts.filter((shift) => getApprovalStatus(shift) === 'approved').length;
+    const workers = new Set(shifts.map((shift) => shift.original_employee_id)).size;
+
+    return [
+      {
+        title: 'Approved Shifts',
+        value: String(approved),
+        change: 'Ready for workers',
+        icon: Calendar,
+        color: 'bg-green-500',
+      },
+      {
+        title: 'Pending Approvals',
+        value: String(pending),
+        change: 'Requires action',
+        icon: Clock,
+        color: 'bg-yellow-500',
+      },
+      {
+        title: 'Total Workers',
+        value: String(workers),
+        change: 'With shift requests',
+        icon: Users,
+        color: 'bg-blue-500',
+      },
+    ];
+  }, [shifts]);
 
   return (
     <div className="p-6">
@@ -81,10 +120,10 @@ export const ShiftDashboardScreen = () => {
             />
           </div>
           <div className="flex gap-2">
-            {['all', 'open', 'filled', 'completed', 'cancelled'].map((status) => (
+            {FILTER_STATUSES.map((status) => (
               <button
                 key={status}
-                onClick={() => setFilters({ status: status as any })}
+                onClick={() => setFilters({ status })}
                 className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${
                   filters.status === status
                     ? 'bg-blue-600 text-white'

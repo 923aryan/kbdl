@@ -19,17 +19,6 @@ export const useRegisterEmployer = () => {
   });
 };
 
-// 6. Get Employer Profile
-export const useGetEmployerProfile = (): UseQueryResult<GetCurrentEmployerProfileResponse, Error> => {
-  return useQuery({
-    queryKey: ['employer-profile'],
-    queryFn: async () => {
-      const response = await api.get<GetCurrentEmployerProfileResponse>('/profile/employers/me');
-      return response.data
-    },
-  });
-};
-
 // 2. Verify Registered Employer
 export const useVerifyRegisteredEmployer = () => {
   return useMutation({
@@ -69,6 +58,18 @@ export const useLogout = () => {
     mutationFn: async () => {
       const response = await api.post<LogoutResponse>('/auth/logout');
       return response.data;
+    },
+  });
+};
+
+
+// 6. Get Employer Profile
+export const useGetEmployerProfile = (): UseQueryResult<GetCurrentEmployerProfileResponse, Error> => {
+  return useQuery({
+    queryKey: ['employer-profile'],
+    queryFn: async () => {
+      const response = await api.get<GetCurrentEmployerProfileResponse>('/profile/employers/me');
+      return response.data
     },
   });
 };

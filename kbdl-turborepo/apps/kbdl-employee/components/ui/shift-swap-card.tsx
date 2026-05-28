@@ -61,7 +61,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
   const theme = Colors[colorScheme];
   // console.log("inside card: ", shift)
   console.log('button title ', buttonTitle);
-  console.log('button title ', buttonTitle);
   const queryClient = useQueryClient();
   const { mutate: acceptShift } = useAcceptShiftSwap();
   const { mutate: cancelShift } = useCancelShift();
@@ -248,20 +247,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         {/* Action Buttons (Conditional) */}
         {buttonTitle && (
           <View style={styles.buttonContainer}>
-            <CustomButton
-              title="Cancel"
-              variant="outline"
-              size="small"
-              onPress={onCancelPress}
-              containerStyle={{ flex: 1 }}
-            />
-            <CustomButton
-              title="Approve Request"
-              variant="primary"
-              size="small"
-              onPress={onButtonPress}
-              containerStyle={{ flex: 1 }}
-            />
             {buttonTitle !== 'Apply' && (
               <CustomButton
                 title="Cancel shift"

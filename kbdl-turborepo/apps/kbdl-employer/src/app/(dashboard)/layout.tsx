@@ -16,7 +16,7 @@ import {
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 
 const menuItems = [
-  { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/shifts', label: 'Shifts', icon: Clock },
   { path: '/employees', label: 'Employees', icon: Users },
   { path: '/dashboard/jobs', label: 'Jobs', icon: Briefcase },
@@ -128,6 +128,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onClick={() => {
               // Clear auth storage and redirect to login
               localStorage.removeItem('auth-storage');
+              localStorage.removeItem('employer');
+              localStorage.removeItem('accessToken');
               window.location.href = '/login';
             }}
             className="flex items-center px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full"
