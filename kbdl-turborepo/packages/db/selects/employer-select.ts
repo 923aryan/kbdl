@@ -7,5 +7,5 @@ export const safeEmployerSelect = Prisma.validator<Prisma.EmployerSelect>()({
   company_address: true,
   is_verified: true,
   subscription_tier: true,
-  preferences: true
+  preferences: true,
 });

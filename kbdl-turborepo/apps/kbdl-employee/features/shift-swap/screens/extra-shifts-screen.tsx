@@ -240,6 +240,7 @@ const createStyles = (theme: typeof Colors.light) =>
       marginTop: 20,
     },
   });
+
 function ShiftResults({ query, styles }: { query: string; styles: any }) {
   console.log('getting it: ', query);
   const { data: response, isLoading, isError, error } = useGetExtraShifts(query);

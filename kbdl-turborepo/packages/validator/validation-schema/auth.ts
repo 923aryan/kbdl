@@ -125,5 +125,4 @@ export const userVerifyOtpSchema = z.object({
   }),
 });
 
-
-export const employerVerifyRegisterSchema = employerVerifyOtpSchema
+export const employerVerifyRegisterSchema = employerVerifyOtpSchema;
