@@ -10,7 +10,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log("this is root layout")
+  console.log('this is root layout');
 
   return (
     <html lang="en">

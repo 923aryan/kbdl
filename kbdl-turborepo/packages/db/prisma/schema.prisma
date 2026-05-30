@@ -60,6 +60,7 @@ model User {
 }
 
 enum ShiftStatus {
+  pending
   open
   matched
   approved
@@ -326,6 +327,7 @@ model Admin {
 }
 
 enum EmploymentStatus {
+  pending
   active
   inactive
   terminated

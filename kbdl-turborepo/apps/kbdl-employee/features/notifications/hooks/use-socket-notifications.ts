@@ -3,6 +3,7 @@ import { Socket } from 'socket.io-client';
 
 import { useNotificationStore } from '../store/notification-store';
 
+import { NotificationTypes } from '@/constants/constants';
 import { useQueryClient } from '@tanstack/react-query';
 import { RealtimeNotification } from '../types/notification-types';
 
@@ -18,9 +19,16 @@ export function useSocketNotifications(socket: Socket | null) {
 
       addNotification(notification);
 
-      if (notification.type === 'public_shift' || notification.type === 'shift_swap_request') {
+      if (
+        notification.type === NotificationTypes.publicShiftSwap ||
+        notification.type === NotificationTypes.shiftSwapRequest
+      ) {
         queryClient.invalidateQueries({
           queryKey: ['employee-open-shifts'],
+        });
+      } else if (notification.type === NotificationTypes.onboardRequest) {
+        queryClient.invalidateQueries({
+          queryKey: ['employee-pending-employments'],
         });
       }
     };

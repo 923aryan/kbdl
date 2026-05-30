@@ -34,13 +34,13 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     try {
       const response = await api.get<GetCurrentEmployerProfileResponse>('/profile/employers/me');
-      const employerData = response.data
-      console.log("data is ", employerData)
+      const employerData = response.data;
+      console.log('data is ', employerData);
       set({
         employer: employerData || null,
         isHydrated: true, // <-- Mark as done
       });
-      console.log("in src/features/auth/store/auth.store.ts, its hydrated")
+      console.log('in src/features/auth/store/auth.store.ts, its hydrated');
     } catch (error) {
       console.error('Failed to fetch employer profile', error);
       set({ employer: null, isHydrated: true }); // <-- Mark as done even on error

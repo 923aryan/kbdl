@@ -6,8 +6,11 @@ import type {
   CancelShiftResponse,
   CreateShiftPayload,
   CreateShiftResponse,
+  GetBestShiftMatchesResponse,
+  GetCreatedShiftsForEmployeeResponse,
   GetEmployeeShiftsResponse,
   GetExtraShiftsResponse,
+  GetLatestShiftsResponse,
   UpdateShiftPayload,
   UpdateShiftResponse,
   getReferredEmployeePayload,
@@ -31,7 +34,7 @@ export const useAcceptShiftSwap = () => {
   return useMutation({
     mutationFn: async (payload: AcceptShiftPayload) => {
       const response = await api.post<AcceptShiftResponse>('/shift-swap/accept', payload);
-      return response.data;
+      return response;
     },
   });
 };
@@ -41,6 +44,18 @@ export const useGetEmployeeShifts = () => {
     queryKey: ['employee-shifts'],
     queryFn: async () => {
       const response = await api.get<GetEmployeeShiftsResponse>('/shift-swap/employee');
+      return response.data;
+    },
+  });
+};
+
+export const useGetCreatedShiftsForEmployee = () => {
+  return useQuery({
+    queryKey: ['employee-created-shifts'],
+    queryFn: async () => {
+      const response = await api.get<GetCreatedShiftsForEmployeeResponse>(
+        '/shift-swap/employee/created',
+      );
       return response.data;
     },
   });
@@ -99,6 +114,30 @@ export const useGetOpenShifts = () => {
 
     queryFn: async () => {
       const response = await api.get<OpenShift[]>('/shift-swap/employee/open');
+
+      return response.data;
+    },
+  });
+};
+export const useGetLatestShifts = (query?: string) => {
+  return useQuery({
+    queryKey: ['employee-latest-shifts'],
+
+    queryFn: async () => {
+      const response = await api.get<GetLatestShiftsResponse>(`/shift-swap/latest?${query}`);
+
+      return response.data;
+    },
+  });
+};
+export const useGetBestMatchesShifts = (query?: string) => {
+  return useQuery({
+    queryKey: ['employee-best-matches-shifts'],
+
+    queryFn: async () => {
+      const response = await api.get<GetBestShiftMatchesResponse>(
+        `/shift-swap/best-matches?${query}`,
+      );
 
       return response.data;
     },

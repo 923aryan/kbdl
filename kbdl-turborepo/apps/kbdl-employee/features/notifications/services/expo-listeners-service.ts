@@ -1,3 +1,4 @@
+import { NotificationTypes } from '@/constants/constants';
 import * as Notifications from 'expo-notifications';
 
 let foregroundSubscription: Notifications.EventSubscription;
@@ -22,11 +23,12 @@ export function registerExpoListeners() {
     console.log('Notification tapped:', response);
 
     const data = response.notification.request.content.data;
-    if (data.type === 'public_shift') {
+    if (data.type === NotificationTypes.publicShiftSwap) {
       // router.push(`/shifts/${data.shiftId}`);
-    } else if (data.type === 'shift_swap_request') {
+    } else if (data.type === NotificationTypes.shiftSwapRequest) {
       console.log('Notification data:', data);
       // router.push(`/shifts/${data.shiftId}`);
+    } else if (data.type === NotificationTypes.onboardRequest) {
     }
     /*
           navigation logic here later

@@ -8,7 +8,10 @@ import { AppError } from '../utils/api-error';
 import { ROLES } from '../utils/constants';
 import { JwtPayload } from '../utils/jwt-payload';
 
-export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>, bypass: boolean = false) => {
+export const authenticate = (
+  allowedRoles?: Array<'user' | 'employer' | 'admin'>,
+  bypass: boolean = false,
+) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     let token: string | undefined;
 
@@ -47,14 +50,11 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
           new AppError(403, 'FORBIDDEN', 'You do not have permission to access this resource'),
         );
       }
-      if (
-        user.role === ROLES.EMPLOYER &&
-        user.payload.employer.is_verified === false
-      ) {
+      if (user.role === ROLES.EMPLOYER && user.payload.employer.is_verified === false) {
         if (bypass) {
           return next();
         }
-        console.log("inside auth middleware: role : employer id =  ", user.payload.employer.id)
+        console.log('inside auth middleware: role : employer id =  ', user.payload.employer.id);
         const currentEmployer = await prisma.employer.findUnique({
           where: { id: user.payload.employer.id },
           select: {
@@ -63,7 +63,7 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
             is_verified: true,
           },
         });
-        console.log("curent employer ", currentEmployer)
+        console.log('curent employer ', currentEmployer);
         if (!currentEmployer?.is_verified) {
           return next(new AppError(403, 'UNVERIFIED', 'Verification pending.'));
         }
@@ -81,11 +81,9 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
           },
         };
 
-        const newAccessToken =
-          generateAccessToken(payload);
+        const newAccessToken = generateAccessToken(payload);
 
-        const newRefreshToken =
-          generateRefreshToken(payload);
+        const newRefreshToken = generateRefreshToken(payload);
 
         /*
           Persist refresh token
@@ -104,11 +102,7 @@ export const authenticate = (allowedRoles?: Array<'user' | 'employer' | 'admin'>
           Set fresh cookies
         */
 
-        setAuthCookies(
-          res,
-          newAccessToken,
-          newRefreshToken,
-        );
+        setAuthCookies(res, newAccessToken, newRefreshToken);
 
         // optional for mobile clients
         res.setHeader('x-access-token', newAccessToken);

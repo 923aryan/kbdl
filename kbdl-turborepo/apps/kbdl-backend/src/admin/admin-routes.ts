@@ -81,7 +81,6 @@
 
 // adminRouter.use('/workers', adminWorkerRouter);
 
-
 // // ==========================================
 // // 🏢 EMPLOYERS MANAGEMENT ROUTES
 // // ==========================================
@@ -100,7 +99,7 @@
 // // Toggles is_verified status based on GST or document verification by admin
 // adminEmployerRouter.patch('/:id/verify', verifyEmployer);
 
-// // Manually overrides the string-based subscription_tier 
+// // Manually overrides the string-based subscription_tier
 // adminEmployerRouter.patch('/:id/subscription', updateEmployerSubscription);
 
 // // --- Sub-Resource Audits & Analytics ---
@@ -117,7 +116,6 @@
 // adminEmployerRouter.get('/:id/transactions', getEmployerTransactions);
 
 // adminRouter.use('/employers', adminEmployerRouter);
-
 
 // // ==========================================
 // // ⚙️ OPERATIONS MANAGEMENT ROUTES
@@ -159,7 +157,6 @@
 
 // adminRouter.use('/operations', adminOperationsRouter);
 
-
 // // ==========================================
 // // 💸 FINANCE & SUBSCRIPTIONS ROUTES
 // // ==========================================
@@ -193,14 +190,13 @@
 // adminFinanceRouter.patch('/subscriptions/:id/cancel', cancelUserSubscription);
 
 // // --- Orders Management ---
-// // View physical/service orders 
+// // View physical/service orders
 // adminFinanceRouter.get('/orders', getAllOrders);
 
 // // Manually override payment_status (e.g., if paid via cash offline)
 // adminFinanceRouter.patch('/orders/:id/payment-status', updateOrderStatus);
 
 // adminRouter.use('/finance', adminFinanceRouter);
-
 
 // // ==========================================
 // // 📥 LEADS CRM ROUTES
