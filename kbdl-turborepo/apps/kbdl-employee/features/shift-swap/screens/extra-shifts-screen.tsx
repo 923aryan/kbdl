@@ -34,7 +34,9 @@ export default function ExtraShiftScreen() {
   const styles = createStyles(theme);
 
   const [filterQuery, setFilterQuery] = useState<string | null>(null);
-  const [locationMsg, setLocationMsg] = useState('Fetching location...');
+  const [locationStatus, setLocationStatus] = useState<'fetching' | 'fetched' | 'error'>(
+    'fetching',
+  );
 
   const {
     control,
@@ -58,7 +60,7 @@ export default function ExtraShiftScreen() {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          setLocationMsg('Location permission denied');
+          setLocationStatus('error');
           return;
         }
 
@@ -69,28 +71,10 @@ export default function ExtraShiftScreen() {
         setValue('latitude', lat);
         setValue('longitude', lon);
 
-        const geocode = await Location.reverseGeocodeAsync({
-          latitude: lat,
-          longitude: lon,
-        });
-
-        if (geocode && geocode.length > 0) {
-          const place = geocode[0];
-          const cityName =
-            place.street ||
-            place.name ||
-            place.city ||
-            place.district ||
-            place.subregion ||
-            place.region ||
-            'Unknown Location';
-          setLocationMsg(`${cityName} ✓`);
-        } else {
-          setLocationMsg('Location Fetched ✓');
-        }
-        console.log('fetched locaiton: ', `${lat}, ${lon}`);
+        setLocationStatus('fetched');
+        console.log('fetched location: ', `${lat}, ${lon}`);
       } catch (e) {
-        setLocationMsg('Error fetching location');
+        setLocationStatus('error');
       }
     })();
   }, [setValue]);
@@ -130,18 +114,30 @@ export default function ExtraShiftScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
           <View style={styles.headerContainer}>
-            <Text style={styles.title}>Extra Shifts</Text>
             <Text style={styles.subtitle}>Find and apply for extra shifts</Text>
           </View>
 
           <View style={styles.formSection}>
-            <CustomInput
-              label="Current Location:"
-              placeholder="Fetching location..."
-              icon={<Feather name="map-pin" size={18} color={theme.icon} />}
-              value={locationMsg}
-              editable={false}
-            />
+            <View style={{ marginBottom: 16 }}>
+              <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 4 }}>
+                This feature works based on your current location.
+              </Text>
+              {locationStatus === 'fetching' && (
+                <Text style={{ color: '#F59E0B', fontSize: 14, fontWeight: '500' }}>
+                  Fetching location...
+                </Text>
+              )}
+              {locationStatus === 'fetched' && (
+                <Text style={{ color: '#10B981', fontSize: 14, fontWeight: '500' }}>
+                  Location fetched ✓
+                </Text>
+              )}
+              {locationStatus === 'error' && (
+                <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '500' }}>
+                  Failed to fetch location. Please enable location permissions.
+                </Text>
+              )}
+            </View>
 
             <Controller
               control={control}
@@ -180,6 +176,7 @@ export default function ExtraShiftScreen() {
                 title="Search Shifts"
                 variant="primary"
                 onPress={handleSubmit(onSubmit)}
+                disabled={locationStatus !== 'fetched'}
               />
             </View>
           </View>
@@ -223,8 +220,9 @@ const createStyles = (theme: typeof Colors.light) =>
       marginBottom: 6,
     },
     subtitle: {
-      fontSize: 15,
-      color: theme.textSecondary,
+      fontSize: 18,
+      fontWeight: '500',
+      color: theme.text,
     },
     formSection: {
       paddingHorizontal: 24,

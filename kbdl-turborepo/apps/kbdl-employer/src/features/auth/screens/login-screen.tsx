@@ -70,12 +70,12 @@ export default function LoginPage() {
           } else {
             router.replace('/');
           }
-          return
+          return;
         },
         onError: (error: any) => {
           toast.error(error?.message || 'Invalid OTP');
         },
-      }
+      },
     );
   };
 
@@ -107,7 +107,9 @@ export default function LoginPage() {
             <h1 className="mt-5 text-3xl font-bold text-[#0A2540]">Welcome Back</h1>
 
             <p className="mt-2 text-center text-sm text-zinc-500">
-              {step === 'email' ? 'Login with OTP verification' : 'Enter the OTP sent to your email'}
+              {step === 'email'
+                ? 'Login with OTP verification'
+                : 'Enter the OTP sent to your email'}
             </p>
           </div>
 

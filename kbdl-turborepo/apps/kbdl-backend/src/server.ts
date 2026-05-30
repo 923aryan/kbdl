@@ -12,6 +12,7 @@ import redis from './config/redis';
 import { initializeSocketServer } from './config/socket/socket-server';
 import leadRouter from './leads/leads-routes';
 import notificationRouter from './notifications/notification-routes';
+import operationsRouter from './operations/operation-routes';
 import profileRouter from './profile/profile-routes';
 import shiftSwapRouter from './shift-swap/shift-swap-routes';
 import { errorHandler } from './utils/send-error';
@@ -43,6 +44,7 @@ app.use('/api/v1/shift-swap', shiftSwapRouter);
 app.use('/api/v1/leads', leadRouter);
 app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/profile', profileRouter);
+app.use('/api/v1/operations', operationsRouter);
 app.get('/health', (_req: Request, res: Response) => {
   sendSuccess<null>(res, 'Server is running', null, 200);
 });

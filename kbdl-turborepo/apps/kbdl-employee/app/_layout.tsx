@@ -1,7 +1,7 @@
 import { toastConfig } from '@/components/ui/toast';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { SocketProvider } from '@/features/notifications/providers/socket-provider';
-import { updateUserProfile } from '@/features/profile/api';
+import { updateUserLocation } from '@/features/profile/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/api/query-client';
 
@@ -34,6 +34,14 @@ export const unstable_settings = {
 };
 
 SplashScreen.preventAutoHideAsync();
+
+const CustomDefaultTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#F8F9FA',
+  },
+};
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -106,11 +114,9 @@ export default function RootLayout() {
         console.log(`${locationName} ✓`);
       }
 
-      await updateUserProfile({
-        location: {
-          latitude,
-          longitude,
-        },
+      await updateUserLocation({
+        latitude,
+        longitude,
       });
 
       console.log('User location updated successfully');
@@ -158,12 +164,16 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : CustomDefaultTheme}>
         <QueryClientProvider client={queryClient}>
           <SocketProvider>
             <Stack
               screenOptions={{
                 headerShown: false,
+                // Optimize navigation performance
+                animation: 'slide_from_right',
+                fullScreenGestureEnabled: true,
+                freezeOnBlur: true, // Freezes previous screens to save CPU/memory
               }}
             >
               <Stack.Screen

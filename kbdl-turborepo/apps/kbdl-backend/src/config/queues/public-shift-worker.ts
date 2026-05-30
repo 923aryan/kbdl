@@ -5,6 +5,7 @@ import { prisma } from '@repo/db/server';
 import redis from '../redis';
 
 import { createNotificationService } from '../../notifications/notification-service';
+import { NotificationTypes } from '../../utils/constants';
 
 new Worker(
   'public-shift-broadcast',
@@ -56,7 +57,7 @@ new Worker(
         createNotificationService({
           userId: user.id,
 
-          type: 'public_shift',
+          type: NotificationTypes.publicShiftSwap,
 
           title: 'New Shift Available',
 

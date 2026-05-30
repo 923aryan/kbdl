@@ -8,7 +8,7 @@ import {
   UserRegisterRequest,
   UserSendOTPRequest,
   UserVerifyOTPRequest,
-  UserVerifyRegisterRequest
+  UserVerifyRegisterRequest,
 } from '@repo/types';
 import { env } from '@repo/validator/server';
 import {
@@ -37,7 +37,6 @@ import {
   verifyUserRegistrationOtpService,
 } from './auth-service';
 
-
 const registerUser = async (req: Request, res: Response) => {
   const registerInput: UserRegisterRequest = validate(userRegisterSchema, req);
   await registerUserService(registerInput.body);
@@ -57,7 +56,6 @@ const sendUserOtp = async (req: Request, res: Response) => {
   await sendUserOtpService(input.body);
   sendSuccess(res, 'OTP sent successfully to phone', null, 200);
 };
-
 
 const verifyUserOtp = async (req: Request, res: Response) => {
   const input: UserVerifyOTPRequest = validate(userVerifyOtpSchema, req);
@@ -190,7 +188,8 @@ export {
   sendEmployerOtp,
   sendUserOtp,
   userTokenRefresh,
-  verifyEmployerOtp, verifyRegisteredEmployer, verifyRegisteredUser,
-  verifyUserOtp
+  verifyEmployerOtp,
+  verifyRegisteredEmployer,
+  verifyRegisteredUser,
+  verifyUserOtp,
 };
-

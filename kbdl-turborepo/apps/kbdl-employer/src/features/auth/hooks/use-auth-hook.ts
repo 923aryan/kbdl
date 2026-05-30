@@ -3,7 +3,7 @@ import type {
   EmployerVerifyOTPResponse,
   EmployerVerifyRegisterPayload,
   GetCurrentEmployerProfileResponse,
-  LogoutResponse
+  LogoutResponse,
 } from '@repo/types';
 import { useMutation, useQuery, UseQueryResult } from '@tanstack/react-query';
 import { api } from '../../../lib/api-client';
@@ -46,7 +46,10 @@ export const useSendEmployerOtp = () => {
 export const useVerifyEmployerOtp = () => {
   return useMutation({
     mutationFn: async (payload: { email: string; otp: string }) => {
-      const response = await api.post<EmployerVerifyOTPResponse>('/auth/employer/verify-otp', payload);
+      const response = await api.post<EmployerVerifyOTPResponse>(
+        '/auth/employer/verify-otp',
+        payload,
+      );
       return response.data;
     },
   });
@@ -62,14 +65,16 @@ export const useLogout = () => {
   });
 };
 
-
 // 6. Get Employer Profile
-export const useGetEmployerProfile = (): UseQueryResult<GetCurrentEmployerProfileResponse, Error> => {
+export const useGetEmployerProfile = (): UseQueryResult<
+  GetCurrentEmployerProfileResponse,
+  Error
+> => {
   return useQuery({
     queryKey: ['employer-profile'],
     queryFn: async () => {
       const response = await api.get<GetCurrentEmployerProfileResponse>('/profile/employers/me');
-      return response.data
+      return response.data;
     },
   });
 };

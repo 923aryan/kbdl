@@ -77,6 +77,36 @@ export const getExtraShiftsSchema = z.object({
   }),
 });
 
+export const getLatestShiftsSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
+export const getBestShiftMatchesSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
 export const rateShiftSchema = z.object({
   body: z.object({
     shift_id: z.string().uuid('Invalid shift ID format'),
@@ -87,5 +117,13 @@ export const rateShiftSchema = z.object({
       .min(1, 'Minimum score is 1')
       .max(5, 'Maximum score is 5'),
     flagged_issue: z.boolean().default(false),
+  }),
+});
+
+export const getPendingShiftsSchema = z.object({});
+
+export const approveShiftSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
   }),
 });

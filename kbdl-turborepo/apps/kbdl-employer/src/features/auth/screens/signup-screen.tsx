@@ -46,12 +46,12 @@ export default function SignupPage() {
 
     registerEmployer(data as any, {
       onSuccess: () => {
-        toast.success("Registration successful. Please check your email for OTP.")
+        toast.success('Registration successful. Please check your email for OTP.');
         setEmailForOtp(data.email);
         setStep('otp');
       },
       onError: (error: any) => {
-        console.log("error is ", error)
+        console.log('error is ', error);
         toast.error(error?.message);
       },
     });
@@ -68,14 +68,14 @@ export default function SignupPage() {
       { email: emailForOtp, otp },
       {
         onSuccess: (data) => {
-          toast.success("OTP Verified Successfully!")
+          toast.success('OTP Verified Successfully!');
           setAuth(data.employer);
           router.replace('/verification-pending');
         },
         onError: (error: any) => {
-          toast.error(error?.message || 'Invalid OTP')
+          toast.error(error?.message || 'Invalid OTP');
         },
-      }
+      },
     );
   };
 
@@ -116,10 +116,11 @@ export default function SignupPage() {
           {/* Message Box */}
           {message.text && (
             <div
-              className={`mb-5 rounded-xl px-4 py-3 text-sm font-medium ${message.type === 'success'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
-                }`}
+              className={`mb-5 rounded-xl px-4 py-3 text-sm font-medium ${
+                message.type === 'success'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+              }`}
             >
               {message.text}
             </div>

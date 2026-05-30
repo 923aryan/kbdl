@@ -9,8 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../features/auth/stores/use-auth-store';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-
-  console.log("this is src/app/(dashboard)/layout.tsx")
+  console.log('this is src/app/(dashboard)/layout.tsx');
 
   const router = useRouter();
 
@@ -30,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (isMounted && isHydrated && !employer) {
-      console.log("navigating to login")
+      console.log('navigating to login');
       router.replace('/login');
     }
   }, [employer, isMounted, isHydrated, router]);

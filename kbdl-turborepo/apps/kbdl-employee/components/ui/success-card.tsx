@@ -28,10 +28,6 @@ export function SuccessCard({ visible, message, onClose }: SuccessCardProps) {
 
           {/* Main message - your prop, now used as a bold title */}
           <Text style={[styles.messageTitle, { color: theme.text }]}>{message}</Text>
-
-          {/* Descriptive text - static and with secondary color */}
-          <Text style={[styles.description, { color: theme.textSecondary }]}>{message}</Text>
-
           {/* Secondary close button, using the onClose prop */}
           <TouchableOpacity style={styles.closeButtonContainer} onPress={onClose}>
             <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>Close</Text>
