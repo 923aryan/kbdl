@@ -60,7 +60,7 @@ shiftSwapRouter.post(
 
 // GET /api/shifts/:id
 // Returns complete shift details, including the original and replacement employee profiles
-shiftSwapRouter.get('/:id', authenticate([ROLES.EMPLOYER]), getShiftDetails);
+shiftSwapRouter.get('/:id', authenticate([ROLES.EMPLOYER, ROLES.USER]), getShiftDetails);
 
 // PATCH /api/shifts/:id/approve
 // Sets organization_approved to true and transitions status to 'completed'

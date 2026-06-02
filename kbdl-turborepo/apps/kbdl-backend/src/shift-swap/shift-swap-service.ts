@@ -907,7 +907,8 @@ export const approveShiftRequestService = async (
 };
 
 export const getShiftDetailsService = async (
-  employerId: string,
+  userId: string,
+  userType: 'user' | 'employer',
   shiftId: string,
 ): Promise<GetShiftDetailsResponse> => {
   const shift = await prisma.shift.findUnique({
@@ -919,6 +920,9 @@ export const getShiftDetailsService = async (
       replacement_employee: {
         select: safeUserSelect,
       },
+      employer: {
+        select: safeEmployerSelect,
+      },
     },
   });
 
@@ -926,7 +930,16 @@ export const getShiftDetailsService = async (
     throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
   }
 
-  if (shift.employer_id !== employerId) {
+  if (userType === ROLES.EMPLOYER && shift.employer_id !== userId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
+  }
+
+  if (
+    userType === ROLES.USER &&
+    shift.original_employee_id !== userId &&
+    shift.replacement_employee_id !== userId &&
+    !(shift.replacement_employee_id === null && shift.status === 'open')
+  ) {
     throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
   }
 

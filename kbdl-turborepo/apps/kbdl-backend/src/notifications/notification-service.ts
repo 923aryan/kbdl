@@ -32,7 +32,7 @@ export const createNotificationService = async (
       token: true,
     },
   });
-
+  console.log('final notification adding: ', notification);
   await notificationQueue.add('send-notification', {
     userId: payload.userId,
     pushTokens: pushTokens.map((t) => t.token),
