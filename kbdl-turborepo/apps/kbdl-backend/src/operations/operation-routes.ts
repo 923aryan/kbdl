@@ -12,6 +12,7 @@ import {
   getEmployeePendingEmployments,
   getEmployerRoster,
   onboardEmployee,
+  searchAddress,
   updateEmploymentStatus,
 } from './operation-controllers';
 
@@ -58,4 +59,6 @@ operationsRouter.patch(
   declineEmploymentRequest,
 );
 
+// Handles address autocomplete search
+operationsRouter.get('/addresses/search', authenticate([ROLES.USER]), searchAddress);
 export default operationsRouter;

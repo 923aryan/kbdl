@@ -1,262 +1,261 @@
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useColorScheme,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BlueCollars from '@/assets/images/blue-collars.svg';
 import CompleteProfile from '@/assets/images/complete-your-profile.svg';
 import EmployeesImage from '@/assets/images/employees-image.svg';
 import FindJobChair from '@/assets/images/find-job-chair.svg';
-import FindJobIcon from '@/assets/images/find-job.svg';
 import NearbyJobs from '@/assets/images/nearby-jobs.svg';
-import ShiftsCalendar from '@/assets/images/shifts-calendar.svg';
 import ShiftsIcon from '@/assets/images/shifts.svg';
 import TimelyPayment from '@/assets/images/timely-payment.svg';
 import VerifiedEmployers from '@/assets/images/verified-employers.svg';
-import Loader from '@/components/ui/loader';
-import OnboardRequestCard from '@/components/ui/onboard-request-card';
-import ShiftCard from '@/components/ui/shift-swap-card';
+import { Colors } from '@/constants/theme';
 import { useGetPendingEmployments } from '@/features/operations/hooks/use-operation-hook';
 import { useGetOpenShifts } from '@/features/shift-swap/api';
-import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
+import translations from '@/translations';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme() ?? 'light';
   const { user } = useAuthStore();
+  const selectedLanguage = user?.preferences?.language || 'en-IN';
+  const isHindi = selectedLanguage.startsWith('hi');
+  const t = isHindi ? translations.hi : translations.en;
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
   const [hideProfileBanner, setHideProfileBanner] = useState(false);
   const { data, isLoading: isLoadingShifts } = useGetOpenShifts();
   const { data: pendingEmployments, isLoading: isLoadingEmployments } = useGetPendingEmployments();
-  const setShifts = useShiftSwapStore((s) => s.setShifts);
-  const scrollViewRef = useRef<ScrollView>(null);
   const name = user?.name || user?.phone_no || 'Alok';
 
   // Check if skills exist and contain at least one non-empty string
   const hasSkills = user?.skills && user.skills.some((skill) => skill.trim() !== '');
   const showProfileBanner = !hasSkills && !hideProfileBanner;
 
-  useEffect(() => {
-    if (data) {
-      console.log('shfits : ', data);
-      setShifts(data);
-    }
-  }, [data, setShifts]);
-
-  // Bounce animation effect to indicate scrollability
-  useEffect(() => {
-    if (data && data.length > 1) {
-      const scrollDownTimeout = setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: 50, animated: true });
-
-        const scrollUpTimeout = setTimeout(() => {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }, 400);
-
-        return () => clearTimeout(scrollUpTimeout);
-      }, 600); // 600ms delay gives the user a moment to see the screen first
-
-      return () => clearTimeout(scrollDownTimeout);
-    }
-  }, [data]);
+  const jobsCount = pendingEmployments?.length || 0;
+  const shiftsCount = data?.length || 0;
+  const updateMessageParts = [];
+  if (jobsCount > 0) updateMessageParts.push(`${jobsCount}${t.jobRequests}`);
+  if (shiftsCount > 0) updateMessageParts.push(`${shiftsCount}${t.shiftsText}`);
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 10 }]}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View>
-            <Text style={styles.greetingText}>Hello {name}</Text>
-            <TouchableOpacity style={styles.locationRow}>
-              <Ionicons name="navigate" size={12} color="#000" />
-              <Text style={styles.locationText}>Chandig...</Text>
-              <Ionicons name="chevron-down" size={12} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <TouchableOpacity>
-          <Ionicons name="menu" size={28} color="#000" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Hero Section */}
-      <View style={styles.heroSection}>
-        <View style={styles.heroTextContent}>
-          <Text style={styles.heroTitle}>
-            Har din Kaam,{'\n'}
-            <Text style={styles.heroTitleUnderline}>Behtar</Text> kal.
-          </Text>
-          <Text style={styles.heroSubtitle}>
-            Trusted shifts and jobs for skilled people like you
-          </Text>
-        </View>
-        {/* Render Image with Absolute Positioning */}
-        <EmployeesImage style={styles.heroImage} width={160} height={180} />
-      </View>
-
-      {/* Onboard Requests List */}
-      {isLoadingEmployments ? (
-        <View style={styles.shiftListContainer}>
-          <Loader />
-        </View>
-      ) : (
-        pendingEmployments &&
-        pendingEmployments.length > 0 && (
-          <View style={styles.shiftListContainer}>
-            <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
-              {pendingEmployments.map((employment) => (
-                <OnboardRequestCard key={employment.id} employment={employment} />
-              ))}
-            </ScrollView>
-          </View>
-        )
-      )}
-
-      {/* Shift Cards List */}
-      <View style={styles.shiftListContainer}>
-        {isLoadingShifts ? (
-          <Loader />
-        ) : (
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          >
-            {data?.map((shift) => (
-              <ShiftCard key={shift.id} shift={shift} buttonTitle="Notification" />
-            ))}
-          </ScrollView>
-        )}
-      </View>
-
-      {/* Shifts Card */}
-      <View style={[styles.mainCard, { backgroundColor: '#F8F4FF' }]}>
-        <View style={styles.mainCardTop}>
-          {/* Constrain text width so it doesn't overlap the image */}
-          <View style={styles.mainCardTextContainer}>
-            <ShiftsCalendar style={styles.cardIcon} width={48} height={48} />
-            <Text style={styles.cardTitle}>Shifts</Text>
-            <Text style={styles.cardSubtitle}>Find nearby shifts that fit your time.</Text>
-          </View>
-          {/* Big Illustration on the right */}
-          <ShiftsIcon style={styles.shiftsIllustration} width={130} height={130} />
-        </View>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#9333EA' }]}
-          onPress={() => router.push('/shift-swap')}
-        >
-          <Text style={styles.actionButtonText}>Explore Shifts</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Find Job Card */}
-      <View style={[styles.mainCard, { backgroundColor: '#F0F6FF' }]}>
-        <View style={styles.mainCardTop}>
-          {/* Constrain text width so it doesn't overlap the image */}
-          <View style={styles.mainCardTextContainer}>
-            <FindJobIcon style={styles.cardIcon} width={48} height={48} />
-            <Text style={styles.cardTitle}>Find Job</Text>
-            <Text style={styles.cardSubtitle}>Find the right job for your skills.</Text>
-          </View>
-          {/* Chair Illustration on the right */}
-          <FindJobChair style={styles.jobIllustration} width={100} height={120} />
-        </View>
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#0D5EBA' }]}
-          onPress={() => router.push('/jobs/find-jobs')}
-        >
-          <Text style={styles.actionButtonText}>Find Jobs</Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Complete Profile Banner */}
-      {showProfileBanner && (
-        <TouchableOpacity
-          style={styles.profileBanner}
-          activeOpacity={0.8}
-          onPress={() => router.push('/profile')}
-        >
-          <CompleteProfile style={styles.profileImage} width={60} height={60} />
-          <View style={styles.profileTextContent}>
-            <View style={styles.profileHeaderRow}>
-              <Text style={styles.profileTitle}>Complete your profile</Text>
-              <TouchableOpacity
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                onPress={() => setHideProfileBanner(true)}
-              >
-                <Ionicons name="close" size={18} color="#000" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={[styles.contentContainer, { paddingTop: 10 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View>
+              <Text style={styles.greetingText}>
+                {t.hello} {name}
+              </Text>
+              <TouchableOpacity style={styles.locationRow}>
+                <Ionicons name="navigate" size={12} color="#000" />
+                <Text style={styles.locationText}>{t.locationText}</Text>
+                <Ionicons name="chevron-down" size={12} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.profileSubtitle}>
-              Add your skills and experience to get better matches.
+          </View>
+          <TouchableOpacity>
+            <Ionicons name="menu" size={28} color="#000" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <View style={styles.heroTextContent}>
+            <Text style={styles.heroTitle}>
+              {t.heroTitlePart1}
+              <Text style={styles.heroTitleUnderline}>{t.heroTitlePart2}</Text>
+              {t.heroTitlePart3}
             </Text>
+            <Text style={styles.heroSubtitle}>{t.heroSubtitle}</Text>
           </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Features Grid */}
-      <View style={styles.featuresCard}>
-        <View style={styles.featureItem}>
-          <View style={[styles.featureIconContainer, { backgroundColor: '#ECFDF5' }]}>
-            <VerifiedEmployers width={20} height={20} />
-          </View>
-          <Text style={styles.featureTitle}>Verified Employers</Text>
-          <Text style={styles.featureSubtitle}>Trusted & safe workplace</Text>
+          {/* Render Image with Absolute Positioning */}
+          <EmployeesImage style={styles.heroImage} width={160} height={180} />
         </View>
 
-        <View style={styles.verticalDivider} />
-
-        <View style={styles.featureItem}>
-          <View style={[styles.featureIconContainer, { backgroundColor: '#FFF7ED' }]}>
-            <TimelyPayment width={20} height={20} />
+        {/* Feeds / Notifications Summary Card */}
+        {!isLoadingShifts &&
+        !isLoadingEmployments &&
+        ((data && data.length > 0) || (pendingEmployments && pendingEmployments.length > 0)) ? (
+          <View style={[styles.mainCard, { backgroundColor: '#FFFBEB' }]}>
+            <View style={styles.mainCardTop}>
+              <View style={styles.mainCardTextContainer}>
+                <Text style={styles.cardTitle}>{t.recentUpdates}</Text>
+                <Text style={styles.cardSubtitle}>
+                  {t.youHave}
+                  {updateMessageParts.join(t.and)}
+                  {t.available}
+                </Text>
+              </View>
+            </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: '#D97706', overflow: 'hidden' },
+              ]}
+              onPress={() => router.push('/notifications')}
+            >
+              {({ pressed }) => (
+                <>
+                  {pressed && <View style={styles.darkOverlay} />}
+                  <Text style={styles.actionButtonText}>{t.viewNotifications}</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </>
+              )}
+            </Pressable>
           </View>
-          <Text style={styles.featureTitle}>Timely Payment</Text>
-          <Text style={styles.featureSubtitle}>Get paid on time, always</Text>
+        ) : null}
+
+        {/* Shifts Card */}
+        <View style={[styles.mainCard, { backgroundColor: '#F8F4FF' }]}>
+          <View style={styles.mainCardTop}>
+            {/* Constrain text width so it doesn't overlap the image */}
+            <View style={styles.mainCardTextContainer}>
+              <Text style={styles.cardTitle}>{t.shiftsCardTitle}</Text>
+              <Text style={styles.cardSubtitle}>{t.shiftsCardSubtitle}</Text>
+            </View>
+            {/* Big Illustration on the right */}
+            <ShiftsIcon style={styles.shiftsIllustration} width={70} height={70} />
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { backgroundColor: '#9333EA', overflow: 'hidden' },
+            ]}
+            onPress={() => router.push('/shift-swap')}
+          >
+            {({ pressed }) => (
+              <>
+                {pressed && <View style={styles.darkOverlay} />}
+                <Text style={styles.actionButtonText}>{t.exploreShifts}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
+            )}
+          </Pressable>
         </View>
 
-        <View style={styles.verticalDivider} />
-
-        <View style={styles.featureItem}>
-          <View style={[styles.featureIconContainer, { backgroundColor: '#F5F3FF' }]}>
-            <NearbyJobs width={20} height={20} />
+        {/* Find Job Card */}
+        <View style={[styles.mainCard, { backgroundColor: '#F0F6FF' }]}>
+          <View style={styles.mainCardTop}>
+            {/* Constrain text width so it doesn't overlap the image */}
+            <View style={styles.mainCardTextContainer}>
+              <Text style={styles.cardTitle}>{t.findJobCardTitle}</Text>
+              <Text style={styles.cardSubtitle}>{t.findJobCardSubtitle}</Text>
+            </View>
+            {/* Chair Illustration on the right */}
+            <FindJobChair style={styles.jobIllustration} width={60} height={72} />
           </View>
-          <Text style={styles.featureTitle}>Nearby Jobs</Text>
-          <Text style={styles.featureSubtitle}>Work close to home</Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { backgroundColor: '#0D5EBA', overflow: 'hidden' },
+            ]}
+            onPress={() => router.push('/jobs/find-jobs')}
+          >
+            {({ pressed }) => (
+              <>
+                {pressed && <View style={styles.darkOverlay} />}
+                <Text style={styles.actionButtonText}>{t.findJobs}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
+            )}
+          </Pressable>
         </View>
 
-        <View style={styles.verticalDivider} />
+        {/* Complete Profile Banner */}
+        {showProfileBanner && (
+          <TouchableOpacity
+            style={styles.profileBanner}
+            activeOpacity={0.8}
+            onPress={() => router.push('/profile')}
+          >
+            <CompleteProfile style={styles.profileImage} width={60} height={60} />
+            <View style={styles.profileTextContent}>
+              <View style={styles.profileHeaderRow}>
+                <Text style={styles.profileTitle}>{t.completeProfileTitle}</Text>
+                <TouchableOpacity
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() => setHideProfileBanner(true)}
+                >
+                  <Ionicons name="close" size={18} color="#000" />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.profileSubtitle}>{t.completeProfileSubtitle}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
-        <View style={styles.featureItem}>
-          <View style={[styles.featureIconContainer, { backgroundColor: '#EFF6FF' }]}>
-            <BlueCollars width={20} height={20} />
+        {/* Features Grid */}
+        <View style={styles.featuresCard}>
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIconContainer, { backgroundColor: '#ECFDF5' }]}>
+              <VerifiedEmployers width={20} height={20} />
+            </View>
+            <Text style={styles.featureTitle}>{t.verifiedEmployers}</Text>
+            {/* <Text style={styles.featureSubtitle}>Trusted & safe workplace</Text> */}
           </View>
-          <Text style={styles.featureTitle}>For Blue collar Heroes</Text>
-          <Text style={styles.featureSubtitle}>Built for your hard work</Text>
+
+          <View style={styles.verticalDivider} />
+
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIconContainer, { backgroundColor: '#FFF7ED' }]}>
+              <TimelyPayment width={20} height={20} />
+            </View>
+            <Text style={styles.featureTitle}>{t.timelyPayment}</Text>
+            {/* <Text style={styles.featureSubtitle}>Get paid on time, always</Text> */}
+          </View>
+
+          <View style={styles.verticalDivider} />
+
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIconContainer, { backgroundColor: '#F5F3FF' }]}>
+              <NearbyJobs width={20} height={20} />
+            </View>
+            <Text style={styles.featureTitle}>{t.nearbyJobs}</Text>
+            {/* <Text style={styles.featureSubtitle}>Work close to home</Text> */}
+          </View>
+
+          <View style={styles.verticalDivider} />
+
+          <View style={styles.featureItem}>
+            <View style={[styles.featureIconContainer, { backgroundColor: '#EFF6FF' }]}>
+              <BlueCollars width={20} height={20} />
+            </View>
+            <Text style={styles.featureTitle}>{t.blueCollarHeroes}</Text>
+            {/* <Text style={styles.featureSubtitle}>Built for your hard work</Text> */}
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
   contentContainer: {
     paddingHorizontal: 20,
     paddingBottom: 110,
-  },
-  shiftListContainer: {
-    paddingTop: 10,
-    maxHeight: 250, // Sets the height to roughly show only one card at a time
-    marginBottom: 10,
   },
   /* Header Styles */
   header: {
@@ -299,7 +298,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 0,
+    marginBottom: 16,
     minHeight: 120,
     position: 'relative',
     zIndex: 10,
@@ -332,22 +331,22 @@ const styles = StyleSheet.create({
 
   /* Main Cards Styles (Shifts & Jobs) */
   mainCard: {
-    borderRadius: 24,
+    borderRadius: 12,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
     zIndex: 4499,
   },
   mainCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 20,
-    minHeight: 110,
     position: 'relative',
   },
   mainCardTextContainer: {
-    width: '55%', // Restricts text width to leave space for right-side illustration
+    width: '70%', // Restricts text width to leave space for right-side illustration
     zIndex: 2,
   },
   cardIcon: {
@@ -366,15 +365,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   shiftsIllustration: {
-    position: 'absolute',
-    right: -15,
-    bottom: -10,
     zIndex: 1,
   },
   jobIllustration: {
-    position: 'absolute',
-    right: -5,
-    bottom: -15,
     zIndex: 1,
   },
   actionButton: {
@@ -382,13 +375,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 12,
     gap: 8,
   },
   actionButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  darkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
 
   /* Profile Banner Styles */
@@ -429,7 +426,7 @@ const styles = StyleSheet.create({
   featuresCard: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 4,
     borderWidth: 1,

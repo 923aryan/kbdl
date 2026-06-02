@@ -231,7 +231,6 @@ const createStyles = (theme: typeof Colors.light) =>
       borderStyle: 'dashed',
       borderColor: theme.border,
       marginVertical: 16,
-      borderRadius: 1,
     },
     infoCol: { flex: 1 },
     infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },

@@ -4,6 +4,7 @@ import {
   GetEmployeeEmploymentRequest,
   GetEmployerRosterRequest,
   OnboardEmployeeRequest,
+  SearchAddressRequest,
   UpdateEmploymentStatusRequest,
 } from '@repo/types';
 import {
@@ -12,6 +13,7 @@ import {
   getEmployeeEmploymentSchema,
   getEmployerRosterSchema,
   onboardEmployeeSchema,
+  searchAddressSchema,
   updateEmploymentStatusSchema,
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
@@ -20,6 +22,7 @@ import { validate } from '../utils/validate';
 import {
   acceptEmploymentRequestService,
   declineEmploymentRequestService,
+  getAddressSuggestionsService,
   getAllEmployeeEmploymentService,
   getEmployeeDetailsService,
   getEmployeeEmploymentService,
@@ -101,4 +104,10 @@ export const declineEmploymentRequest = async (req: Request, res: Response) => {
   const employmentId = input.params.id;
   const employment = await declineEmploymentRequestService(employeeId, employmentId);
   sendSuccess(res, 'Employment request declined successfully', employment);
+};
+
+export const searchAddress = async (req: Request, res: Response) => {
+  const input: SearchAddressRequest = validate(searchAddressSchema, req);
+  const addresses = await getAddressSuggestionsService(input.query.query);
+  sendSuccess(res, 'Addresses retrieved successfully', addresses);
 };

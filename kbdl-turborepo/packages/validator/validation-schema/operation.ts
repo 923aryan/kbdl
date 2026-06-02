@@ -44,3 +44,9 @@ export const getEmployeeEmploymentSchema = z.object({
     id: z.string().uuid('Invalid employee mapping ID format'),
   }),
 });
+
+export const searchAddressSchema = z.object({
+  query: z.object({
+    query: z.string().trim().min(2, 'Search query must be at least 2 characters long'),
+  }),
+});

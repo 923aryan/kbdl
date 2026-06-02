@@ -1,6 +1,7 @@
 import { ShiftStatus } from '@repo/db';
 import {
   AcceptShiftRequest,
+  ApproveShiftCompletionRequest,
   ApproveShiftRequest,
   CancelShiftRequest,
   CreateShiftRequest,
@@ -10,11 +11,14 @@ import {
   GetLatestShiftsRequest,
   GetPendingShiftsRequest,
   getReferredEmployeeRequest,
+  GetShiftDetailsRequest,
   RateShiftRequest,
+  ReportShiftNoShowRequest,
   UpdateShiftRequest,
 } from '@repo/types';
 import {
   acceptShiftSchema,
+  approveShiftCompletionSchema,
   approveShiftSchema,
   cancelShiftSchema,
   createShiftSchema,
@@ -23,7 +27,9 @@ import {
   getLatestShiftsSchema,
   getPendingShiftsSchema,
   getReferredEmployeeSchema,
+  getShiftDetailsSchema,
   rateShiftSchema,
+  reportShiftNoShowSchema,
   updateShiftSchema,
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
@@ -32,6 +38,7 @@ import { sendSuccess } from '../utils/send-success';
 import { validate } from '../utils/validate';
 import {
   acceptShiftService,
+  approveShiftCompletionService,
   approveShiftRequestService,
   cancelShiftService,
   createShiftService,
@@ -45,7 +52,9 @@ import {
   getPendingShiftsForEmployerService,
   getReferredEmployeeService,
   getScheduledShiftsService,
+  getShiftDetailsService,
   rateShiftService,
+  reportShiftNoShowService,
   updateShiftService,
 } from './shift-swap-service';
 
@@ -69,7 +78,7 @@ const acceptShiftSwap = async (req: Request, res: Response) => {
   sendSuccess(
     res,
     shift.status === ShiftStatus.pending
-      ? 'Shift requested successfully, check regulary for confirmation'
+      ? 'Shift requested successfully, check regularly for confirmation'
       : 'Shift request accepted',
     shift,
     200,
@@ -182,8 +191,30 @@ const approveShiftRequest = async (req: Request, res: Response) => {
   sendSuccess(res, 'Shift request approved successfully', shift, 200);
 };
 
+const getShiftDetails = async (req: Request, res: Response) => {
+  const input: GetShiftDetailsRequest = validate(getShiftDetailsSchema, req);
+  const employerId = (req.payload as any).employer.id;
+  const shift = await getShiftDetailsService(employerId, input.params.id);
+  sendSuccess(res, 'Shift details retrieved successfully', shift, 200);
+};
+
+const approveShiftCompletion = async (req: Request, res: Response) => {
+  const input: ApproveShiftCompletionRequest = validate(approveShiftCompletionSchema, req);
+  const employerId = (req.payload as any).employer.id;
+  const shift = await approveShiftCompletionService(employerId, input.params.id);
+  sendSuccess(res, 'Shift completion approved successfully', shift, 200);
+};
+
+const reportShiftNoShow = async (req: Request, res: Response) => {
+  const input: ReportShiftNoShowRequest = validate(reportShiftNoShowSchema, req);
+  const employerId = (req.payload as any).employer.id;
+  const shift = await reportShiftNoShowService(employerId, input.params.id);
+  sendSuccess(res, 'No-show reported successfully', shift, 200);
+};
+
 export {
   acceptShiftSwap,
+  approveShiftCompletion,
   approveShiftRequest,
   cancelShift,
   createShiftSwap,
@@ -197,6 +228,8 @@ export {
   getPendingShiftsForEmployer,
   getReferredEmployee,
   getScheduledShifts,
+  getShiftDetails,
   rateShift,
+  reportShiftNoShow,
   updateShift,
 };

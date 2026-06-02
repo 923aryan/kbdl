@@ -18,13 +18,13 @@ export const typography = {
   },
 
   body: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: 'Poppins_500Regular',
     fontSize: 16,
     lineHeight: 24,
   },
 
   bodySmall: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: 'Poppins_500Regular',
     fontSize: 14,
     lineHeight: 20,
   },

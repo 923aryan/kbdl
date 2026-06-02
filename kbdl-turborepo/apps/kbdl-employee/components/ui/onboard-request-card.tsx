@@ -225,7 +225,6 @@ const createStyles = (theme: any) =>
       borderStyle: 'dashed',
       borderColor: theme.border,
       marginVertical: 16,
-      borderRadius: 1,
     },
     bottomSection: { flexDirection: 'column', justifyContent: 'space-between' },
     infoCol: { marginBottom: 12 },

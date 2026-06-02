@@ -2,12 +2,13 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { ScrollView, StyleSheet, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import CustomButton from '@/components/ui/button';
 import { SuccessCard } from '@/components/ui/success-card';
+import { Typography } from '@/components/ui/typography';
 import { ShiftStatus } from '@/constants/constants';
 import { Colors } from '@/constants/theme';
 import { markNotificationRead } from '@/features/notifications/api';
@@ -29,6 +30,7 @@ const formatTime = (dateInput: string | Date) => {
 export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
+  const styles = createStyles(theme);
   const queryClient = useQueryClient();
 
   const { mutate: acceptShift } = useAcceptShiftSwap();
@@ -40,7 +42,9 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
   if (!shift) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Unable to load shift details.</Text>
+        <Typography variant="body" style={styles.errorText}>
+          Unable to load shift details.
+        </Typography>
       </View>
     );
   }
@@ -137,30 +141,45 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
           {/* Header Block */}
           <View style={styles.headerBlock}>
             <View style={styles.titleRow}>
-              <Text style={styles.title}>{title}</Text>
+              <Typography variant="h2" style={[styles.title, { color: theme.text }]}>
+                {title}
+              </Typography>
               <View style={[styles.statusPill, { backgroundColor: statusConfig.bg }]}>
-                <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                <Typography
+                  variant="caption"
+                  style={[styles.statusText, { color: statusConfig.color }]}
+                >
                   {statusConfig.text}
-                </Text>
+                </Typography>
               </View>
             </View>
 
             <View style={styles.payContainer}>
-              <Text style={styles.payAmount}>{payAmount}</Text>
-              <Text style={styles.paySuffix}>{paySuffix}</Text>
+              <Typography variant="h2" style={styles.payAmount}>
+                {payAmount}
+              </Typography>
+              <Typography variant="body" style={[styles.paySuffix, { color: theme.textSecondary }]}>
+                {paySuffix}
+              </Typography>
             </View>
           </View>
 
           {/* Employer Info */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Employer</Text>
+            <Typography variant="h3" style={[styles.sectionTitle, { color: theme.text }]}>
+              Employer
+            </Typography>
             <View style={styles.employerRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{employerName.charAt(0).toUpperCase()}</Text>
+              <View style={[styles.avatar, { backgroundColor: theme.primary + '15' }]}>
+                <Typography variant="h2" style={[styles.avatarText, { color: theme.primary }]}>
+                  {employerName.charAt(0).toUpperCase()}
+                </Typography>
               </View>
               <View style={styles.employerInfo}>
                 <View style={styles.employerNameRow}>
-                  <Text style={styles.employerName}>{employerName}</Text>
+                  <Typography variant="body" style={[styles.employerName, { color: theme.text }]}>
+                    {employerName}
+                  </Typography>
                   {employer?.is_verified && (
                     <Ionicons
                       name="checkmark-circle"
@@ -170,26 +189,56 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
                     />
                   )}
                 </View>
-                {location && <Text style={styles.addressText}>{location}</Text>}
+                {location && (
+                  <Typography
+                    variant="caption"
+                    style={[styles.addressText, { color: theme.textSecondary }]}
+                  >
+                    {location}
+                  </Typography>
+                )}
               </View>
             </View>
           </View>
 
           {/* Shift Details Info */}
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Shift Details</Text>
+            <Typography variant="h3" style={[styles.sectionTitle, { color: theme.text }]}>
+              Shift Details
+            </Typography>
             <View style={styles.detailRow}>
-              <Feather name="calendar" size={20} color="#4B5563" />
-              <Text style={styles.detailText}>{displayDate}</Text>
+              <View style={[styles.iconBox, { backgroundColor: theme.primary + '10' }]}>
+                <Feather name="calendar" size={20} color={theme.primary} />
+              </View>
+              <Typography
+                variant="body"
+                style={[styles.detailText, { color: theme.textSecondary }]}
+              >
+                {displayDate}
+              </Typography>
             </View>
             <View style={styles.detailRow}>
-              <Feather name="clock" size={20} color="#4B5563" />
-              <Text style={styles.detailText}>{displayTime}</Text>
+              <View style={[styles.iconBox, { backgroundColor: theme.primary + '10' }]}>
+                <Feather name="clock" size={20} color={theme.primary} />
+              </View>
+              <Typography
+                variant="body"
+                style={[styles.detailText, { color: theme.textSecondary }]}
+              >
+                {displayTime}
+              </Typography>
             </View>
             {distance && (
-              <View style={styles.detailRow}>
-                <Feather name="map" size={20} color="#4B5563" />
-                <Text style={styles.detailText}>{distance} Away</Text>
+              <View style={[styles.detailRow, styles.lastDetailRow]}>
+                <View style={[styles.iconBox, { backgroundColor: theme.primary + '10' }]}>
+                  <Feather name="map" size={20} color={theme.primary} />
+                </View>
+                <Typography
+                  variant="body"
+                  style={[styles.detailText, { color: theme.textSecondary }]}
+                >
+                  {distance} Away
+                </Typography>
               </View>
             )}
           </View>
@@ -242,72 +291,88 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: { flex: 1, backgroundColor: '#F3F4F6' },
-  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 16, color: '#6B7280' },
-  scrollContent: { padding: 20, paddingBottom: 120 },
+const createStyles = (theme: typeof Colors.light) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+    },
+    container: { flex: 1, backgroundColor: theme.background },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    errorText: { color: theme.textSecondary },
+    scrollContent: { padding: 20, paddingBottom: 120 },
 
-  headerBlock: { marginBottom: 24 },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  title: { fontSize: 26, fontWeight: '800', color: '#111827', flex: 1, marginRight: 10 },
-  statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  statusText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase' },
-  payContainer: { flexDirection: 'row', alignItems: 'baseline' },
-  payAmount: { fontSize: 28, fontWeight: '800', color: '#059669' },
-  paySuffix: { fontSize: 16, color: '#4B5563', fontWeight: '500', marginLeft: 4 },
+    headerBlock: { marginBottom: 24, marginTop: 10 },
+    titleRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 12,
+    },
+    title: { flex: 1, marginRight: 10 },
+    statusPill: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      alignSelf: 'flex-start',
+    },
+    statusText: { fontWeight: '700', textTransform: 'uppercase' },
+    payContainer: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4 },
+    payAmount: { color: '#059669' }, // Keeping the accent green color for visibility
+    paySuffix: { marginLeft: 4 },
 
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16 },
+    sectionCard: {
+      backgroundColor: theme.card,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 20,
+      shadowColor: '#000',
+      shadowOpacity: 0.04,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    sectionTitle: { marginBottom: 16 },
 
-  employerRow: { flexDirection: 'row', alignItems: 'center' },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#111827',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: '#FFF', fontSize: 24, fontWeight: '700' },
-  employerInfo: { flex: 1, marginLeft: 16 },
-  employerNameRow: { flexDirection: 'row', alignItems: 'center' },
-  employerName: { fontSize: 18, fontWeight: '600', color: '#111827' },
-  verifiedIcon: { marginLeft: 6 },
-  addressText: { fontSize: 14, color: '#6B7280', marginTop: 4, lineHeight: 20 },
+    employerRow: { flexDirection: 'row', alignItems: 'center' },
+    avatar: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: { fontWeight: '700' },
+    employerInfo: { flex: 1, marginLeft: 16 },
+    employerNameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
+    employerName: { fontWeight: '600' },
+    verifiedIcon: { marginLeft: 6 },
+    addressText: { marginTop: 2, lineHeight: 20 },
 
-  detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  detailText: { fontSize: 16, color: '#374151', marginLeft: 12, fontWeight: '500' },
+    detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    lastDetailRow: { marginBottom: 0 },
+    iconBox: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: 16,
+    },
+    detailText: { flex: 1, fontWeight: '500' },
 
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 30, // For safe area
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  logicButtons: { flexDirection: 'row', alignItems: 'center' },
-});
+    footer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.card,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      paddingBottom: 30, // For safe area padding
+      borderTopWidth: 1,
+      borderTopColor: theme.border,
+    },
+    logicButtons: { flexDirection: 'row', alignItems: 'center' },
+  });

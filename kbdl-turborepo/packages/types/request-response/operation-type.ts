@@ -5,6 +5,7 @@ import {
   getEmployeeEmploymentSchema,
   getEmployerRosterSchema,
   onboardEmployeeSchema,
+  searchAddressSchema,
   updateEmploymentStatusSchema,
 } from '@repo/validator/shared';
 import { z } from 'zod';
@@ -36,3 +37,50 @@ export type GetEmployeeEmploymentRequest = z.infer<typeof getEmployeeEmploymentS
 export type GetEmployeeEmploymentResponse = EmployeeEmploymentWithEmployerDTO;
 
 export type GetEmployeePendingEmploymentResponse = EmployeeEmploymentWithEmployerDTO[];
+
+export type SearchAddressRequest = z.infer<typeof searchAddressSchema>;
+export type SearchAddressPayload = z.infer<typeof searchAddressSchema>['query'];
+
+export interface SearchAddressResponse {
+  type: 'FeatureCollection';
+  features: SearchAddressFeature[];
+  query: {
+    text: string;
+    parsed: {
+      city?: string;
+      expected_type?: string;
+    };
+    categories: string[];
+  };
+}
+
+export interface SearchAddressFeature {
+  type: 'Feature';
+  properties: {
+    place_id: string;
+    formatted: string;
+
+    lat: number;
+    lon: number;
+
+    country?: string;
+    country_code?: string;
+
+    state?: string;
+    city?: string;
+    county?: string;
+    postcode?: string;
+
+    result_type: string;
+
+    address_line1?: string;
+    address_line2?: string;
+  };
+
+  geometry: {
+    type: 'Point';
+    coordinates: [number, number];
+  };
+
+  bbox?: number[];
+}

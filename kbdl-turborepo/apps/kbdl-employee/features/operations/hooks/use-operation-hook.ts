@@ -5,6 +5,8 @@ import type {
   GetAllEmployeeEmploymentResponse,
   GetEmployeeEmploymentResponse,
   GetEmployeePendingEmploymentResponse,
+  SearchAddressPayload,
+  SearchAddressResponse,
 } from '@repo/types';
 
 // Retrieves all EmployeeEmployment models tied to the logged-in user (employee)
@@ -68,5 +70,18 @@ export const useGetPendingEmployments = () => {
       );
       return response.data;
     },
+  });
+};
+
+export const useGetSearchAddress = (query: SearchAddressPayload) => {
+  return useQuery({
+    queryKey: ['search-address', query?.query],
+    queryFn: async () => {
+      const response = await api.get<SearchAddressResponse>(
+        `/operations/addresses/search?query=${encodeURIComponent(query?.query || '')}`,
+      );
+      return response.data;
+    },
+    enabled: !!query?.query && query.query.length >= 2,
   });
 };
