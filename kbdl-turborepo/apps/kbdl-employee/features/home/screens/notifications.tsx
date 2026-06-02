@@ -1,9 +1,182 @@
-import { Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function Alerts() {
+import Loader from '@/components/ui/loader';
+import OnboardRequestCard from '@/components/ui/onboard-request-card';
+import ShiftCard from '@/components/ui/shift-swap-card';
+import { Colors } from '@/constants/theme';
+import { useGetPendingEmployments } from '@/features/operations/hooks/use-operation-hook';
+import { useGetOpenShifts } from '@/features/shift-swap/api';
+import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
+
+export default function Notifications() {
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme() ?? 'light';
+  const theme = Colors[colorScheme];
+
+  const { data, isLoading: isLoadingShifts } = useGetOpenShifts();
+  const { data: pendingEmployments, isLoading: isLoadingEmployments } = useGetPendingEmployments();
+  const setShifts = useShiftSwapStore((s) => s.setShifts);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const [activeTab, setActiveTab] = useState<'shifts' | 'jobs'>('shifts');
+
+  useEffect(() => {
+    if (data) {
+      console.log('shifts : ', data);
+      setShifts(data);
+    }
+  }, [data, setShifts]);
+
+  // Bounce animation effect to indicate scrollability
+  useEffect(() => {
+    if (data && data.length > 1 && activeTab === 'shifts') {
+      const scrollDownTimeout = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 50, animated: true });
+
+        const scrollUpTimeout = setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }, 400);
+
+        return () => clearTimeout(scrollUpTimeout);
+      }, 600); // 600ms delay gives the user a moment to see the screen first
+
+      return () => clearTimeout(scrollDownTimeout);
+    }
+  }, [data, activeTab]);
+
   return (
-    <View className="flex-1 items-center justify-center bg-white dark:bg-black p-4">
-      <Text className="text-textPrimary dark:text-white text-lg">This is alerts</Text>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
+      </View>
+
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'shifts'
+              ? { backgroundColor: theme.primary, borderColor: theme.primary }
+              : { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+          onPress={() => setActiveTab('shifts')}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'shifts' ? styles.activeTabText : { color: theme.textSecondary },
+            ]}
+          >
+            Shift Swap
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'jobs'
+              ? { backgroundColor: theme.primary, borderColor: theme.primary }
+              : { backgroundColor: theme.card, borderColor: theme.border },
+          ]}
+          onPress={() => setActiveTab('jobs')}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === 'jobs' ? styles.activeTabText : { color: theme.textSecondary },
+            ]}
+          >
+            Job Onboard
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeTab === 'shifts' && (
+          <>
+            {isLoadingShifts ? (
+              <View style={styles.listContainer}>
+                <Loader />
+              </View>
+            ) : data && data.length > 0 ? (
+              <View style={styles.listContainer}>
+                {data.map((shift) => (
+                  <ShiftCard key={shift.id} shift={shift} buttonTitle="Notification" />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="notifications-off-outline" size={48} color={theme.textSecondary} />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  No new shift swap requests
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+
+        {activeTab === 'jobs' && (
+          <>
+            {isLoadingEmployments ? (
+              <View style={styles.listContainer}>
+                <Loader />
+              </View>
+            ) : pendingEmployments && pendingEmployments.length > 0 ? (
+              <View style={styles.listContainer}>
+                {pendingEmployments.map((employment) => (
+                  <OnboardRequestCard key={employment.id} employment={employment} />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="notifications-off-outline" size={48} color={theme.textSecondary} />
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  No new job onboard requests
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: { fontSize: 24, fontWeight: '700' },
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 12,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabText: { fontSize: 15, fontWeight: '600' },
+  activeTabText: { color: '#FFFFFF' },
+  contentContainer: { paddingHorizontal: 20, paddingBottom: 110, paddingTop: 10 },
+  listContainer: { paddingTop: 4, marginBottom: 20 },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
+  emptyText: { fontSize: 16, marginTop: 12, textAlign: 'center' },
+});

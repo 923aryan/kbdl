@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from 'react-native';
@@ -23,6 +24,7 @@ import { getExtraShiftsSchema } from '@repo/validator/shared';
 import CustomButton from '../../../components/ui/button';
 import CustomInput from '../../../components/ui/input';
 import ShiftCard from '../../../components/ui/shift-swap-card';
+import { useGetSearchAddress } from '../../operations/hooks/use-operation-hook';
 import { useGetExtraShifts } from '../api';
 const formSchema = getExtraShiftsSchema.shape.query;
 type FormInput = z.input<typeof formSchema>;
@@ -38,6 +40,22 @@ export default function ExtraShiftScreen() {
     'fetching',
   );
 
+  const [addressQuery, setAddressQuery] = useState('');
+  const [debouncedAddress, setDebouncedAddress] = useState('');
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAddress(addressQuery);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [addressQuery]);
+
+  const { data: searchResults, isFetching: isSearching } = useGetSearchAddress({
+    query: debouncedAddress,
+  });
+
   const {
     control,
     handleSubmit,
@@ -48,6 +66,7 @@ export default function ExtraShiftScreen() {
     defaultValues: {
       skill: '',
       date: undefined,
+      radius: 10,
       latitude: 25.2467,
       longitude: 87.399434,
       limit: undefined,
@@ -96,6 +115,10 @@ export default function ExtraShiftScreen() {
       params.push(`date=${encodeURIComponent(utcDate.toISOString())}`);
     }
 
+    if (data.radius !== undefined) {
+      params.push(`radius=${data.radius}`);
+    }
+
     params.push(`limit=${data.limit ?? 10}`);
     params.push(`page=${data.page ?? 1}`);
     params.push(`latitude=${data.latitude}`);
@@ -120,7 +143,7 @@ export default function ExtraShiftScreen() {
           <View style={styles.formSection}>
             <View style={{ marginBottom: 16 }}>
               <Text style={{ color: theme.textSecondary, fontSize: 14, marginBottom: 4 }}>
-                This feature works based on your current location.
+                If no address is searched, your current location will be used by default.
               </Text>
               {locationStatus === 'fetching' && (
                 <Text style={{ color: '#F59E0B', fontSize: 14, fontWeight: '500' }}>
@@ -136,6 +159,57 @@ export default function ExtraShiftScreen() {
                 <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '500' }}>
                   Failed to fetch location. Please enable location permissions.
                 </Text>
+              )}
+            </View>
+
+            <View style={{ marginBottom: 16 }}>
+              <CustomInput
+                label="Search Address (Optional):"
+                placeholder="Search for an address..."
+                icon={<Feather name="search" size={18} color={theme.icon} />}
+                onChangeText={(text) => {
+                  setAddressQuery(text);
+                  setIsDropdownVisible(true);
+                  if (selectedAddress && text !== selectedAddress) {
+                    setSelectedAddress(null);
+                  }
+                }}
+                value={addressQuery}
+              />
+              {isDropdownVisible && debouncedAddress.length >= 2 && searchResults?.features && (
+                <View
+                  style={[
+                    styles.dropdown,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
+                >
+                  {isSearching && (
+                    <Text style={{ padding: 8, color: theme.textSecondary }}>Searching...</Text>
+                  )}
+                  {!isSearching && searchResults.features.length === 0 && (
+                    <Text style={{ padding: 8, color: theme.textSecondary }}>
+                      No results found.
+                    </Text>
+                  )}
+                  {!isSearching &&
+                    searchResults.features.map((feature: any, index: number) => (
+                      <TouchableOpacity
+                        key={feature.properties.place_id || index}
+                        style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+                        onPress={() => {
+                          const lat = feature.properties.lat;
+                          const lon = feature.properties.lon;
+                          setValue('latitude', lat);
+                          setValue('longitude', lon);
+                          setAddressQuery(feature.properties.formatted);
+                          setSelectedAddress(feature.properties.formatted);
+                          setIsDropdownVisible(false);
+                        }}
+                      >
+                        <Text style={{ color: theme.text }}>{feature.properties.formatted}</Text>
+                      </TouchableOpacity>
+                    ))}
+                </View>
               )}
             </View>
 
@@ -167,6 +241,23 @@ export default function ExtraShiftScreen() {
                   icon={<Feather name="calendar" size={18} color={theme.icon} />}
                   error={errors.date?.message}
                   theme={theme}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="radius"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <CustomInput
+                  label="Search Radius (km):"
+                  placeholder="e.g. 10"
+                  icon={<Feather name="map-pin" size={18} color={theme.icon} />}
+                  onBlur={onBlur}
+                  onChangeText={(text) => onChange(text)}
+                  value={value ? value.toString() : ''}
+                  error={errors.radius?.message}
+                  keyboardType="numeric"
                 />
               )}
             />
@@ -238,6 +329,17 @@ const createStyles = (theme: typeof Colors.light) =>
       textAlign: 'center',
       color: theme.textSecondary,
       marginTop: 20,
+    },
+    dropdown: {
+      borderWidth: 1,
+      borderRadius: 8,
+      marginTop: 4,
+      maxHeight: 200,
+      overflow: 'hidden',
+    },
+    dropdownItem: {
+      padding: 12,
+      borderBottomWidth: 1,
     },
   });
 

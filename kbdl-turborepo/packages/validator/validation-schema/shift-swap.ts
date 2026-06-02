@@ -62,7 +62,7 @@ export const getExtraShiftsSchema = z.object({
     skill: z.string().optional(),
     date: z.string().datetime({ message: 'Date must be a valid ISO datetime string' }).optional(),
     latitude: z.coerce.number().min(-90).max(90),
-
+    radius: z.coerce.number().optional().default(10),
     longitude: z.coerce.number().min(-180).max(180),
     limit: z
       .string()
@@ -123,6 +123,24 @@ export const rateShiftSchema = z.object({
 export const getPendingShiftsSchema = z.object({});
 
 export const approveShiftSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
+export const getShiftDetailsSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
+export const approveShiftCompletionSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
+export const reportShiftNoShowSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid shift ID format'),
   }),

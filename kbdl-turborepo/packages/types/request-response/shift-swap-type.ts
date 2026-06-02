@@ -3,6 +3,7 @@ import { safeUserSelect } from '@repo/db/shared';
 
 import {
   acceptShiftSchema,
+  approveShiftCompletionSchema,
   approveShiftSchema,
   cancelShiftSchema,
   createShiftSchema,
@@ -11,7 +12,9 @@ import {
   getLatestShiftsSchema,
   getPendingShiftsSchema,
   getReferredEmployeeSchema,
+  getShiftDetailsSchema,
   rateShiftSchema,
+  reportShiftNoShowSchema,
   updateShiftSchema,
 } from '@repo/validator/shared';
 import z from 'zod';
@@ -103,3 +106,15 @@ export type GetOpenShiftsForEmployeeResponse = ShiftWithNotification[];
 
 export type ApproveShiftRequest = z.infer<typeof approveShiftSchema>;
 export type ApproveShiftResponse = Shift;
+
+export type GetShiftDetailsRequest = z.infer<typeof getShiftDetailsSchema>;
+export type GetShiftDetailsResponse = Shift & {
+  original_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }>;
+  replacement_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }> | null;
+};
+
+export type ApproveShiftCompletionRequest = z.infer<typeof approveShiftCompletionSchema>;
+export type ApproveShiftCompletionResponse = Shift;
+
+export type ReportShiftNoShowRequest = z.infer<typeof reportShiftNoShowSchema>;
+export type ReportShiftNoShowResponse = Shift;

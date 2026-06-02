@@ -1,3 +1,4 @@
+import CustomSplashScreen from '@/components/ui/custom-splash-screen';
 import { toastConfig } from '@/components/ui/toast';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { SocketProvider } from '@/features/notifications/providers/socket-provider';
@@ -22,7 +23,7 @@ import * as Location from 'expo-location';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import 'react-native-reanimated';
 
@@ -50,6 +51,7 @@ export default function RootLayout() {
   const user = useAuthStore((s) => s.user);
 
   const hasRequestedLocation = useRef(false);
+  const [isAppReady, setIsAppReady] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -134,12 +136,19 @@ export default function RootLayout() {
         // Optional splash delay
         await new Promise((resolve) => setTimeout(resolve, 2000));
       } finally {
-        await SplashScreen.hideAsync();
+        setIsAppReady(true);
       }
     }
 
     prepare();
   }, []);
+
+  // Hide native splash screen once fonts are fully loaded
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
 
   // Reset guard on logout
   useEffect(() => {
@@ -162,6 +171,14 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return null;
 
+  if (!isAppReady) {
+    return (
+      <SafeAreaProvider>
+        <CustomSplashScreen />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : CustomDefaultTheme}>
@@ -174,6 +191,7 @@ export default function RootLayout() {
                 animation: 'slide_from_right',
                 fullScreenGestureEnabled: true,
                 freezeOnBlur: true, // Freezes previous screens to save CPU/memory
+                contentStyle: { backgroundColor: '#F8F9FA' },
               }}
             >
               <Stack.Screen

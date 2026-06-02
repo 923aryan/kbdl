@@ -13,6 +13,7 @@ import {
   GetOpenShiftsForEmployeeResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
+  GetShiftDetailsResponse,
   RateShiftPayload,
   ShiftWithNotification,
   UpdateShiftPayload,
@@ -435,7 +436,7 @@ export const getExtraShiftsService = async (
   query: GetExtraShiftsQuery,
   userId: string,
 ): Promise<GetExtraShiftsResponse> => {
-  const { skill, date, latitude, longitude, limit = 10, page = 1 } = query;
+  const { skill, date, latitude, longitude, radius = 10, limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
 
   const conditions: string[] = [
@@ -448,7 +449,7 @@ export const getExtraShiftsService = async (
   const values: any[] = [];
   let paramIndex = 1;
 
-  // Nearby filter (10km radius)
+  // Nearby filter (dynamic radius)
   conditions.push(`
     ST_DWithin(
       e.company_location,
@@ -456,15 +457,15 @@ export const getExtraShiftsService = async (
         ST_MakePoint($${paramIndex}, $${paramIndex + 1}),
         4326
       )::geography,
-      10000
+      $${paramIndex + 2}
     )
   `);
 
   // IMPORTANT:
   // ST_MakePoint(longitude, latitude)
-  values.push(longitude, latitude);
+  values.push(longitude, latitude, radius * 1000);
 
-  paramIndex += 2;
+  paramIndex += 3;
 
   conditions.push(`
     s.original_employee_id != $${paramIndex}
@@ -811,6 +812,7 @@ export const getBestShiftMatchesService = async (
 
   const { latitude, longitude } = user;
   const userSkills = user.skills && user.skills.length > 0 ? user.skills : [];
+  const UserSkills = userSkills.map((skill: string) => skill.toLowerCase());
 
   const conditions: string[] = [
     `s.status = 'open'`,
@@ -821,8 +823,8 @@ export const getBestShiftMatchesService = async (
   ];
 
   // 2. Dynamically add the skill filter if the user has skills
-  if (userSkills.length > 0) {
-    conditions.push(`s.skill_required = ANY($6::text[])`);
+  if (UserSkills.length > 0) {
+    conditions.push(`LOWER(s.skill_required) = ANY($6::text[])`);
   }
 
   const whereClause = conditions.join(' AND ');
@@ -852,7 +854,7 @@ export const getBestShiftMatchesService = async (
     userId, // $3
     limit, // $4
     skip, // $5
-    userSkills, // $6
+    UserSkills, // $6
   );
 
   return shifts as GetBestShiftMatchesResponse;
@@ -900,6 +902,107 @@ export const approveShiftRequestService = async (
     data: {
       status: ShiftStatus.approved,
       organization_approved: true,
+    },
+  });
+};
+
+export const getShiftDetailsService = async (
+  employerId: string,
+  shiftId: string,
+): Promise<GetShiftDetailsResponse> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+    include: {
+      original_employee: {
+        select: safeUserSelect,
+      },
+      replacement_employee: {
+        select: safeUserSelect,
+      },
+    },
+  });
+
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
+  }
+
+  return shift;
+};
+
+export const approveShiftCompletionService = async (
+  employerId: string,
+  shiftId: string,
+): Promise<Shift> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+  });
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
+  }
+  if (shift.shift_start.getTime() > Date.now()) {
+    throw new AppError(
+      400,
+      'SHIFT_NOT_STARTED',
+      'Cannot approve completion for a shift that has not started yet.',
+    );
+  }
+  return prisma.shift.update({
+    where: { id: shiftId },
+    data: {
+      status: ShiftStatus.completed,
+      organization_approved: true,
+    },
+  });
+};
+
+export const reportShiftNoShowService = async (
+  employerId: string,
+  shiftId: string,
+): Promise<Shift> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+  });
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
+  }
+
+  if (shift.status === ShiftStatus.completed) {
+    throw new AppError(
+      400,
+      'SHIFT_ALREADY_COMPLETED',
+      'Cannot report a no-show for a shift that has already been marked as completed.',
+    );
+  }
+
+  if (shift.status !== ShiftStatus.approved) {
+    throw new AppError(
+      400,
+      'SHIFT_NOT_APPROVED',
+      'No-show can only be reported for shifts that have been approved and are ready to be worked.',
+    );
+  }
+  if (shift.no_show_reported) {
+    throw new AppError(
+      400,
+      'ALREADY_REPORTED',
+      'No-show has already been reported for this shift.',
+    );
+  }
+
+  return prisma.shift.update({
+    where: { id: shiftId },
+    data: {
+      no_show_reported: true,
     },
   });
 };

@@ -35,7 +35,11 @@ new Worker(
 
           AND np.shift_swap = true
 
-          AND ${skillRequired} = ANY(u.skills)
+          AND EXISTS (
+            SELECT 1
+            FROM UNNEST(u.skills) AS skill
+            WHERE LOWER(skill) = LOWER(${skillRequired})
+          )
 
           AND u.location IS NOT NULL
 

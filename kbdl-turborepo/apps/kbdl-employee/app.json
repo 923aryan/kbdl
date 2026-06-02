@@ -31,15 +31,7 @@
       "expo-localization",
       "expo-dev-client",
       "expo-font",
-      "@react-native-community/datetimepicker",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#01122E",
-          "image": "./assets/images/splash-logo.png",
-          "resizeMode": "contain"
-        }
-      ]
+      "@react-native-community/datetimepicker"
     ],
     "owner": "aryanraj923s-organization",
     "extra": {

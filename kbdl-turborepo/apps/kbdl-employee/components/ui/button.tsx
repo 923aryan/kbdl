@@ -2,12 +2,12 @@ import { Colors, Fonts } from '@/constants/theme'; // Adjust this import path to
 import React, { ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
+  PressableProps,
   StyleProp,
   StyleSheet,
   Text,
   TextStyle,
-  TouchableOpacity,
-  TouchableOpacityProps,
   useColorScheme,
   View,
   ViewStyle,
@@ -20,7 +20,7 @@ const BUTTON_SIZES = {
   large: { paddingVertical: 18, fontSize: 18, height: 60 },
 };
 
-export interface CustomButtonProps extends TouchableOpacityProps {
+export interface CustomButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
   variant?: 'primary' | 'outline' | 'destructive';
   size?: 'small' | 'medium' | 'large';
@@ -41,9 +41,8 @@ export default function CustomButton({
   rightIcon,
   containerStyle,
   textStyle,
-  ...touchableProps
+  ...pressableProps
 }: CustomButtonProps) {
-  ` `;
   const colorScheme = useColorScheme() ?? 'light';
   const themeColors = Colors[colorScheme];
 
@@ -67,10 +66,9 @@ export default function CustomButton({
   const opacity = disabled || loading ? 0.6 : 1;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
+    <Pressable
       disabled={disabled || loading}
-      style={[
+      style={({ pressed }) => [
         styles.buttonContainer,
         {
           backgroundColor,
@@ -79,35 +77,43 @@ export default function CustomButton({
           height,
           opacity,
           borderWidth: isFilled ? 0 : 1.5,
+          overflow: 'hidden', // Ensures the dark overlay doesn't bleed past the border radius
         },
         containerStyle,
       ]}
-      {...touchableProps}
+      {...pressableProps}
     >
-      {loading ? (
-        <ActivityIndicator color={textColor} />
-      ) : (
-        <View style={styles.contentWrapper}>
-          {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
+      {({ pressed }) => (
+        <>
+          {/* Overlay to darken background without affecting the text brightness */}
+          {pressed && !disabled && !loading && <View style={styles.darkOverlay} />}
 
-          <Text
-            style={[
-              styles.text,
-              {
-                color: textColor,
-                fontSize,
-                fontFamily: Fonts.sans, // Uses the font from your theme
-              },
-              textStyle,
-            ]}
-          >
-            {title}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={textColor} />
+          ) : (
+            <View style={styles.contentWrapper}>
+              {leftIcon && <View style={styles.leftIcon}>{leftIcon}</View>}
 
-          {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
-        </View>
+              <Text
+                style={[
+                  styles.text,
+                  {
+                    color: textColor,
+                    fontSize,
+                    fontFamily: Fonts.sans, // Uses the font from your theme
+                  },
+                  textStyle,
+                ]}
+              >
+                {title}
+              </Text>
+
+              {rightIcon && <View style={styles.rightIcon}>{rightIcon}</View>}
+            </View>
+          )}
+        </>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -119,10 +125,16 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
   },
+  darkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)', // Uniformly darkens any background color beneath it
+    zIndex: 1,
+  },
   contentWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2, // Lifts the text/icons over the dark background overlay
   },
   text: {
     fontWeight: '600',

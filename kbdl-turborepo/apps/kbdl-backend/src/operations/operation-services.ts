@@ -6,8 +6,10 @@ import {
   GetEmployeePendingEmploymentResponse,
   GetEmployerRosterQuery,
   OnboardEmployeePayload,
+  SearchAddressResponse,
   UpdateEmploymentStatusPayload,
 } from '@repo/types';
+import { GEOAPIFY_CONFIG } from '../config/geoapify';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
 import { NotificationTypes } from '../utils/constants';
@@ -289,4 +291,20 @@ export const declineEmploymentRequestService = async (employeeId: string, mappin
   return prisma.employeeEmployment.delete({
     where: { id: mappingId },
   });
+};
+
+export const getAddressSuggestionsService = async (
+  query: string,
+): Promise<SearchAddressResponse> => {
+  const response = await fetch(
+    `${GEOAPIFY_CONFIG.BASE_URL}/geocode/autocomplete?text=${encodeURIComponent(
+      query,
+    )}&filter=countrycode:in&limit=5&apiKey=${GEOAPIFY_CONFIG.API_KEY}`,
+  );
+
+  if (!response.ok) {
+    throw new AppError(500, 'ADDRESS_LOOKUP_FAILED', 'Failed to retrieve address suggestions');
+  }
+
+  return response.json();
 };

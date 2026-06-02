@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth-middleware';
 import { ROLES } from '../utils/constants';
 import {
   acceptShiftSwap,
+  approveShiftCompletion,
   approveShiftRequest,
   cancelShift,
   createShiftSwap,
@@ -16,7 +17,9 @@ import {
   getPendingShiftsForEmployer,
   getReferredEmployee,
   getScheduledShifts,
+  getShiftDetails,
   rateShift,
+  reportShiftNoShow,
   updateShift,
 } from './shift-swap-controller';
 
@@ -57,14 +60,14 @@ shiftSwapRouter.post(
 
 // GET /api/shifts/:id
 // Returns complete shift details, including the original and replacement employee profiles
-// shiftSwapRouter.get('/:id', authenticate([ROLES.EMPLOYER]), getShiftDetails);
+shiftSwapRouter.get('/:id', authenticate([ROLES.EMPLOYER]), getShiftDetails);
 
-// // PATCH /api/shifts/:id/approve
-// // Sets organization_approved to true and transitions status to 'completed'
-// shiftSwapRouter.patch('/:id/approve', authenticate([ROLES.EMPLOYER]), approveShiftCompletion);
+// PATCH /api/shifts/:id/approve
+// Sets organization_approved to true and transitions status to 'completed'
+shiftSwapRouter.patch('/:id/complete', authenticate([ROLES.EMPLOYER]), approveShiftCompletion);
 
-// // PATCH /api/shifts/:id/no-show
-// // Sets no_show_reported to true, triggering alerts or penalizing the worker
-// shiftSwapRouter.patch('/:id/no-show', authenticate([ROLES.EMPLOYER]), reportShiftNoShow);
+// PATCH /api/shifts/:id/no-show
+// Sets no_show_reported to true, triggering alerts or penalizing the worker
+shiftSwapRouter.patch('/:id/no-show', authenticate([ROLES.EMPLOYER]), reportShiftNoShow);
 
 export default shiftSwapRouter;

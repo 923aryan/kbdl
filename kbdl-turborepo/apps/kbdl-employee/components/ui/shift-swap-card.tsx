@@ -73,6 +73,9 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
   const [successMessage, setSuccessMessage] = useState('Shift accepted successfully!');
   const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
 
+  const toggleSavedShift = useShiftSwapStore((state) => state.toggleSavedShift);
+  const savedShifts = useShiftSwapStore((state) => state.savedShifts);
+
   // Destructure the needed fields from the shift object
   const {
     skill_required,
@@ -116,6 +119,9 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         return { text: String(shiftStatus), bg: theme.surface, color: theme.text };
     }
   };
+
+  const isSaved = savedShifts.some((s) => s.id === shift.id);
+
   useEffect(() => {
     console.log('now its: ', isSuccessModalVisible);
   }, [isSuccessModalVisible]);
@@ -210,8 +216,8 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         </View>
 
         <View style={styles.titleContainer}>
-          <Typography variant="bodySmall" style={styles.title}>
-            {title}
+          <Typography variant="body" style={styles.title}>
+            {title ? title.charAt(0).toUpperCase() + title.slice(1).toLowerCase() : ''}
           </Typography>
           <View style={styles.employerRow}>
             <Typography variant="caption" style={styles.employerText}>
@@ -228,7 +234,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
 
         <View style={styles.rightHeader}>
           <View style={styles.payPill}>
-            <Typography variant="body" style={styles.payAmount}>
+            <Typography variant="bodySmall" style={styles.payAmount}>
               {payAmount}
             </Typography>
             <Typography variant="bodySmall" style={styles.paySuffix}>
@@ -251,16 +257,16 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             {location && (
               <View style={styles.infoRow}>
                 <Feather name="map-pin" size={14} color={theme.icon} />
-                <Typography variant="caption" style={styles.infoText} numberOfLines={1}>
+                <Typography variant="bodySmall" style={styles.infoText} numberOfLines={1}>
                   {location}
                 </Typography>
                 {distance && (
                   <View style={styles.distanceContainer}>
-                    <Typography variant="caption" style={styles.separator}>
+                    <Typography variant="bodySmall" style={styles.separator}>
                       |
                     </Typography>
                     <View style={styles.distancePill}>
-                      <Typography variant="caption" style={styles.distanceText}>
+                      <Typography variant="bodySmall" style={styles.distanceText}>
                         {distance}
                       </Typography>
                     </View>
@@ -272,7 +278,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             {/* Time Row */}
             <View style={styles.infoRow}>
               <Feather name="clock" size={14} color={theme.icon} />
-              <Typography variant="caption" style={styles.infoText}>
+              <Typography variant="bodySmall" style={styles.infoText}>
                 {displayTime}
               </Typography>
             </View>
@@ -280,7 +286,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             {/* Date Row */}
             <View style={[styles.infoRow, { marginBottom: 0 }]}>
               <Feather name="calendar" size={14} color={theme.icon} />
-              <Typography variant="caption" style={styles.infoText}>
+              <Typography variant="bodySmall" style={styles.infoText}>
                 {displayDate}
               </Typography>
             </View>
@@ -288,8 +294,18 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
 
           {/* Bookmark UI Element is now a sibling to infoCol for alignment */}
           {buttonTitle && (
-            <TouchableOpacity style={styles.bookmarkBtn}>
-              <Feather name="bookmark" size={24} color={theme.primary} />
+            <TouchableOpacity
+              style={styles.bookmarkBtn}
+              onPress={(e) => {
+                e.stopPropagation();
+                toggleSavedShift(shift);
+              }}
+            >
+              <Ionicons
+                name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                size={24}
+                color={theme.primary}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -389,16 +405,16 @@ const createStyles = (theme: typeof Colors.light) =>
   StyleSheet.create({
     cardContainer: {
       backgroundColor: theme.card,
-      borderRadius: 20,
+      borderRadius: 12,
       padding: 16,
-      marginBottom: 16,
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
-      borderWidth: 1,
-      borderColor: theme.border,
+      // marginBottom: 16,
+      // shadowColor: '#000',
+      // shadowOpacity: 0.05,
+      // shadowRadius: 10,
+      // shadowOffset: { width: 0, height: 4 },
+      // elevation: 2,
+      // borderWidth: 1,
+      // borderColor: theme.border,
     },
 
     /* Top Section Styles */
@@ -448,14 +464,13 @@ const createStyles = (theme: typeof Colors.light) =>
       borderRadius: 6,
     },
     payAmount: {
-      fontWeight: '700',
       color: '#059669',
     },
     paySuffix: {
-      color: theme.textSecondary,
+      color: theme.text,
     },
     statusText: {
-      color: theme.textSecondary,
+      color: theme.text,
       marginTop: 6,
       marginRight: 4,
     },
@@ -465,8 +480,7 @@ const createStyles = (theme: typeof Colors.light) =>
       borderTopWidth: 1,
       borderStyle: 'dashed',
       borderColor: theme.border,
-      marginVertical: 16,
-      borderRadius: 1,
+      marginVertical: 10,
     },
 
     /* Bottom Section Styles */
@@ -491,7 +505,7 @@ const createStyles = (theme: typeof Colors.light) =>
       marginBottom: 8, // Using explicit margin instead of gap for stable layout
     },
     infoText: {
-      color: theme.textSecondary,
+      color: theme.text,
       marginLeft: 8,
     },
     distanceContainer: {
@@ -500,7 +514,7 @@ const createStyles = (theme: typeof Colors.light) =>
     },
     separator: {
       marginHorizontal: 8,
-      color: theme.textSecondary,
+      color: theme.text,
     },
     distancePill: {
       backgroundColor: '#FFF7ED',

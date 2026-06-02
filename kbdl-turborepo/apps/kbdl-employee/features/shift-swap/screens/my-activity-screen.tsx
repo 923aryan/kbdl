@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CreatedShiftsScreen from './created-shifts-screen';
+import SavedShiftsScreen from './saved-shifts-screen';
 import ScheduledShiftScreen from './scheduled-shifts-screen';
 
 type SubTab = 'scheduled' | 'created' | 'saved';
@@ -90,8 +91,8 @@ export default function MyActivityScreen() {
           <View style={{ width, height: '100%' }}>
             {visitedTabs.includes('created') && <CreatedShiftsScreen />}
           </View>
-          <View style={[styles.placeholder, { width, height: '100%' }]}>
-            <Text style={styles.placeholderText}>No Saved Shifts Yet</Text>
+          <View style={{ width, height: '100%' }}>
+            {visitedTabs.includes('saved') && <SavedShiftsScreen />}
           </View>
         </ScrollView>
       </View>
@@ -136,6 +137,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#1D4ED8',
   },
   contentArea: { flex: 1 },
-  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  placeholderText: { fontSize: 16, color: '#6B7280', fontWeight: '500' },
 });

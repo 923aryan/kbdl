@@ -3,13 +3,13 @@ import { Platform } from 'react-native';
 const PRIMARY = '#0658C2';
 const NAVY = '#01122E';
 const BORDER = '#D3D3D3';
-const TEXT_PRIMARY = '#1F2937';
+const TEXT_PRIMARY = '#000000';
 const TEXT_SECONDARY = '#676767';
 
 export const Colors = {
   light: {
     // Backgrounds
-    background: '#FFFFFF',
+    background: '#F8F9FA',
     surface: '#F9FAFB',
 
     // Brand
@@ -32,7 +32,7 @@ export const Colors = {
 
   dark: {
     // Backgrounds
-    background: NAVY,
+    background: '#F8F9FA',
     surface: '#0A1A3A',
 
     // Brand
