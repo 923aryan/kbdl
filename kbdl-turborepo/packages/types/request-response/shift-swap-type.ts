@@ -111,6 +111,7 @@ export type GetShiftDetailsRequest = z.infer<typeof getShiftDetailsSchema>;
 export type GetShiftDetailsResponse = Shift & {
   original_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }>;
   replacement_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }> | null;
+  employer: Prisma.EmployerGetPayload<{ select: typeof safeEmployerSelect }>;
 };
 
 export type ApproveShiftCompletionRequest = z.infer<typeof approveShiftCompletionSchema>;

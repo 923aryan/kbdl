@@ -1,6 +1,6 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import { ShiftStatus } from '@/constants/constants';
 import { Colors } from '@/constants/theme';
 import { markNotificationRead } from '@/features/notifications/api';
 import { useNotificationStore } from '@/features/notifications/store/notification-store';
-import { useAcceptShiftSwap, useCancelShift } from '@/features/shift-swap/api';
+import { useAcceptShiftSwap, useCancelShift, useGetShiftDetails } from '@/features/shift-swap/api';
 
 const formatDate = (dateInput: string | Date) => {
   if (!dateInput) return '';
@@ -32,6 +32,7 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
   const queryClient = useQueryClient();
+  const { id } = useLocalSearchParams();
 
   const { mutate: acceptShift } = useAcceptShiftSwap();
   const { mutate: cancelShift } = useCancelShift();
@@ -39,7 +40,22 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
 
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
 
-  if (!shift) {
+  // Fetch shift details if navigating from notification where only ID is available
+  const shiftId = (id as string) || shift?.id;
+  const { data: fetchedShift, isLoading } = useGetShiftDetails(shiftId);
+  const currentShift = fetchedShift || shift;
+
+  if (isLoading && !currentShift) {
+    return (
+      <View style={styles.errorContainer}>
+        <Typography variant="body" style={styles.errorText}>
+          Loading shift details...
+        </Typography>
+      </View>
+    );
+  }
+
+  if (!currentShift) {
     return (
       <View style={styles.errorContainer}>
         <Typography variant="body" style={styles.errorText}>
@@ -58,7 +74,7 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
     shift_end,
     status,
     employer,
-  } = shift;
+  } = currentShift;
 
   const title = skill_required || 'Unknown Skill';
   const employerName = employer?.company_name || 'Unknown Employer';
@@ -89,7 +105,7 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
 
   const onAcceptPress = () => {
     acceptShift(
-      { shift_id: shift.id },
+      { shift_id: currentShift.id },
       {
         onSuccess: () => {
           setIsSuccessModalVisible(true);
@@ -103,10 +119,10 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
   };
 
   const onCancelPress = async () => {
-    if (shift?.notificationId) {
+    if (currentShift?.notificationId) {
       try {
-        await markNotificationRead(shift.notificationId);
-        markAsRead(shift.notificationId);
+        await markNotificationRead(currentShift.notificationId);
+        markAsRead(currentShift.notificationId);
         queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
         router.back();
       } catch (error) {
@@ -114,7 +130,7 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
       }
     } else {
       cancelShift(
-        { shift_id: shift.id },
+        { shift_id: currentShift.id },
         {
           onSuccess: () => {
             Toast.show({ type: 'success', text1: 'Shift cancelled successfully!' });
@@ -248,10 +264,10 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
         {buttonTitle && (
           <View style={styles.footer}>
             <View style={styles.logicButtons}>
-              {(buttonTitle === 'Notification' || shift?.replacement_employee_id) && (
+              {(buttonTitle === 'Notification' || currentShift?.replacement_employee_id) && (
                 <View style={{ flex: 1, marginRight: 12 }}>
                   <CustomButton
-                    title={!shift?.replacement_employee_id ? 'Remove' : 'Reject Request'}
+                    title={!currentShift?.replacement_employee_id ? 'Remove' : 'Reject Request'}
                     variant="destructive"
                     onPress={onCancelPress}
                   />
@@ -261,7 +277,7 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
                 <View style={{ flex: 1 }}>
                   <CustomButton
                     title={
-                      buttonTitle === 'Apply' || !shift?.replacement_employee_id
+                      buttonTitle === 'Apply' || !currentShift?.replacement_employee_id
                         ? 'Apply for Shift'
                         : 'Approve Request'
                     }

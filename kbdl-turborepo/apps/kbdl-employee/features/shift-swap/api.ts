@@ -11,6 +11,7 @@ import type {
   GetEmployeeShiftsResponse,
   GetExtraShiftsResponse,
   GetLatestShiftsResponse,
+  GetShiftDetailsResponse,
   UpdateShiftPayload,
   UpdateShiftResponse,
   getReferredEmployeePayload,
@@ -26,6 +27,17 @@ export const useCreateShiftSwap = () => {
       const response = await api.post<CreateShiftResponse>('/shift-swap', payload);
       return response.data;
     },
+  });
+};
+
+export const useGetShiftDetails = (shiftId: string) => {
+  return useQuery({
+    queryKey: ['shift-details', shiftId],
+    queryFn: async () => {
+      const response = await api.get<GetShiftDetailsResponse>(`/shift-swap/${shiftId}`);
+      return response.data;
+    },
+    enabled: !!shiftId,
   });
 };
 

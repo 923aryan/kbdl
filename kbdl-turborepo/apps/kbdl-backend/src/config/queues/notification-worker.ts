@@ -22,7 +22,7 @@ new Worker(
           pushTokens,
           title: notification.title,
           body: notification.body,
-          data: notification.data,
+          data: notification,
         });
       }
 

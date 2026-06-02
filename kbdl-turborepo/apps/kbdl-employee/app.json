@@ -23,6 +23,11 @@
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro"
     },
+    "splash": {
+      "image": "./assets/images/transparent.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#001A4D"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

@@ -9,6 +9,7 @@ import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Typography } from '@/components/ui/typography';
 import { ShiftStatus } from '@/constants/constants';
 import { Colors } from '@/constants/theme';
+import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { markNotificationRead } from '@/features/notifications/api';
 import { useNotificationStore } from '@/features/notifications/store/notification-store';
 import { useAcceptShiftSwap, useCancelShift } from '@/features/shift-swap/api';
@@ -72,6 +73,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Shift accepted successfully!');
   const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
+  const authStatus = useAuthStore((state) => state.status);
 
   const toggleSavedShift = useShiftSwapStore((state) => state.toggleSavedShift);
   const savedShifts = useShiftSwapStore((state) => state.savedShifts);
@@ -126,7 +128,25 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
     console.log('now its: ', isSuccessModalVisible);
   }, [isSuccessModalVisible]);
 
+  const handleCardPress = () => {
+    router.push({
+      pathname: '/shift-swap/[id]',
+      params: {
+        id: shift.id,
+        // Stringify the object to pass via URL params
+        shiftData: JSON.stringify(shift),
+        distance: distance || '',
+        buttonTitle: buttonTitle || '',
+      },
+    });
+  };
+
   const onAcceptPress = () => {
+    if (authStatus !== 'authenticated') {
+      handleCardPress();
+      return;
+    }
+
     acceptShift(
       { shift_id: shift.id },
       {
@@ -191,19 +211,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
     status !== ShiftStatus.matched &&
     status !== ShiftStatus.approved &&
     status !== ShiftStatus.pending;
-
-  const handleCardPress = () => {
-    router.push({
-      pathname: '/shift-swap/[id]',
-      params: {
-        id: shift.id,
-        // Stringify the object to pass via URL params
-        shiftData: JSON.stringify(shift),
-        distance: distance || '',
-        buttonTitle: buttonTitle || '',
-      },
-    });
-  };
 
   return (
     <TouchableOpacity style={styles.cardContainer} activeOpacity={0.9} onPress={handleCardPress}>
@@ -298,6 +305,10 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
               style={styles.bookmarkBtn}
               onPress={(e) => {
                 e.stopPropagation();
+                if (authStatus !== 'authenticated') {
+                  handleCardPress();
+                  return;
+                }
                 toggleSavedShift(shift);
               }}
             >

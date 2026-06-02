@@ -193,8 +193,9 @@ const approveShiftRequest = async (req: Request, res: Response) => {
 
 const getShiftDetails = async (req: Request, res: Response) => {
   const input: GetShiftDetailsRequest = validate(getShiftDetailsSchema, req);
-  const employerId = (req.payload as any).employer.id;
-  const shift = await getShiftDetailsService(employerId, input.params.id);
+  const userType = req.role === ROLES.EMPLOYER ? ROLES.EMPLOYER : ROLES.USER;
+  const userId = userType === ROLES.USER ? req.payload.user.id : req.payload.employer.id;
+  const shift = await getShiftDetailsService(userId, userType, input.params.id);
   sendSuccess(res, 'Shift details retrieved successfully', shift, 200);
 };
 
