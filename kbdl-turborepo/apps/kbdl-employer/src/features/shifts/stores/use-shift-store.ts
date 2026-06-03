@@ -5,16 +5,21 @@ export type ShiftStatus =
   | 'approved'
   | 'rejected'
   | 'open'
-  | 'filled'
+  | 'cancelled'
   | 'completed'
   | 'all';
+
+export type ShiftCreator = 'all' | 'employer' | 'worker';
 
 interface ShiftState {
   isCreateModalOpen: boolean;
   selectedShiftId: string | null;
   filters: {
     search: string;
-    status: ShiftStatus;
+    statuses: ShiftStatus[];
+    createdBy: ShiftCreator;
+    dateFrom: string;
+    dateTo: string;
   };
   toggleCreateModal: () => void;
   setSelectedShiftId: (id: string | null) => void;
@@ -26,7 +31,10 @@ export const useShiftStore = create<ShiftState>((set) => ({
   selectedShiftId: null,
   filters: {
     search: '',
-    status: 'all',
+    statuses: ['all'],
+    createdBy: 'all',
+    dateFrom: '',
+    dateTo: '',
   },
   toggleCreateModal: () => set((state) => ({ isCreateModalOpen: !state.isCreateModalOpen })),
   setSelectedShiftId: (id) => set({ selectedShiftId: id }),
