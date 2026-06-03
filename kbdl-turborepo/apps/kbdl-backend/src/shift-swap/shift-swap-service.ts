@@ -764,7 +764,7 @@ export const getLatestShiftsService = async (
       ROUND((ST_Distance(
         e.company_location, 
         ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-      ) / 1000)::numeric, 1) AS distance_in_km
+      ) / 10000)::numeric, 1) AS distance_in_km
     FROM shifts s
     INNER JOIN employers e ON s.employer_id = e.id
     WHERE s.status = 'open' 
