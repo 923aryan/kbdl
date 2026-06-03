@@ -284,6 +284,7 @@ export const getCreatedShiftsForEmployeeService = async (
   const shifts = await prisma.shift.findMany({
     where: {
       original_employee_id: employeeId,
+      created_by: ROLES.USER,
     },
     include: {
       employer: { select: { company_name: true, company_address: true } },
