@@ -23,7 +23,6 @@ import {
 } from '@repo/types';
 import { AppError } from '../utils/api-error';
 
-
 export const getCurrentEmployerProfileService = async (
   employerId: string,
 ): Promise<GetCurrentEmployerProfileResponse> => {
@@ -120,7 +119,9 @@ export const getPublicEmployerProfileService = async (
   return employer;
 };
 
-export const getCurrentUserProfileService = async (userId: string): Promise<GetPublicUserProfileResponse> => {
+export const getCurrentUserProfileService = async (
+  userId: string,
+): Promise<GetPublicUserProfileResponse> => {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: safeUserSelect });
   if (!user) {
     throw new AppError(404, 'USER_NOT_FOUND', 'User not found');
@@ -132,7 +133,7 @@ export const updateUserProfileService = async (
   userId: string,
   payload: UpdateUserProfilePayload,
 ): Promise<UpdateUserProfileResponse> => {
-  console.log("payload was ", JSON.stringify(payload))
+  console.log('payload was ', JSON.stringify(payload));
   return prisma.user.update({
     where: { id: userId },
     data: payload,

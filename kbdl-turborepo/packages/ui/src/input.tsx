@@ -70,28 +70,17 @@ export const Input = ({
     <div className="flex w-full flex-col gap-1.5">
       {/* Optional Label */}
       {label && (
-        <label
-          htmlFor={inputId}
-          className="text-sm font-medium text-text"
-        >
+        <label htmlFor={inputId} className="text-sm font-medium text-text">
           {label}
         </label>
       )}
 
       {/* The Actual Input */}
-      <input
-        id={inputId}
-        className={combinedClasses}
-        disabled={disabled}
-        {...props}
-      />
+      <input id={inputId} className={combinedClasses} disabled={disabled} {...props} />
 
       {/* Helper Text or Error Message */}
       {(error || helperText) && (
-        <span
-          className={`text-sm ${error ? 'text-red-500' : 'text-text-secondary'
-            }`}
-        >
+        <span className={`text-sm ${error ? 'text-red-500' : 'text-text-secondary'}`}>
           {error || helperText}
         </span>
       )}

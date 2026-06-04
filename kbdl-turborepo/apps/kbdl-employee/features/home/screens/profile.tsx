@@ -46,7 +46,7 @@ export default function Profile() {
   const onChangeLanguage = (langCode: string) => {
     const preferences = {
       theme: (user?.preferences?.theme || 'system') as 'light' | 'dark' | 'system',
-      language: langCode,
+      language: langCode as 'en-IN' | 'hi-IN',
     };
 
     updateUser({
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     width: 36,
-    height: 36,
+    height: 20,
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',

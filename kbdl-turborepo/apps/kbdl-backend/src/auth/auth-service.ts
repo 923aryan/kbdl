@@ -14,21 +14,16 @@ const generateOtp = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-const sendOtpEmail = async (
-  email: string,
-  otp: string,
-): Promise<void> => {
+const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
   try {
-    const { data, error } =
-      await resendClient.emails.send({
-        from:
-          'Kaam Badlo <itsupport@mail.kaambadlo.com>',
+    const { data, error } = await resendClient.emails.send({
+      from: 'Kaam Badlo <itsupport@mail.kaambadlo.com>',
 
-        to: email,
+      to: email,
 
-        subject: 'Your Verification Code',
+      subject: 'Your Verification Code',
 
-        html: `
+      html: `
           <div
             style="
               background-color: #f5f5f5;
@@ -116,19 +111,15 @@ const sendOtpEmail = async (
             </div>
           </div>
         `,
-      });
+    });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    console.log(
-      `OTP email sent successfully to ${email}. ID: ${data?.id}`,
-    );
+    console.log(`OTP email sent successfully to ${email}. ID: ${data?.id}`);
   } catch (error: any) {
-    throw new Error(
-      `Failed to send OTP email: ${error.message}`,
-    );
+    throw new Error(`Failed to send OTP email: ${error.message}`);
   }
 };
 
@@ -463,7 +454,7 @@ export const registerEmployerService = async (payload: EmployerRegisterPayload):
     throw new AppError(409, 'EMPLOYER_EXISTS', 'Employer with this email or phone already exists');
   }
 
-  const otp = generateOtp()
+  const otp = generateOtp();
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 

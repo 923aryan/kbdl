@@ -1,4 +1,8 @@
-export type RealtimeNotificationType = 'shift_swap_request' | 'public_shift' | 'job_alert';
+export type RealtimeNotificationType =
+  | 'shift_swap_request'
+  | 'public_shift'
+  | 'job_alert'
+  | 'onboard_request';
 
 export interface RealtimeNotification {
   id: string;
@@ -9,7 +13,7 @@ export interface RealtimeNotification {
 
   body: string;
 
-  data?: Record<string, any>;
+  data: Record<string, any>;
 
   isRead: boolean;
 

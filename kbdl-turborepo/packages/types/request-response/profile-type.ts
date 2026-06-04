@@ -51,7 +51,7 @@ export type RemovePushTokenResponse = { message: string };
 export type GetPublicUserProfileRequest = z.infer<typeof getPublicUserProfileSchema>;
 export type GetPublicUserProfileResponse = Partial<UserDTO>;
 
-export type GetCurrentEmployerProfileResponse = EmployerDTO
+export type GetCurrentEmployerProfileResponse = EmployerDTO;
 export type UpdateEmployerProfileRequest = z.infer<typeof updateEmployerProfileSchema>;
 export type UpdateEmployerProfilePayload = z.infer<typeof updateEmployerProfileSchema>['body'];
 export type UpdateEmployerProfileResponse = EmployerDTO;
@@ -77,12 +77,11 @@ export type GetEmployerVerificationStatusResponse = { is_verified: boolean };
 export type GetPublicEmployerProfileRequest = z.infer<typeof getPublicEmployerProfileSchema>;
 export type GetPublicEmployerProfileResponse = Partial<EmployerDTO>;
 
-
 //Helpers:
-type EmployerDTO = Prisma.EmployerGetPayload<{
+export type EmployerDTO = Prisma.EmployerGetPayload<{
   select: typeof safeEmployerSelect;
 }>;
 
-type UserDTO = Prisma.UserGetPayload<{
+export type UserDTO = Prisma.UserGetPayload<{
   select: typeof safeUserSelect;
 }>;

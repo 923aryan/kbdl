@@ -17,7 +17,8 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
   RESEND_API_KEY: z.string().min(1),
-  EMPLOYER_URL: z.string().min(1)
+  EMPLOYER_URL: z.string().min(1),
+  GEOAPIFY_API_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);

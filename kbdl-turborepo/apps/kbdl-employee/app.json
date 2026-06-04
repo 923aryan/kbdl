@@ -23,6 +23,11 @@
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro"
     },
+    "splash": {
+      "image": "./assets/images/transparent.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#001A4D"
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
@@ -31,15 +36,7 @@
       "expo-localization",
       "expo-dev-client",
       "expo-font",
-      "@react-native-community/datetimepicker",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#01122E",
-          "image": "./assets/images/splash-logo.png",
-          "resizeMode": "contain"
-        }
-      ]
+      "@react-native-community/datetimepicker"
     ],
     "owner": "aryanraj923s-organization",
     "extra": {

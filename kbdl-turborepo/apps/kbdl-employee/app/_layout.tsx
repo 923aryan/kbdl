@@ -1,7 +1,10 @@
+import CustomSplashScreen from '@/components/ui/custom-splash-screen';
 import { toastConfig } from '@/components/ui/toast';
+import { NotificationTypes } from '@/constants/constants';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { SocketProvider } from '@/features/notifications/providers/socket-provider';
-import { updateUserProfile } from '@/features/profile/api';
+import { setNotificationRouterReady } from '@/features/notifications/services/expo-listeners-service';
+import { updateUserLocation } from '@/features/profile/api';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { queryClient } from '@/lib/api/query-client';
 
@@ -18,11 +21,12 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 
-import { SplashScreen, Stack } from 'expo-router';
+import { SplashScreen, Stack, router, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import 'react-native-reanimated';
 
@@ -35,6 +39,14 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
+const CustomDefaultTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#F8F9FA',
+  },
+};
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
@@ -42,6 +54,10 @@ export default function RootLayout() {
   const user = useAuthStore((s) => s.user);
 
   const hasRequestedLocation = useRef(false);
+  const [isAppReady, setIsAppReady] = useState(false);
+  const processedNotificationId = useRef<string | null>(null);
+  const lastNotificationResponse = Notifications.useLastNotificationResponse();
+  const rootNavigationState = useRootNavigationState();
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
@@ -106,11 +122,9 @@ export default function RootLayout() {
         console.log(`${locationName} ✓`);
       }
 
-      await updateUserProfile({
-        location: {
-          latitude,
-          longitude,
-        },
+      await updateUserLocation({
+        latitude,
+        longitude,
       });
 
       console.log('User location updated successfully');
@@ -128,12 +142,19 @@ export default function RootLayout() {
         // Optional splash delay
         await new Promise((resolve) => setTimeout(resolve, 2000));
       } finally {
-        await SplashScreen.hideAsync();
+        setIsAppReady(true);
       }
     }
 
     prepare();
   }, []);
+
+  // Hide native splash screen once fonts are fully loaded
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
 
   // Reset guard on logout
   useEffect(() => {
@@ -154,16 +175,67 @@ export default function RootLayout() {
     requestLocation().catch(console.error);
   }, [user]);
 
+  useEffect(() => {
+    // Ensure Expo Router's navigation tree is fully mounted before we route anywhere
+    const isNavigationReady = rootNavigationState?.key != null;
+
+    if (isAppReady && fontsLoaded && isNavigationReady) {
+      setNotificationRouterReady(true);
+
+      // Safely handle cold-start notifications
+      if (lastNotificationResponse) {
+        const responseId = lastNotificationResponse.notification.request.identifier;
+        if (processedNotificationId.current === responseId) return;
+        processedNotificationId.current = responseId;
+
+        const data = lastNotificationResponse.notification.request.content.data;
+        console.log('[Layout] Processing cold-start notification:', data);
+        console.log('type was ', data.type);
+        setTimeout(() => {
+          try {
+            if (
+              data?.type === NotificationTypes.publicShiftSwap ||
+              data?.type === NotificationTypes.shiftSwapRequest ||
+              (data as any)?.shiftId // <-- Fallback in case backend misses 'type' in the payload
+            ) {
+              router.push({
+                pathname: '/shift-swap/[id]',
+                params: { id: (data as any).data?.shiftId as string, buttonTitle: 'Notification' },
+              });
+            } else if (data?.type === NotificationTypes.onboardRequest) {
+              router.push('/(tabs)/notifications');
+            }
+          } catch (e) {
+            console.error('[Layout] Cold-start routing failed:', e);
+          }
+        }, 300); // 300ms provides a safer buffer for the initial screen to finish mounting
+      }
+    }
+  }, [isAppReady, fontsLoaded, lastNotificationResponse, rootNavigationState?.key]);
+
   if (!fontsLoaded) return null;
+
+  if (!isAppReady) {
+    return (
+      <SafeAreaProvider>
+        <CustomSplashScreen />
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : CustomDefaultTheme}>
         <QueryClientProvider client={queryClient}>
           <SocketProvider>
             <Stack
               screenOptions={{
                 headerShown: false,
+                // Optimize navigation performance
+                animation: 'slide_from_right',
+                fullScreenGestureEnabled: true,
+                freezeOnBlur: true, // Freezes previous screens to save CPU/memory
+                contentStyle: { backgroundColor: '#F8F9FA' },
               }}
             >
               <Stack.Screen

@@ -62,8 +62,38 @@ export const getExtraShiftsSchema = z.object({
     skill: z.string().optional(),
     date: z.string().datetime({ message: 'Date must be a valid ISO datetime string' }).optional(),
     latitude: z.coerce.number().min(-90).max(90),
-
+    radius: z.coerce.number().optional().default(10),
     longitude: z.coerce.number().min(-180).max(180),
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
+export const getLatestShiftsSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
+export const getBestShiftMatchesSchema = z.object({
+  query: z.object({
     limit: z
       .string()
       .regex(/^\d+$/, 'Limit must be a number')
@@ -87,5 +117,31 @@ export const rateShiftSchema = z.object({
       .min(1, 'Minimum score is 1')
       .max(5, 'Maximum score is 5'),
     flagged_issue: z.boolean().default(false),
+  }),
+});
+
+export const getPendingShiftsSchema = z.object({});
+
+export const approveShiftSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
+export const getShiftDetailsSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
+export const approveShiftCompletionSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
+export const reportShiftNoShowSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
   }),
 });

@@ -2,12 +2,18 @@ import { prisma, Rating, safeEmployerSelect, safeUserSelect, Shift } from '@repo
 import {
   AcceptShiftPayload,
   CreateShiftPayload,
+  GetBestShiftMatchesQuery,
+  GetBestShiftMatchesResponse,
+  GetCreatedShiftsForEmployeeResponse,
   GetEmployeeShiftsResponse,
   GetExtraShiftsQuery,
   GetExtraShiftsResponse,
+  GetLatestShiftsQuery,
+  GetLatestShiftsResponse,
   GetOpenShiftsForEmployeeResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
+  GetShiftDetailsResponse,
   RateShiftPayload,
   ShiftWithNotification,
   UpdateShiftPayload,
@@ -15,7 +21,7 @@ import {
 import { publicShiftQueue } from '../config/queues/public-shift-queue';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
-import { Role, ROLES } from '../utils/constants';
+import { NotificationTypes, Role, ROLES, ShiftStatus } from '../utils/constants';
 // A. Create Shift Swap
 export const createShiftService = async (
   userId: string,
@@ -138,14 +144,14 @@ export const createShiftService = async (
     await createNotificationService({
       userId: payload.replacement_employee_id,
 
-      type: 'shift_swap_request',
+      type: NotificationTypes.shiftSwapRequest,
 
       title: 'New Shift Swap Request',
 
       body: 'You received a shift swap request.',
 
       data: {
-        type: 'shift_swap_request',
+        type: NotificationTypes.shiftSwapRequest,
         shiftId: newShift.id,
         employerId,
         originalEmployeeId,
@@ -198,7 +204,7 @@ export const acceptShiftService = async (
   if (!shift?.replacement_employee_id) {
     await prisma.notification.updateMany({
       where: {
-        type: 'public_shift',
+        type: NotificationTypes.publicShiftSwap,
         user_id: workerId,
         data: {
           path: ['shiftId'],
@@ -211,12 +217,17 @@ export const acceptShiftService = async (
     });
   }
   // Accept the shift
+  const status =
+    shift?.replacement_employee_id && shift.created_by === ROLES.EMPLOYER
+      ? ShiftStatus.approved
+      : ShiftStatus.pending;
+
   const updatedShift = await prisma.shift.update({
     where: { id: payload.shift_id },
     data: {
       replacement_employee_id: workerId,
       request_accepted: true,
-      status: 'matched', // Update status to reflect it has been accepted
+      status: status, // Update status to reflect it has been accepted
     },
   });
 
@@ -258,13 +269,34 @@ export const getEmployeeShiftsService = async (
     WHERE
       s.replacement_employee_id = ${employeeId}
       AND s.request_accepted = true
-      AND s.status IN ('matched', 'approved')
+      AND s.status IN ('pending', 'approved')
 
     ORDER BY s.shift_start ASC
   `;
 
   return shifts as GetEmployeeShiftsResponse;
 };
+
+// B1.5 See Created Shifts (Worker)
+export const getCreatedShiftsForEmployeeService = async (
+  employeeId: string,
+): Promise<GetCreatedShiftsForEmployeeResponse> => {
+  const shifts = await prisma.shift.findMany({
+    where: {
+      original_employee_id: employeeId,
+      created_by: ROLES.USER,
+    },
+    include: {
+      employer: { select: { company_name: true, company_address: true } },
+      replacement_employee: { select: { name: true, phone_no: true } },
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
+  });
+  return shifts as GetCreatedShiftsForEmployeeResponse;
+};
+
 // B2. See Created Shifts (Employer)
 export const getEmployerShiftsService = async (employerId: string): Promise<Shift[]> => {
   const shifts = await prisma.shift.findMany({
@@ -291,7 +323,9 @@ export const getScheduledShiftsService = async (employeeId: string): Promise<Shi
   const shifts = await prisma.shift.findMany({
     where: {
       replacement_employee_id: employeeId,
-      status: 'matched',
+      status: {
+        in: [ShiftStatus.approved, ShiftStatus.pending, ShiftStatus.matched],
+      },
     },
     include: {
       employer: {
@@ -403,7 +437,7 @@ export const getExtraShiftsService = async (
   query: GetExtraShiftsQuery,
   userId: string,
 ): Promise<GetExtraShiftsResponse> => {
-  const { skill, date, latitude, longitude, limit = 10, page = 1 } = query;
+  const { skill, date, latitude, longitude, radius = 10, limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
 
   const conditions: string[] = [
@@ -416,7 +450,7 @@ export const getExtraShiftsService = async (
   const values: any[] = [];
   let paramIndex = 1;
 
-  // Nearby filter (10km radius)
+  // Nearby filter (dynamic radius)
   conditions.push(`
     ST_DWithin(
       e.company_location,
@@ -424,15 +458,15 @@ export const getExtraShiftsService = async (
         ST_MakePoint($${paramIndex}, $${paramIndex + 1}),
         4326
       )::geography,
-      10000
+      $${paramIndex + 2}
     )
   `);
 
   // IMPORTANT:
   // ST_MakePoint(longitude, latitude)
-  values.push(longitude, latitude);
+  values.push(longitude, latitude, radius * 1000);
 
-  paramIndex += 2;
+  paramIndex += 3;
 
   conditions.push(`
     s.original_employee_id != $${paramIndex}
@@ -582,7 +616,7 @@ export const getOpenShiftsForEmployeeService = async (
   const requestedSpecificShifts = await prisma.shift.findMany({
     where: {
       replacement_employee_id: userId,
-      status: 'open',
+      status: ShiftStatus.open,
     },
 
     include: {
@@ -602,7 +636,7 @@ export const getOpenShiftsForEmployeeService = async (
   const publicShiftNotifications = await prisma.notification.findMany({
     where: {
       user_id: userId,
-      type: 'public_shift',
+      type: NotificationTypes.publicShiftSwap,
       isRead: false,
     },
 
@@ -688,4 +722,301 @@ export const getOpenShiftsForEmployeeService = async (
   shifts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return shifts;
+};
+
+export const getLatestShiftsService = async (
+  query: GetLatestShiftsQuery,
+  userId: string,
+): Promise<GetLatestShiftsResponse> => {
+  const { limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
+
+  // 1. Fetch user's location directly from the database
+  const userResult = await prisma.$queryRawUnsafe<any[]>(
+    `
+    SELECT 
+      ST_X(location::geometry) AS longitude,
+      ST_Y(location::geometry) AS latitude
+    FROM users
+    WHERE id = $1
+    `,
+    userId,
+  );
+
+  const user = userResult[0];
+
+  if (!user || user.latitude === null || user.longitude === null) {
+    throw new Error('User location is not set. Cannot calculate distance.');
+  }
+
+  const { latitude, longitude } = user;
+
+  // 2. Query shifts sorted by creation date
+  const shifts = await prisma.$queryRawUnsafe<any[]>(
+    `
+    SELECT 
+      s.*,
+      json_build_object(
+        'company_name', e.company_name,
+        'company_address', e.company_address,
+        'is_verified', e.is_verified
+      ) AS employer,
+      ROUND((ST_Distance(
+        e.company_location, 
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+      ) / 10000)::numeric, 1) AS distance_in_km
+    FROM shifts s
+    INNER JOIN employers e ON s.employer_id = e.id
+    WHERE s.status = 'open' 
+      AND s.request_accepted = false 
+      AND s.replacement_employee_id IS NULL
+      AND s.original_employee_id != $3
+      AND e.company_location IS NOT NULL
+    ORDER BY s.created_at DESC
+    LIMIT $4 OFFSET $5
+  `,
+    longitude, // $1
+    latitude, // $2
+    userId, // $3
+    limit, // $4
+    skip, // $5
+  );
+
+  return shifts as GetLatestShiftsResponse;
+};
+
+export const getBestShiftMatchesService = async (
+  query: GetBestShiftMatchesQuery,
+  userId: string,
+): Promise<GetBestShiftMatchesResponse> => {
+  const { limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
+
+  // 1. Fetch user's location AND skills in a single query
+  const userResult = await prisma.$queryRawUnsafe<any[]>(
+    `
+    SELECT 
+      skills,
+      ST_X(location::geometry) AS longitude,
+      ST_Y(location::geometry) AS latitude
+    FROM users
+    WHERE id = $1
+    `,
+    userId,
+  );
+
+  const user = userResult[0];
+
+  if (!user || user.latitude === null || user.longitude === null) {
+    throw new Error('User location is not set. Cannot calculate matches.');
+  }
+
+  const { latitude, longitude } = user;
+  const userSkills = user.skills && user.skills.length > 0 ? user.skills : [];
+  const UserSkills = userSkills.map((skill: string) => skill.toLowerCase());
+
+  const conditions: string[] = [
+    `s.status = 'open'`,
+    `s.request_accepted = false`,
+    `s.replacement_employee_id IS NULL`,
+    `s.original_employee_id != $3`,
+    `e.company_location IS NOT NULL`,
+  ];
+
+  // 2. Dynamically add the skill filter if the user has skills
+  if (UserSkills.length > 0) {
+    conditions.push(`LOWER(s.skill_required) = ANY($6::text[])`);
+  }
+
+  const whereClause = conditions.join(' AND ');
+
+  // 3. Query sorted by Distance ASC, then Date ASC
+  const shifts = await prisma.$queryRawUnsafe<any[]>(
+    `
+    SELECT 
+      s.*,
+      json_build_object(
+        'company_name', e.company_name,
+        'company_address', e.company_address,
+        'is_verified', e.is_verified
+      ) AS employer,
+      ROUND((ST_Distance(
+        e.company_location, 
+        ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+      ) / 1000)::numeric, 1) AS distance_in_km
+    FROM shifts s
+    INNER JOIN employers e ON s.employer_id = e.id
+    WHERE ${whereClause}
+    ORDER BY distance_in_km ASC, s.shift_date ASC
+    LIMIT $4 OFFSET $5
+  `,
+    longitude, // $1
+    latitude, // $2
+    userId, // $3
+    limit, // $4
+    skip, // $5
+    UserSkills, // $6
+  );
+
+  return shifts as GetBestShiftMatchesResponse;
+};
+
+export const getPendingShiftsForEmployerService = async (employerId: string) => {
+  const shifts = await prisma.shift.findMany({
+    where: {
+      employer_id: employerId,
+      status: 'pending',
+    },
+    include: {
+      original_employee: {
+        select: { name: true, phone_no: true },
+      },
+      replacement_employee: {
+        select: { name: true, phone_no: true },
+      },
+    },
+    orderBy: {
+      updated_at: 'desc',
+    },
+  });
+  return shifts;
+};
+
+export const approveShiftRequestService = async (
+  employerId: string,
+  shiftId: string,
+): Promise<Shift> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+  });
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to approve this shift.');
+  }
+  if (shift.status !== 'pending') {
+    throw new AppError(400, 'INVALID_STATE', 'Only pending shifts can be approved.');
+  }
+  return prisma.shift.update({
+    where: { id: shiftId },
+    data: {
+      status: ShiftStatus.approved,
+      organization_approved: true,
+    },
+  });
+};
+
+export const getShiftDetailsService = async (
+  userId: string,
+  userType: 'user' | 'employer',
+  shiftId: string,
+): Promise<GetShiftDetailsResponse> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+    include: {
+      original_employee: {
+        select: safeUserSelect,
+      },
+      replacement_employee: {
+        select: safeUserSelect,
+      },
+      employer: {
+        select: safeEmployerSelect,
+      },
+    },
+  });
+
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+
+  if (userType === ROLES.EMPLOYER && shift.employer_id !== userId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
+  }
+
+  if (
+    userType === ROLES.USER &&
+    shift.original_employee_id !== userId &&
+    shift.replacement_employee_id !== userId &&
+    !(shift.replacement_employee_id === null && shift.status === 'open')
+  ) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
+  }
+
+  return shift;
+};
+
+export const approveShiftCompletionService = async (
+  employerId: string,
+  shiftId: string,
+): Promise<Shift> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+  });
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
+  }
+  if (shift.shift_start.getTime() > Date.now()) {
+    throw new AppError(
+      400,
+      'SHIFT_NOT_STARTED',
+      'Cannot approve completion for a shift that has not started yet.',
+    );
+  }
+  return prisma.shift.update({
+    where: { id: shiftId },
+    data: {
+      status: ShiftStatus.completed,
+      organization_approved: true,
+    },
+  });
+};
+
+export const reportShiftNoShowService = async (
+  employerId: string,
+  shiftId: string,
+): Promise<Shift> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+  });
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
+  }
+
+  if (shift.status === ShiftStatus.completed) {
+    throw new AppError(
+      400,
+      'SHIFT_ALREADY_COMPLETED',
+      'Cannot report a no-show for a shift that has already been marked as completed.',
+    );
+  }
+
+  if (shift.status !== ShiftStatus.approved) {
+    throw new AppError(
+      400,
+      'SHIFT_NOT_APPROVED',
+      'No-show can only be reported for shifts that have been approved and are ready to be worked.',
+    );
+  }
+  if (shift.no_show_reported) {
+    throw new AppError(
+      400,
+      'ALREADY_REPORTED',
+      'No-show has already been reported for this shift.',
+    );
+  }
+
+  return prisma.shift.update({
+    where: { id: shiftId },
+    data: {
+      no_show_reported: true,
+    },
+  });
 };

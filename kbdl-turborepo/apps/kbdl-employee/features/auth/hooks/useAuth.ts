@@ -2,6 +2,7 @@
 import { AppUser, UserRegisterPayload } from '@repo/types';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { useShiftSwapStore } from '../../shift-swap/hooks/use-shift-swap';
 import { getMe } from '../api';
 
 interface AuthState {
@@ -45,6 +46,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.deleteItemAsync('accessToken');
     await SecureStore.deleteItemAsync('refreshToken');
     await SecureStore.deleteItemAsync('userProfile');
+    await SecureStore.deleteItemAsync('shift-swap-storage'); // Wipe the persisted shift-swap key
+
+    // Clear out shifts from memory and sync the empty state
+    useShiftSwapStore.getState().clearShifts();
 
     // 2. Reset Zustand state
     set({ accessToken: null, user: null, status: 'unauthenticated' });
@@ -88,7 +93,10 @@ export const useAuthStore = create<AuthState>((set) => ({
         SecureStore.deleteItemAsync('accessToken'),
         SecureStore.deleteItemAsync('refreshToken'),
         SecureStore.deleteItemAsync('userProfile'),
+        SecureStore.deleteItemAsync('shift-swap-storage'),
       ]);
+
+      useShiftSwapStore.getState().clearShifts();
 
       set({
         accessToken: null,

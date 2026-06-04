@@ -5,6 +5,7 @@ import { prisma } from '@repo/db/server';
 import redis from '../redis';
 
 import { createNotificationService } from '../../notifications/notification-service';
+import { NotificationTypes } from '../../utils/constants';
 
 new Worker(
   'public-shift-broadcast',
@@ -34,7 +35,11 @@ new Worker(
 
           AND np.shift_swap = true
 
-          AND ${skillRequired} = ANY(u.skills)
+          AND EXISTS (
+            SELECT 1
+            FROM UNNEST(u.skills) AS skill
+            WHERE LOWER(skill) = LOWER(${skillRequired})
+          )
 
           AND u.location IS NOT NULL
 
@@ -56,7 +61,7 @@ new Worker(
         createNotificationService({
           userId: user.id,
 
-          type: 'public_shift',
+          type: NotificationTypes.publicShiftSwap,
 
           title: 'New Shift Available',
 

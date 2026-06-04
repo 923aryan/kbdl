@@ -3,11 +3,18 @@ import { safeUserSelect } from '@repo/db/shared';
 
 import {
   acceptShiftSchema,
+  approveShiftCompletionSchema,
+  approveShiftSchema,
   cancelShiftSchema,
   createShiftSchema,
+  getBestShiftMatchesSchema,
   getExtraShiftsSchema,
+  getLatestShiftsSchema,
+  getPendingShiftsSchema,
   getReferredEmployeeSchema,
+  getShiftDetailsSchema,
   rateShiftSchema,
+  reportShiftNoShowSchema,
   updateShiftSchema,
 } from '@repo/validator/shared';
 import z from 'zod';
@@ -39,6 +46,17 @@ export type GetEmployeeShiftsResponse = (Shift & {
 export type GetScheduledShiftsResponse = GetEmployeeShiftsResponse;
 export type GetEmployerShiftsResponse = Shift[];
 
+export type GetCreatedShiftsForEmployeeResponse = (Shift & {
+  employer: Pick<Employer, 'company_name' | 'company_address'> | null;
+  replacement_employee: Pick<User, 'name' | 'phone_no'> | null;
+})[];
+
+export type GetPendingShiftsRequest = z.infer<typeof getPendingShiftsSchema>;
+export type GetPendingShiftsResponse = (Shift & {
+  original_employee: Pick<User, 'name' | 'phone_no'>;
+  replacement_employee: Pick<User, 'name' | 'phone_no'> | null;
+})[];
+
 // C. Extra Shifts
 export type GetExtraShiftsRequest = z.infer<typeof getExtraShiftsSchema>;
 export type GetExtraShiftsQuery = z.infer<typeof getExtraShiftsSchema>['query'];
@@ -47,6 +65,19 @@ export type GetExtraShiftsResponse = (Shift & {
     company_location: [number, number];
   };
 })[];
+
+export type ShiftWithDistance = Shift & {
+  employer: Pick<Employer, 'company_name' | 'company_address' | 'is_verified'>;
+  distance_in_km: number;
+};
+
+export type GetLatestShiftsRequest = z.infer<typeof getLatestShiftsSchema>;
+export type GetLatestShiftsQuery = z.infer<typeof getLatestShiftsSchema>['query'];
+export type GetLatestShiftsResponse = ShiftWithDistance[];
+
+export type GetBestShiftMatchesRequest = z.infer<typeof getBestShiftMatchesSchema>;
+export type GetBestShiftMatchesQuery = z.infer<typeof getBestShiftMatchesSchema>['query'];
+export type GetBestShiftMatchesResponse = ShiftWithDistance[];
 
 // D. Rating
 export type RateShiftRequest = z.infer<typeof rateShiftSchema>;
@@ -72,3 +103,19 @@ export type ShiftWithNotification = Shift & {
 };
 
 export type GetOpenShiftsForEmployeeResponse = ShiftWithNotification[];
+
+export type ApproveShiftRequest = z.infer<typeof approveShiftSchema>;
+export type ApproveShiftResponse = Shift;
+
+export type GetShiftDetailsRequest = z.infer<typeof getShiftDetailsSchema>;
+export type GetShiftDetailsResponse = Shift & {
+  original_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }>;
+  replacement_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }> | null;
+  employer: Prisma.EmployerGetPayload<{ select: typeof safeEmployerSelect }>;
+};
+
+export type ApproveShiftCompletionRequest = z.infer<typeof approveShiftCompletionSchema>;
+export type ApproveShiftCompletionResponse = Shift;
+
+export type ReportShiftNoShowRequest = z.infer<typeof reportShiftNoShowSchema>;
+export type ReportShiftNoShowResponse = Shift;

@@ -118,7 +118,7 @@ export const getCurrentUserProfile = async (req: Request, res: Response) => {
 export const updateUserProfile = async (req: Request, res: Response) => {
   const input: UpdateUserProfileRequest = validate(updateUserProfileSchema, req);
   const userId = req.payload.user.id;
-  console.log("in controller: ", JSON.stringify(input.body))
+  console.log('in controller: ', JSON.stringify(input.body));
   const updatedUser = await updateUserProfileService(userId, input.body);
   sendSuccess(res, 'User profile updated successfully', updatedUser);
 };

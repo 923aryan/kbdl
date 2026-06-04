@@ -11,5 +11,5 @@ export const safeUserSelect = Prisma.validator<Prisma.UserSelect>()({
   verification_level: true,
   extra_shift: true,
   created_at: true,
-  preferences: true
+  preferences: true,
 });

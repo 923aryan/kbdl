@@ -8,7 +8,7 @@ import {
   UserRegisterRequest,
   UserSendOTPRequest,
   UserVerifyOTPRequest,
-  UserVerifyRegisterRequest
+  UserVerifyRegisterRequest,
 } from '@repo/types';
 import { env } from '@repo/validator/server';
 import {
@@ -37,7 +37,6 @@ import {
   verifyUserRegistrationOtpService,
 } from './auth-service';
 
-
 const registerUser = async (req: Request, res: Response) => {
   const registerInput: UserRegisterRequest = validate(userRegisterSchema, req);
   await registerUserService(registerInput.body);
@@ -57,7 +56,6 @@ const sendUserOtp = async (req: Request, res: Response) => {
   await sendUserOtpService(input.body);
   sendSuccess(res, 'OTP sent successfully to phone', null, 200);
 };
-
 
 const verifyUserOtp = async (req: Request, res: Response) => {
   const input: UserVerifyOTPRequest = validate(userVerifyOtpSchema, req);
@@ -158,13 +156,13 @@ export const setAuthCookies = (res: Response, accessToken: string, refreshToken:
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
     maxAge: 15 * 24 * 60 * 60 * 1000,
   });
 };
@@ -173,12 +171,12 @@ const clearAuthCookies = (res: Response) => {
   res.clearCookie('accessToken', {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
   });
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'none',
   });
 };
 
@@ -190,7 +188,8 @@ export {
   sendEmployerOtp,
   sendUserOtp,
   userTokenRefresh,
-  verifyEmployerOtp, verifyRegisteredEmployer, verifyRegisteredUser,
-  verifyUserOtp
+  verifyEmployerOtp,
+  verifyRegisteredEmployer,
+  verifyRegisteredUser,
+  verifyUserOtp,
 };
-

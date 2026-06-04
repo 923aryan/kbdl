@@ -22,6 +22,24 @@ export default function ShiftSwapLayout() {
           header: () => <CustomHeader title="Scheduled Shifts" />,
         }}
       />
+      <Stack.Screen
+        name="options"
+        options={{
+          header: () => <CustomHeader title="Shift Swap Options" />,
+        }}
+      />
+      <Stack.Screen
+        name="activity"
+        options={{
+          header: () => <CustomHeader title="My Activity" />,
+        }}
+      />
+      <Stack.Screen
+        name="[id]"
+        options={{
+          header: () => <CustomHeader title="Shift Details" />,
+        }}
+      />
     </Stack>
   );
 }
