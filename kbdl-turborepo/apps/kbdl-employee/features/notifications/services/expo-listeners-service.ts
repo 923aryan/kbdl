@@ -43,7 +43,10 @@ export function registerExpoListeners() {
           params: { id: data.shiftId as string, buttonTitle: 'Notification' },
         });
       } else if (data.type === NotificationTypes.onboardRequest) {
-        router.push('/(tabs)/notifications');
+        router.push({
+          pathname: '/(tabs)/notifications',
+          params: { tab: 'jobs' },
+        });
       }
     }
   });

@@ -1,11 +1,15 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
 import { FlatList, StyleSheet, View, useColorScheme } from 'react-native';
+import Toast from 'react-native-toast-message';
 
+import CustomButton from '@/components/ui/button';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import Loader from '@/components/ui/loader';
 import { Typography } from '@/components/ui/typography';
 import { Colors } from '@/constants/theme';
-import { useGetCreatedShiftsForEmployee } from '@/features/shift-swap/api';
+import { useCancelShift, useGetCreatedShiftsForEmployee } from '@/features/shift-swap/api';
 
 // Helper functions for Date & Time Formatting
 const formatDate = (dateInput: string | Date) => {
@@ -26,6 +30,30 @@ export default function CreatedShiftsScreen() {
   const styles = createStyles(theme);
 
   const { data: shifts, isLoading, isError } = useGetCreatedShiftsForEmployee();
+  const queryClient = useQueryClient();
+  const { mutate: cancelShift, isPending: isCancelling } = useCancelShift();
+  const [cancelShiftId, setCancelShiftId] = useState<string | null>(null);
+
+  const confirmCancel = () => {
+    if (!cancelShiftId) return;
+    cancelShift(
+      { shift_id: cancelShiftId },
+      {
+        onSuccess: () => {
+          Toast.show({ type: 'success', text1: 'Shift cancelled successfully!' });
+          queryClient.invalidateQueries({ queryKey: ['employee-created-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['extra-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['employee-latest-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['employee-best-matches-shifts'] });
+          setCancelShiftId(null);
+        },
+        onError: (error: any) => {
+          Toast.show({ type: 'error', text1: error.message || 'Failed to cancel shift' });
+          setCancelShiftId(null);
+        },
+      },
+    );
+  };
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -143,6 +171,18 @@ export default function CreatedShiftsScreen() {
             </View>
           </View>
         )}
+
+        {/* Action Buttons */}
+        {(shift.status === 'open' || shift.status === 'pending') && (
+          <View style={styles.actionContainer}>
+            <CustomButton
+              title="Cancel Shift"
+              variant="destructive"
+              size="small"
+              onPress={() => setCancelShiftId(shift.id)}
+            />
+          </View>
+        )}
       </View>
     );
   };
@@ -174,6 +214,18 @@ export default function CreatedShiftsScreen() {
           }
         />
       )}
+
+      <ConfirmationModal
+        visible={!!cancelShiftId}
+        title="Cancel Shift"
+        message="Are you sure you want to cancel this shift? This action cannot be undone."
+        confirmText="Yes, Cancel"
+        cancelText="No, Keep It"
+        confirmVariant="destructive"
+        loading={isCancelling}
+        onConfirm={confirmCancel}
+        onCancel={() => setCancelShiftId(null)}
+      />
     </View>
   );
 }
@@ -257,4 +309,7 @@ const createStyles = (theme: typeof Colors.light) =>
       marginLeft: 6,
     },
     separator: { marginHorizontal: 8, color: theme.border },
+    actionContainer: {
+      marginTop: 16,
+    },
   });

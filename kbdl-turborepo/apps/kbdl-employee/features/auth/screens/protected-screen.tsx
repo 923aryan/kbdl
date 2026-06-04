@@ -1,6 +1,6 @@
 // src/components/auth/protected-screen.tsx
 
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import React, { ReactNode } from 'react';
 import { StyleSheet, Text, useColorScheme, View } from 'react-native';
 
@@ -24,53 +24,56 @@ export function ProtectedScreen({ children }: Props) {
 
   if (status !== 'authenticated') {
     return (
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: theme.background,
-          },
-        ]}
-      >
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
         <View
           style={[
-            styles.card,
+            styles.container,
             {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
+              backgroundColor: theme.background,
             },
           ]}
         >
-          <Text
+          <View
             style={[
-              styles.title,
+              styles.card,
               {
-                color: theme.text,
+                backgroundColor: theme.card,
+                borderColor: theme.border,
               },
             ]}
           >
-            Login Required
-          </Text>
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: theme.text,
+                },
+              ]}
+            >
+              Login Required
+            </Text>
 
-          <Text
-            style={[
-              styles.description,
-              {
-                color: theme.textSecondary,
-              },
-            ]}
-          >
-            Please login to access this feature and continue using the app.
-          </Text>
+            <Text
+              style={[
+                styles.description,
+                {
+                  color: theme.textSecondary,
+                },
+              ]}
+            >
+              Please login to access this feature and continue using the app.
+            </Text>
 
-          <CustomButton
-            title="Login"
-            size="medium"
-            onPress={() => router.push('/auth/login')}
-            containerStyle={styles.button}
-          />
+            <CustomButton
+              title="Login"
+              size="medium"
+              onPress={() => router.push('/auth/login')}
+              containerStyle={styles.button}
+            />
+          </View>
         </View>
-      </View>
+      </>
     );
   }
 

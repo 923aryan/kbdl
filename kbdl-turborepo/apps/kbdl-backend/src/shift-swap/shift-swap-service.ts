@@ -356,7 +356,7 @@ export const cancelShiftService = async (
     throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
   }
 
-  if (shift.status === 'completed' || shift.status === 'cancelled') {
+  if (shift.status === ShiftStatus.completed || shift.status === ShiftStatus.cancelled) {
     throw new AppError(
       400,
       'INVALID_STATE',
@@ -370,6 +370,9 @@ export const cancelShiftService = async (
     if (shift.original_employee_id !== userId && shift.replacement_employee_id !== userId) {
       throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to cancel this shift.');
     }
+    if (shift.status === ShiftStatus.approved) {
+      throw new AppError(400, 'INVALID_STATE', 'Shift has already been approved by HR.');
+    }
   } else if (userType === ROLES.EMPLOYER) {
     // An employer can cancel shifts under their organization
     if (shift.employer_id !== userId) {
@@ -380,7 +383,7 @@ export const cancelShiftService = async (
   const cancelledShift = await prisma.shift.update({
     where: { id: shiftId },
     data: {
-      status: 'cancelled',
+      status: ShiftStatus.cancelled,
     },
   });
 
@@ -744,7 +747,7 @@ export const getLatestShiftsService = async (
   );
 
   const user = userResult[0];
-
+  console.log('user here: ', user);
   if (!user || user.latitude === null || user.longitude === null) {
     throw new Error('User location is not set. Cannot calculate distance.');
   }
@@ -813,6 +816,10 @@ export const getBestShiftMatchesService = async (
 
   const { latitude, longitude } = user;
   const userSkills = user.skills && user.skills.length > 0 ? user.skills : [];
+
+  if (userSkills.length === 0) {
+    return [];
+  }
   const UserSkills = userSkills.map((skill: string) => skill.toLowerCase());
 
   const conditions: string[] = [

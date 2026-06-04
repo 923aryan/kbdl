@@ -16,6 +16,7 @@ import ShiftCard from '@/components/ui/shift-swap-card';
 import { Typography } from '@/components/ui/typography';
 import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
+import { ProtectedScreen } from '@/features/auth/screens/protected-screen';
 import { useGetBestMatchesShifts, useGetLatestShifts } from '@/features/shift-swap/api';
 import translations from '@/translations';
 import { GetLatestShiftsResponse } from '@repo/types';
@@ -69,153 +70,180 @@ export default function ShiftsScreen() {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: '#F8F9FA' }]}>
-      {/* Configure Top Header */}
-      <Stack.Screen
-        options={{
-          title: t.headerTitle || 'Shifts',
-          headerStyle: { backgroundColor: '#0B173F' }, // The Navy color
-          headerTintColor: '#FFFFFF', // White text/back button
-          headerTitleAlign: 'center',
-          headerShadowVisible: false, // Removes bottom border line
-        }}
-      />
-
-      {/* Dark Curved Background Extension (Absolute at Top) */}
-      <View style={styles.extendedHeaderBackground} />
-
-      {/* FIXED HEADER SECTION (Sticks to top) */}
-      <View style={styles.fixedTopSection}>
-        {/* Search Bar */}
-        <SearchBar
-          placeholder={t.searchPlaceholder}
-          containerStyle={styles.searchContainer}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+    <ProtectedScreen>
+      <View style={[styles.container, { backgroundColor: '#F8F9FA' }]}>
+        {/* Configure Top Header */}
+        <Stack.Screen
+          options={{
+            title: t.headerTitle || 'Shifts',
+            headerStyle: { backgroundColor: '#0B173F' }, // The Navy color
+            headerTintColor: '#FFFFFF', // White text/back button
+            headerTitleAlign: 'center',
+            headerShadowVisible: false, // Removes bottom border line
+          }}
         />
 
-        {/* Primary Toggle Buttons (Big Blue Cards) */}
-        <View style={styles.mainButtonsRow}>
-          <TouchableOpacity
-            style={[styles.bigBtn, styles.bigBtnActive]}
-            onPress={() => router.push('/shift-swap/options')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.bigBtnContent}>
-              <Typography style={styles.bigBtnText}>{t.shiftSwapBtn}</Typography>
-              <Feather name="arrow-right" size={20} color="#FFF" />
-            </View>
-          </TouchableOpacity>
+        {/* Dark Curved Background Extension (Absolute at Top) */}
+        <View style={styles.extendedHeaderBackground} />
 
-          <TouchableOpacity
-            style={[styles.bigBtn, styles.bigBtnActive]}
-            onPress={() => router.push('/shift-swap/activity')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.bigBtnContent}>
-              <Typography style={styles.bigBtnText}>{t.myActivityBtn}</Typography>
-              <Feather name="arrow-right" size={20} color="#FFF" />
-            </View>
-          </TouchableOpacity>
+        {/* FIXED HEADER SECTION (Sticks to top) */}
+        <View style={styles.fixedTopSection}>
+          {/* Search Bar */}
+          <SearchBar
+            placeholder={t.searchPlaceholder}
+            containerStyle={styles.searchContainer}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+
+          {/* Primary Toggle Buttons (Big Blue Cards) */}
+          <View style={styles.mainButtonsRow}>
+            <TouchableOpacity
+              style={[styles.bigBtn, styles.bigBtnActive]}
+              onPress={() => router.push('/shift-swap/options')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.bigBtnContent}>
+                <Typography style={styles.bigBtnText}>{t.shiftSwapBtn}</Typography>
+                <Feather name="arrow-right" size={20} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.bigBtn, styles.bigBtnActive]}
+              onPress={() => router.push('/shift-swap/activity')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.bigBtnContent}>
+                <Typography style={styles.bigBtnText}>{t.myActivityBtn}</Typography>
+                <Feather name="arrow-right" size={20} color="#FFF" />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* SCROLLABLE CONTENT AREA */}
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View>
-          {/* Best Matches Section */}
-          {(isBestMatchesLoading || filteredBestMatches.length > 0) && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Typography variant="button">{t.bestShiftMatches}</Typography>
-                <TouchableOpacity>
-                  <Typography style={styles.seeAllText}>
-                    {t.seeAll} {'>'}
-                  </Typography>
-                </TouchableOpacity>
-              </View>
-
-              {/* Horizontal Scroll for Best Matches */}
-              {isBestMatchesLoading ? (
+        {/* SCROLLABLE CONTENT AREA */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View>
+            {isLatestLoading || isBestMatchesLoading ? (
+              <View style={styles.centerLoader}>
                 <Loader />
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                >
-                  {filteredBestMatches.map((shift: any) => (
-                    <View key={shift.id} style={styles.horizontalCardWrapper}>
-                      <ShiftCard
-                        shift={shift}
-                        distance={
-                          shift.distance_in_km !== undefined
-                            ? `${shift.distance_in_km} km`
-                            : undefined
-                        }
-                        buttonTitle="Apply"
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-            </>
-          )}
-
-          {/* Latest Post Section */}
-          {(isLatestLoading || filteredLatestShifts.length > 0) && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Typography variant="button">{t.latestPost}</Typography>
-                <TouchableOpacity>
-                  <Typography style={styles.seeAllText}>
-                    {t.seeAll} {'>'}
-                  </Typography>
-                </TouchableOpacity>
               </View>
-
-              {/* Horizontal Scroll for Latest Posts */}
-              {isLatestLoading ? (
-                <Loader />
-              ) : (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.horizontalList}
-                >
-                  {filteredLatestShifts.map((shift: any) => (
-                    <View key={shift.id} style={styles.horizontalCardWrapper}>
-                      <ShiftCard
-                        shift={shift}
-                        distance={
-                          shift.distance_in_km !== undefined
-                            ? `${shift.distance_in_km} km`
-                            : undefined
+            ) : (
+              <>
+                {/* Best Matches Section */}
+                {filteredBestMatches.length > 0 && (
+                  <>
+                    <View style={styles.sectionHeader}>
+                      <Typography variant="button">{t.bestShiftMatches}</Typography>
+                      <TouchableOpacity
+                        onPress={() =>
+                          router.push({
+                            pathname: '/shift-swap/lists',
+                            params: { type: 'best-matches' },
+                          })
                         }
-                        buttonTitle="Apply"
-                      />
+                      >
+                        <Typography style={styles.seeAllText}>
+                          {t.seeAll} {'>'}
+                        </Typography>
+                      </TouchableOpacity>
                     </View>
-                  ))}
-                </ScrollView>
-              )}
-            </>
-          )}
 
-          {/* Empty Search State */}
-          {!isBestMatchesLoading &&
-            !isLatestLoading &&
-            searchQuery.trim() !== '' &&
-            filteredBestMatches.length === 0 &&
-            filteredLatestShifts.length === 0 && (
-              <View style={styles.emptySearchContainer}>
-                <Typography style={styles.emptySearchText}>
-                  {t.noShiftsFound} "{searchQuery}"
-                </Typography>
-              </View>
+                    {/* Horizontal Scroll for Best Matches */}
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.horizontalList}
+                    >
+                      {filteredBestMatches.map((shift: any) => (
+                        <View
+                          key={shift.id}
+                          style={
+                            filteredBestMatches.length > 1
+                              ? styles.horizontalCardWrapper
+                              : styles.fullWidthCardWrapper
+                          }
+                        >
+                          <ShiftCard
+                            shift={shift}
+                            distance={
+                              shift.distance_in_km !== undefined
+                                ? `${shift.distance_in_km} km`
+                                : undefined
+                            }
+                            buttonTitle="Apply"
+                          />
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </>
+                )}
+
+                {/* Latest Post Section */}
+                {filteredLatestShifts.length > 0 && (
+                  <>
+                    <View style={styles.sectionHeader}>
+                      <Typography variant="button">{t.latestPost}</Typography>
+                      <TouchableOpacity
+                        onPress={() =>
+                          router.push({
+                            pathname: '/shift-swap/lists',
+                            params: { type: 'latest' },
+                          })
+                        }
+                      >
+                        <Typography style={styles.seeAllText}>
+                          {t.seeAll} {'>'}
+                        </Typography>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Vertical List for Latest Posts */}
+                    <View style={styles.verticalList}>
+                      {filteredLatestShifts.map((shift: any) => (
+                        <View key={shift.id} style={styles.verticalCardWrapper}>
+                          <ShiftCard
+                            shift={shift}
+                            distance={
+                              shift.distance_in_km !== undefined
+                                ? `${shift.distance_in_km} km`
+                                : undefined
+                            }
+                            buttonTitle="Apply"
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {/* Empty State */}
+                {filteredBestMatches.length === 0 && filteredLatestShifts.length === 0 && (
+                  <View style={styles.emptySearchContainer}>
+                    {searchQuery.trim() !== '' ? (
+                      <Typography style={styles.emptySearchText}>
+                        {t.noShiftsFound} "{searchQuery}"
+                      </Typography>
+                    ) : (
+                      <>
+                        <Typography style={styles.emojiText}>🤷‍♂️</Typography>
+                        <Typography style={styles.emptySearchText}>
+                          There is nothing to show right now.
+                        </Typography>
+                      </>
+                    )}
+                  </View>
+                )}
+              </>
             )}
-        </View>
-      </ScrollView>
-    </View>
+          </View>
+        </ScrollView>
+      </View>
+    </ProtectedScreen>
   );
 }
 
@@ -319,7 +347,17 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   horizontalCardWrapper: {
+    width: width * 0.8,
+  },
+  fullWidthCardWrapper: {
     width: width - 40,
+  },
+  verticalList: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  verticalCardWrapper: {
+    width: '100%',
   },
 
   /* Empty Search State */
@@ -332,5 +370,16 @@ const styles = StyleSheet.create({
   emptySearchText: {
     color: '#6B7280',
     textAlign: 'center',
+    fontSize: 16,
+  },
+  emojiText: {
+    fontSize: 40,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  centerLoader: {
+    marginTop: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

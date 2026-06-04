@@ -18,11 +18,12 @@ export const authenticate = (
     // 1. Authorization header
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
+      console.log('bearer: ', token);
     }
-
     // 2. Cookies fallback
     else if (req.cookies?.accessToken) {
       token = req.cookies.accessToken;
+      console.log('cookie: ', token);
     }
 
     // 3. No token

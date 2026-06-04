@@ -65,6 +65,8 @@ export default function CreateShiftScreen() {
   console.log('errors', errors);
   console.log('values', watch());
 
+  const shiftDateVal = watch('shift_date');
+
   const onSubmit = (data: FormData) => {
     console.log('data is ', data);
 
@@ -281,10 +283,21 @@ export default function CreateShiftScreen() {
                       label="Shift From :"
                       mode="time"
                       value={value ? new Date(value) : null}
-                      onChange={(date) => onChange(date.toISOString())}
+                      onChange={(date) => {
+                        if (shiftDateVal) {
+                          const baseDate = new Date(shiftDateVal);
+                          date.setFullYear(
+                            baseDate.getFullYear(),
+                            baseDate.getMonth(),
+                            baseDate.getDate(),
+                          );
+                        }
+                        onChange(date.toISOString());
+                      }}
                       icon={<Feather name="clock" size={18} color={theme.icon} />}
                       error={errors.shift_start?.message}
                       theme={theme}
+                      disabled={!shiftDateVal}
                     />
                   )}
                 />
@@ -300,10 +313,21 @@ export default function CreateShiftScreen() {
                       label="Shift To :"
                       mode="time"
                       value={value ? new Date(value) : null}
-                      onChange={(date) => onChange(date.toISOString())}
+                      onChange={(date) => {
+                        if (shiftDateVal) {
+                          const baseDate = new Date(shiftDateVal);
+                          date.setFullYear(
+                            baseDate.getFullYear(),
+                            baseDate.getMonth(),
+                            baseDate.getDate(),
+                          );
+                        }
+                        onChange(date.toISOString());
+                      }}
                       icon={<Feather name="clock" size={18} color={theme.icon} />}
                       error={errors.shift_end?.message}
                       theme={theme}
+                      disabled={!shiftDateVal}
                     />
                   )}
                 />

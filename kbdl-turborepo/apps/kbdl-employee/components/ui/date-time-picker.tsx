@@ -10,6 +10,7 @@ interface DateTimePickerInputProps {
   icon: React.ReactNode;
   error?: string | null;
   theme: any;
+  disabled?: boolean;
 }
 
 export default function DateTimePickerInput({
@@ -20,6 +21,7 @@ export default function DateTimePickerInput({
   icon,
   error,
   theme,
+  disabled = false,
 }: DateTimePickerInputProps) {
   const [show, setShow] = useState(false);
 
@@ -49,11 +51,17 @@ export default function DateTimePickerInput({
         style={[
           styles.inputContainer,
           {
-            backgroundColor: theme.background,
+            backgroundColor: disabled ? theme.card : theme.background,
             borderColor: error ? '#DC2626' : theme.border,
+            opacity: disabled ? 0.6 : 1,
           },
         ]}
-        onPress={() => setShow(true)}
+        onPress={() => {
+          if (!disabled) {
+            setShow(true);
+          }
+        }}
+        disabled={disabled}
       >
         <View style={styles.iconWrapper}>{icon}</View>
         <View style={[styles.separator, { backgroundColor: theme.border }]} />

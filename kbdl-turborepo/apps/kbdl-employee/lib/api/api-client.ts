@@ -34,8 +34,9 @@ async function http<T>(
   const url = `${BASE_URL}${path}`;
 
   const accessToken = await SecureStore.getItemAsync('accessToken');
-
+  console.log('access token is ', accessToken);
   const requestConfig: RequestInit = {
+    credentials: 'omit',
     ...config,
     headers: {
       'Content-Type': 'application/json',
@@ -56,6 +57,7 @@ async function http<T>(
 
         const refreshResponse = await fetch(`${BASE_URL}/auth/token-refresh`, {
           method: 'POST',
+          credentials: 'omit',
           headers: {
             'Content-Type': 'application/json',
           },

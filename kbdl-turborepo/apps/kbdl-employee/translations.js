@@ -46,7 +46,7 @@ export default {
     timelyPayment: 'Timely Payment',
     nearbyJobs: 'Nearby Jobs',
     blueCollarHeroes: 'For Blue collar Heroes',
-    searchPlaceholder: 'Search by skill, company, area, or pay',
+    searchPlaceholder: 'Search by skill, company, area, pay',
     shiftSwapBtn: 'Shift \n Swap',
     myActivityBtn: 'My \n Activity',
     bestShiftMatches: 'Best Shift matches for you',

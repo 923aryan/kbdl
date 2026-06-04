@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +22,16 @@ export default function Notifications() {
   const setShifts = useShiftSwapStore((s) => s.setShifts);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const [activeTab, setActiveTab] = useState<'shifts' | 'jobs'>('shifts');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [activeTab, setActiveTab] = useState<'shifts' | 'jobs'>(
+    (params.tab as 'shifts' | 'jobs') || 'shifts',
+  );
+
+  useEffect(() => {
+    if (params.tab === 'shifts' || params.tab === 'jobs') {
+      setActiveTab(params.tab);
+    }
+  }, [params.tab]);
 
   useEffect(() => {
     if (data) {

@@ -1,6 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
@@ -17,15 +18,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { z } from 'zod';
 
 import DateTimePickerInput from '@/components/ui/date-time-picker';
-import ErrorMessageBox from '@/components/ui/error-message-box';
-import Loader from '@/components/ui/loader';
 import { Colors } from '@/constants/theme';
 import { getExtraShiftsSchema } from '@repo/validator/shared';
 import CustomButton from '../../../components/ui/button';
 import CustomInput from '../../../components/ui/input';
-import ShiftCard from '../../../components/ui/shift-swap-card';
 import { useGetSearchAddress } from '../../operations/hooks/use-operation-hook';
-import { useGetExtraShifts } from '../api';
 const formSchema = getExtraShiftsSchema.shape.query;
 type FormInput = z.input<typeof formSchema>;
 type FormOutput = z.output<typeof formSchema>;
@@ -34,8 +31,8 @@ export default function ExtraShiftScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
+  const router = useRouter();
 
-  const [filterQuery, setFilterQuery] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState<'fetching' | 'fetched' | 'error'>(
     'fetching',
   );
@@ -126,7 +123,10 @@ export default function ExtraShiftScreen() {
 
     const finalQueryString = params.join('&');
 
-    setFilterQuery(finalQueryString);
+    router.push({
+      pathname: '/shift-swap/lists',
+      params: { type: 'extra-shifts', query: finalQueryString },
+    });
   };
 
   return (
@@ -271,16 +271,6 @@ export default function ExtraShiftScreen() {
               />
             </View>
           </View>
-
-          <View style={styles.resultsSection}>
-            {filterQuery ? (
-              <ShiftResults query={filterQuery} styles={styles} />
-            ) : (
-              <Text style={styles.noResultsText}>
-                Tap "Search Shifts" to find available shifts.
-              </Text>
-            )}
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -321,15 +311,6 @@ const createStyles = (theme: typeof Colors.light) =>
     actionRow: {
       marginTop: 8,
     },
-    resultsSection: {
-      paddingHorizontal: 24,
-      marginTop: 24,
-    },
-    noResultsText: {
-      textAlign: 'center',
-      color: theme.textSecondary,
-      marginTop: 20,
-    },
     dropdown: {
       borderWidth: 1,
       borderRadius: 8,
@@ -342,33 +323,3 @@ const createStyles = (theme: typeof Colors.light) =>
       borderBottomWidth: 1,
     },
   });
-
-function ShiftResults({ query, styles }: { query: string; styles: any }) {
-  console.log('getting it: ', query);
-  const { data: response, isLoading, isError, error } = useGetExtraShifts(query);
-
-  // Safely grab the `data` array out of the backend's response object
-  const shifts = response || [];
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
-  if (isError) {
-    return (
-      <ErrorMessageBox message={error?.message || 'Error fetching shifts'} onClose={() => {}} />
-    );
-  }
-
-  if (shifts.length === 0) {
-    return <Text style={styles.noResultsText}>No extra shifts found.</Text>;
-  }
-
-  return (
-    <>
-      {shifts.map((shift: any) => (
-        <ShiftCard key={shift.id} shift={shift} buttonTitle="Apply" />
-      ))}
-    </>
-  );
-}
