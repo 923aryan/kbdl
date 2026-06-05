@@ -1,5 +1,6 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
-import { FlatList, StyleSheet, View, useColorScheme } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ShiftCard from '@/components/ui/shift-swap-card';

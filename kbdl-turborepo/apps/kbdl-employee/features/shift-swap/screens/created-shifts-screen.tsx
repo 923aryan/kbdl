@@ -1,7 +1,8 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, View, useColorScheme } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import CustomButton from '@/components/ui/button';

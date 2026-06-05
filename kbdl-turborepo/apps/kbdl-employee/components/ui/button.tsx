@@ -1,4 +1,5 @@
 import { Colors, Fonts } from '@/constants/theme'; // Adjust this import path to match your setup
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React, { ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -8,7 +9,6 @@ import {
   StyleSheet,
   Text,
   TextStyle,
-  useColorScheme,
   View,
   ViewStyle,
 } from 'react-native';
@@ -44,6 +44,7 @@ export default function CustomButton({
   ...pressableProps
 }: CustomButtonProps) {
   const colorScheme = useColorScheme() ?? 'light';
+  console.log('coclor scheam ', colorScheme);
   const themeColors = Colors[colorScheme];
 
   // 1. Determine Dynamic Colors based on variant

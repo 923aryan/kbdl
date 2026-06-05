@@ -1,5 +1,6 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View, useColorScheme } from 'react-native';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import { Typography } from '@/components/ui/typography';
 import { Colors } from '@/constants/theme';

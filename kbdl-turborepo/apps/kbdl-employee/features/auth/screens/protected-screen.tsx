@@ -2,10 +2,11 @@
 
 import { router, Stack } from 'expo-router';
 import React, { ReactNode } from 'react';
-import { StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import CustomButton from '@/components/ui/button';
 import { Colors, Fonts } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '../hooks/useAuth';
 
 interface Props {
@@ -15,7 +16,7 @@ interface Props {
 export function ProtectedScreen({ children }: Props) {
   const status = useAuthStore((s) => s.status);
 
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme();
   const theme = Colors[colorScheme];
 
   if (status === 'loading') {

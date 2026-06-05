@@ -1,5 +1,6 @@
 import { LANGUAGES } from '@/constants/languages';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userRegisterSchema } from '@repo/validator/shared';
@@ -18,7 +19,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -34,7 +34,7 @@ const formSchema = userRegisterSchema.shape.body;
 type FormData = z.input<typeof formSchema>;
 
 export default function SignupScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme();
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
   const router = useRouter();

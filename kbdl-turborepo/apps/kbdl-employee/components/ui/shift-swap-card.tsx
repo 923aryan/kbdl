@@ -1,7 +1,8 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Import your custom UI components and theme
 import CustomButton from '@/components/ui/button'; // Adjust path

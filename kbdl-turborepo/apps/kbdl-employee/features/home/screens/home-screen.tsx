@@ -1,16 +1,9 @@
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BlueCollars from '@/assets/images/blue-collars.svg';
@@ -32,7 +25,7 @@ export default function HomeScreen() {
   const selectedLanguage = user?.preferences?.language || 'en-IN';
   const isHindi = selectedLanguage.startsWith('hi');
   const t = isHindi ? translations.hi : translations.en;
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme();
   const theme = Colors[colorScheme];
   const [hideProfileBanner, setHideProfileBanner] = useState(false);
   const { data, isLoading: isLoadingShifts } = useGetOpenShifts();

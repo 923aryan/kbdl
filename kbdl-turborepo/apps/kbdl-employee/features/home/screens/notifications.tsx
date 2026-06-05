@@ -1,7 +1,8 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Loader from '@/components/ui/loader';
@@ -14,8 +15,8 @@ import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
 
 export default function Notifications() {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme() ?? 'light';
-  const theme = Colors[colorScheme];
+  const colorScheme = useColorScheme();
+  const theme = Colors.light;
 
   const { data, isLoading: isLoadingShifts } = useGetOpenShifts();
   const { data: pendingEmployments, isLoading: isLoadingEmployments } = useGetPendingEmployments();

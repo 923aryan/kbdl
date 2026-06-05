@@ -1,14 +1,8 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { Stack, router } from 'expo-router'; // Assuming Expo Router
 import React, { useMemo, useState } from 'react';
-import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import Loader from '@/components/ui/loader';
 import SearchBar from '@/components/ui/search-bar';

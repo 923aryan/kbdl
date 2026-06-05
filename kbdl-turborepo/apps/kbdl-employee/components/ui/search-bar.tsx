@@ -1,3 +1,4 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
@@ -8,7 +9,6 @@ import {
   TouchableOpacity,
   View,
   ViewStyle,
-  useColorScheme,
 } from 'react-native';
 
 import { Colors } from '@/constants/theme';

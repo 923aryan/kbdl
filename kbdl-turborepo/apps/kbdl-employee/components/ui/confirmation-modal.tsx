@@ -1,5 +1,6 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
-import { Modal, StyleSheet, View, useColorScheme } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 
 import CustomButton from '@/components/ui/button';
 import { Typography } from '@/components/ui/typography';

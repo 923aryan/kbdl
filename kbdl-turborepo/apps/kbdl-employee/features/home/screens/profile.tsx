@@ -5,8 +5,10 @@ import { LANGUAGES } from '@/constants/languages';
 import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { useUpdateProfile } from '@/features/profile/api';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -15,7 +17,6 @@ import {
   StyleSheet,
   Switch,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
