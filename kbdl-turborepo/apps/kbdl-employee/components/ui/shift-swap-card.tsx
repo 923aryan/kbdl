@@ -272,18 +272,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
                 <Typography variant="bodySmall" style={styles.infoText} numberOfLines={1}>
                   {location}
                 </Typography>
-                {distance && (
-                  <View style={styles.distanceContainer}>
-                    <Typography variant="bodySmall" style={styles.separator}>
-                      |
-                    </Typography>
-                    <View style={styles.distancePill}>
-                      <Typography variant="bodySmall" style={styles.distanceText}>
-                        {distance}
-                      </Typography>
-                    </View>
-                  </View>
-                )}
               </View>
             )}
 
@@ -296,12 +284,22 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             </View>
 
             {/* Date Row */}
-            <View style={[styles.infoRow, { marginBottom: 0 }]}>
+            <View style={[styles.infoRow, !distance && { marginBottom: 0 }]}>
               <Feather name="calendar" size={14} color={theme.icon} />
               <Typography variant="bodySmall" style={styles.infoText}>
                 {displayDate}
               </Typography>
             </View>
+
+            {/* Distance Row */}
+            {distance && (
+              <View style={[styles.infoRow, { marginBottom: 0 }]}>
+                <Feather name="map" size={14} color={theme.icon} />
+                <Typography variant="bodySmall" style={styles.infoText}>
+                  {distance}
+                </Typography>
+              </View>
+            )}
           </View>
 
           {/* Bookmark UI Element is now a sibling to infoCol for alignment */}
@@ -527,24 +525,6 @@ const createStyles = (theme: typeof Colors.light) =>
     infoText: {
       color: theme.text,
       marginLeft: 8,
-    },
-    distanceContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    separator: {
-      marginHorizontal: 8,
-      color: theme.text,
-    },
-    distancePill: {
-      backgroundColor: '#FFF7ED',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-    },
-    distanceText: {
-      color: '#F97316',
-      fontWeight: '600',
     },
 
     /* Action Buttons Styles */

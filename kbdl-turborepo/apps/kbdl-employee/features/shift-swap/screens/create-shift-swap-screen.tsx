@@ -3,16 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { z } from 'zod';
@@ -162,216 +153,210 @@ export default function CreateShiftScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        bounces={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
-          <View style={styles.headerContainer}>
-            <Text style={styles.title}>Shift details</Text>
-            <Text style={styles.subtitle}>Enter the shift Information</Text>
-          </View>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>Shift details</Text>
+          <Text style={styles.subtitle}>Enter the shift Information</Text>
+        </View>
 
-          <View style={styles.formSection}>
-            <ErrorMessageBox message={errorMessage} onClose={() => setErrorMessage('')} />
+        <View style={styles.formSection}>
+          <ErrorMessageBox message={errorMessage} onClose={() => setErrorMessage('')} />
 
+          <Controller
+            control={control}
+            name="skill_required"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <CustomInput
+                label="Enter Skills :"
+                placeholder="Exp: Welder"
+                icon={<Feather name="tool" size={18} color={theme.icon} />}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.skill_required?.message}
+              />
+            )}
+          />
+
+          {/* Pay Type Selection */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Pay Type :</Text>
             <Controller
               control={control}
-              name="skill_required"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <CustomInput
-                  label="Enter Skills :"
-                  placeholder="Exp: Welder"
-                  icon={<Feather name="tool" size={18} color={theme.icon} />}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.skill_required?.message}
-                />
+              name="payType"
+              render={({ field: { onChange, value } }) => (
+                <View style={styles.payTypeContainer}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[styles.payTypeButton, value === 'FIXED' && styles.payTypeButtonActive]}
+                    onPress={() => onChange('FIXED')}
+                  >
+                    <Text
+                      style={[styles.payTypeText, value === 'FIXED' && styles.payTypeTextActive]}
+                    >
+                      Fixed
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[styles.payTypeButton, value === 'HOURLY' && styles.payTypeButtonActive]}
+                    onPress={() => onChange('HOURLY')}
+                  >
+                    <Text
+                      style={[styles.payTypeText, value === 'HOURLY' && styles.payTypeTextActive]}
+                    >
+                      Hourly
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               )}
             />
+            {errors.payType && <Text style={styles.errorText}>{errors.payType.message}</Text>}
+          </View>
 
-            {/* Pay Type Selection */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Pay Type :</Text>
+          {/* Shift Pay Input */}
+          <Controller
+            control={control}
+            name="shift_pay"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <CustomInput
+                label="Enter Shift Pay:"
+                placeholder="Exp: Rs.640"
+                prefix="₹"
+                keyboardType="numeric"
+                onBlur={onBlur}
+                onChangeText={(text) => {
+                  const parsed = parseFloat(text);
+                  onChange(isNaN(parsed) ? '' : parsed);
+                }}
+                value={value ? String(value) : ''}
+                error={errors.shift_pay?.message}
+              />
+            )}
+          />
+
+          {/* Shift Date Input (Replaced with DateTimePickerInput) */}
+          <Controller
+            control={control}
+            name="shift_date"
+            render={({ field: { onChange, value } }) => (
+              <DateTimePickerInput
+                label="Enter Date :"
+                mode="date"
+                value={value ? new Date(value) : null}
+                onChange={(date) => onChange(date.toISOString())}
+                icon={<Feather name="calendar" size={18} color={theme.icon} />}
+                error={errors.shift_date?.message}
+                theme={theme}
+              />
+            )}
+          />
+
+          {/* Time Row (Shift From & Shift To) */}
+          <View style={styles.rowContainer}>
+            <View style={styles.halfWidth}>
+              {/* Shift Start (Replaced with DateTimePickerInput) */}
               <Controller
                 control={control}
-                name="payType"
+                name="shift_start"
                 render={({ field: { onChange, value } }) => (
-                  <View style={styles.payTypeContainer}>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={[
-                        styles.payTypeButton,
-                        value === 'FIXED' && styles.payTypeButtonActive,
-                      ]}
-                      onPress={() => onChange('FIXED')}
-                    >
-                      <Text
-                        style={[styles.payTypeText, value === 'FIXED' && styles.payTypeTextActive]}
-                      >
-                        Fixed
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={[
-                        styles.payTypeButton,
-                        value === 'HOURLY' && styles.payTypeButtonActive,
-                      ]}
-                      onPress={() => onChange('HOURLY')}
-                    >
-                      <Text
-                        style={[styles.payTypeText, value === 'HOURLY' && styles.payTypeTextActive]}
-                      >
-                        Hourly
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  <DateTimePickerInput
+                    label="Shift From :"
+                    mode="time"
+                    value={value ? new Date(value) : null}
+                    onChange={(date) => {
+                      if (shiftDateVal) {
+                        const baseDate = new Date(shiftDateVal);
+                        date.setFullYear(
+                          baseDate.getFullYear(),
+                          baseDate.getMonth(),
+                          baseDate.getDate(),
+                        );
+                      }
+                      onChange(date.toISOString());
+                    }}
+                    icon={<Feather name="clock" size={18} color={theme.icon} />}
+                    error={errors.shift_start?.message}
+                    theme={theme}
+                    disabled={!shiftDateVal}
+                  />
                 )}
               />
-              {errors.payType && <Text style={styles.errorText}>{errors.payType.message}</Text>}
             </View>
 
-            {/* Shift Pay Input */}
-            <Controller
-              control={control}
-              name="shift_pay"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <CustomInput
-                  label="Enter Shift Pay:"
-                  placeholder="Exp: Rs.640"
-                  prefix="₹"
-                  keyboardType="numeric"
-                  onBlur={onBlur}
-                  onChangeText={(text) => {
-                    const parsed = parseFloat(text);
-                    onChange(isNaN(parsed) ? '' : parsed);
-                  }}
-                  value={value ? String(value) : ''}
-                  error={errors.shift_pay?.message}
-                />
-              )}
-            />
-
-            {/* Shift Date Input (Replaced with DateTimePickerInput) */}
-            <Controller
-              control={control}
-              name="shift_date"
-              render={({ field: { onChange, value } }) => (
-                <DateTimePickerInput
-                  label="Enter Date :"
-                  mode="date"
-                  value={value ? new Date(value) : null}
-                  onChange={(date) => onChange(date.toISOString())}
-                  icon={<Feather name="calendar" size={18} color={theme.icon} />}
-                  error={errors.shift_date?.message}
-                  theme={theme}
-                />
-              )}
-            />
-
-            {/* Time Row (Shift From & Shift To) */}
-            <View style={styles.rowContainer}>
-              <View style={styles.halfWidth}>
-                {/* Shift Start (Replaced with DateTimePickerInput) */}
-                <Controller
-                  control={control}
-                  name="shift_start"
-                  render={({ field: { onChange, value } }) => (
-                    <DateTimePickerInput
-                      label="Shift From :"
-                      mode="time"
-                      value={value ? new Date(value) : null}
-                      onChange={(date) => {
-                        if (shiftDateVal) {
-                          const baseDate = new Date(shiftDateVal);
-                          date.setFullYear(
-                            baseDate.getFullYear(),
-                            baseDate.getMonth(),
-                            baseDate.getDate(),
-                          );
-                        }
-                        onChange(date.toISOString());
-                      }}
-                      icon={<Feather name="clock" size={18} color={theme.icon} />}
-                      error={errors.shift_start?.message}
-                      theme={theme}
-                      disabled={!shiftDateVal}
-                    />
-                  )}
-                />
-              </View>
-
-              <View style={styles.halfWidth}>
-                {/* Shift End (Replaced with DateTimePickerInput) */}
-                <Controller
-                  control={control}
-                  name="shift_end"
-                  render={({ field: { onChange, value } }) => (
-                    <DateTimePickerInput
-                      label="Shift To :"
-                      mode="time"
-                      value={value ? new Date(value) : null}
-                      onChange={(date) => {
-                        if (shiftDateVal) {
-                          const baseDate = new Date(shiftDateVal);
-                          date.setFullYear(
-                            baseDate.getFullYear(),
-                            baseDate.getMonth(),
-                            baseDate.getDate(),
-                          );
-                        }
-                        onChange(date.toISOString());
-                      }}
-                      icon={<Feather name="clock" size={18} color={theme.icon} />}
-                      error={errors.shift_end?.message}
-                      theme={theme}
-                      disabled={!shiftDateVal}
-                    />
-                  )}
-                />
-              </View>
-            </View>
-
-            {/* Add Employee Mobile Number Field */}
-            {showAddEmployee && (
-              <View style={styles.addEmployeeContainer}>
-                <CustomInput
-                  label="Enter Mobile Number of Employee :"
-                  placeholder="Exp: 9876543210"
-                  icon={<Feather name="smartphone" size={18} color={theme.icon} />}
-                  keyboardType="phone-pad"
-                  value={employeeMobile}
-                  onChangeText={setEmployeeMobile}
-                />
-              </View>
-            )}
-
-            {/* Bottom Action Buttons */}
-            <View style={styles.actionRow}>
-              <CustomButton
-                title={showAddEmployee ? 'Remove Employee' : 'Add Employee'}
-                variant="outline"
-                containerStyle={styles.halfButton}
-                onPress={() => {
-                  setShowAddEmployee(!showAddEmployee);
-                  if (showAddEmployee) {
-                    setEmployeeMobile(''); // Clear out previous input
-                  }
-                }}
-              />
-              <CustomButton
-                title="Confirm"
-                variant="primary"
-                loading={isSubmitting}
-                containerStyle={styles.halfButton}
-                onPress={handleSubmit(onSubmit)}
+            <View style={styles.halfWidth}>
+              {/* Shift End (Replaced with DateTimePickerInput) */}
+              <Controller
+                control={control}
+                name="shift_end"
+                render={({ field: { onChange, value } }) => (
+                  <DateTimePickerInput
+                    label="Shift To :"
+                    mode="time"
+                    value={value ? new Date(value) : null}
+                    onChange={(date) => {
+                      if (shiftDateVal) {
+                        const baseDate = new Date(shiftDateVal);
+                        date.setFullYear(
+                          baseDate.getFullYear(),
+                          baseDate.getMonth(),
+                          baseDate.getDate(),
+                        );
+                      }
+                      onChange(date.toISOString());
+                    }}
+                    icon={<Feather name="clock" size={18} color={theme.icon} />}
+                    error={errors.shift_end?.message}
+                    theme={theme}
+                    disabled={!shiftDateVal}
+                  />
+                )}
               />
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          {/* Add Employee Mobile Number Field */}
+          {showAddEmployee && (
+            <View style={styles.addEmployeeContainer}>
+              <CustomInput
+                label="Enter Mobile Number of Employee :"
+                placeholder="Exp: 9876543210"
+                icon={<Feather name="smartphone" size={18} color={theme.icon} />}
+                keyboardType="phone-pad"
+                value={employeeMobile}
+                onChangeText={setEmployeeMobile}
+              />
+            </View>
+          )}
+
+          {/* Bottom Action Buttons */}
+          <View style={styles.actionRow}>
+            <CustomButton
+              title={showAddEmployee ? 'Remove Employee' : 'Add Employee'}
+              variant="outline"
+              containerStyle={styles.halfButton}
+              onPress={() => {
+                setShowAddEmployee(!showAddEmployee);
+                if (showAddEmployee) {
+                  setEmployeeMobile(''); // Clear out previous input
+                }
+              }}
+            />
+            <CustomButton
+              title="Confirm"
+              variant="primary"
+              loading={isSubmitting}
+              containerStyle={styles.halfButton}
+              onPress={handleSubmit(onSubmit)}
+            />
+          </View>
+        </View>
+      </ScrollView>
 
       {/* Success Modal */}
       <SuccessCard
@@ -391,9 +376,6 @@ const createStyles = (theme: typeof Colors.light) =>
     safeArea: {
       flex: 1,
       backgroundColor: theme.background,
-    },
-    keyboardView: {
-      flex: 1,
     },
     scrollContent: {
       paddingBottom: 40,

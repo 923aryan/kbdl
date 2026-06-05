@@ -2,6 +2,8 @@ import { Colors } from '@/constants/theme';
 import React, { useRef, useState } from 'react';
 import {
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -47,73 +49,78 @@ export default function MyActivityScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.background }]}
-      edges={['bottom']}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      {/* <View style={styles.container}> */}
-      <View style={styles.tabsContainer}>
-        <ScrollView
-          ref={tabsScrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsScroll}
-        >
-          <TouchableOpacity onPress={() => handleTabPress('scheduled', 0)} style={styles.tab}>
-            <Text style={[styles.tabText, activeTab === 'scheduled' && styles.activeTabText]}>
-              Scheduled Shifts
-            </Text>
-            {activeTab === 'scheduled' && <View style={styles.activeTabIndicator} />}
-          </TouchableOpacity>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.background }]}
+        edges={['bottom']}
+      >
+        {/* <View style={styles.container}> */}
+        <View style={styles.tabsContainer}>
+          <ScrollView
+            ref={tabsScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabsScroll}
+          >
+            <TouchableOpacity onPress={() => handleTabPress('scheduled', 0)} style={styles.tab}>
+              <Text style={[styles.tabText, activeTab === 'scheduled' && styles.activeTabText]}>
+                Scheduled Shifts
+              </Text>
+              {activeTab === 'scheduled' && <View style={styles.activeTabIndicator} />}
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => handleTabPress('created', 1)} style={styles.tab}>
-            <Text style={[styles.tabText, activeTab === 'created' && styles.activeTabText]}>
-              Created Shifts
-            </Text>
-            {activeTab === 'created' && <View style={styles.activeTabIndicator} />}
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleTabPress('created', 1)} style={styles.tab}>
+              <Text style={[styles.tabText, activeTab === 'created' && styles.activeTabText]}>
+                Created Shifts
+              </Text>
+              {activeTab === 'created' && <View style={styles.activeTabIndicator} />}
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => handleTabPress('saved', 2)} style={styles.tab}>
-            <Text style={[styles.tabText, activeTab === 'saved' && styles.activeTabText]}>
-              Saved Shifts
-            </Text>
-            {activeTab === 'saved' && <View style={styles.activeTabIndicator} />}
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-      <View style={styles.contentArea}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
-          contentContainerStyle={{ flexGrow: 1 }}
-          onMomentumScrollEnd={(e) => {
-            const offsetX = e.nativeEvent.contentOffset.x;
-            const page = Math.round(offsetX / width);
-            const tabs: SubTab[] = ['scheduled', 'created', 'saved'];
-            const newTab = tabs[page];
-            setActiveTab(newTab);
-            if (!visitedTabs.includes(newTab)) {
-              setVisitedTabs((prev) => [...prev, newTab]);
-            }
-            syncTabsScroll(page);
-          }}
-        >
-          <View style={{ width, height: '100%' }}>
-            {visitedTabs.includes('scheduled') && <ScheduledShiftScreen />}
-          </View>
-          <View style={{ width, height: '100%' }}>
-            {visitedTabs.includes('created') && <CreatedShiftsScreen />}
-          </View>
-          <View style={{ width, height: '100%' }}>
-            {visitedTabs.includes('saved') && <SavedShiftsScreen />}
-          </View>
-        </ScrollView>
-      </View>
-      {/* </View> */}
-    </SafeAreaView>
+            <TouchableOpacity onPress={() => handleTabPress('saved', 2)} style={styles.tab}>
+              <Text style={[styles.tabText, activeTab === 'saved' && styles.activeTabText]}>
+                Saved Shifts
+              </Text>
+              {activeTab === 'saved' && <View style={styles.activeTabIndicator} />}
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+        <View style={styles.contentArea}>
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            bounces={false}
+            contentContainerStyle={{ flexGrow: 1 }}
+            onMomentumScrollEnd={(e) => {
+              const offsetX = e.nativeEvent.contentOffset.x;
+              const page = Math.round(offsetX / width);
+              const tabs: SubTab[] = ['scheduled', 'created', 'saved'];
+              const newTab = tabs[page];
+              setActiveTab(newTab);
+              if (!visitedTabs.includes(newTab)) {
+                setVisitedTabs((prev) => [...prev, newTab]);
+              }
+              syncTabsScroll(page);
+            }}
+          >
+            <View style={{ width, flex: 1 }}>
+              {visitedTabs.includes('scheduled') && <ScheduledShiftScreen />}
+            </View>
+            <View style={{ width, flex: 1 }}>
+              {visitedTabs.includes('created') && <CreatedShiftsScreen />}
+            </View>
+            <View style={{ width, flex: 1 }}>
+              {visitedTabs.includes('saved') && <SavedShiftsScreen />}
+            </View>
+          </ScrollView>
+        </View>
+        {/* </View> */}
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 

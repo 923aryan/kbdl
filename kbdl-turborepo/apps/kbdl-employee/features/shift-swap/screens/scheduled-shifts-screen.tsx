@@ -33,6 +33,7 @@ export default function ScheduledShifts() {
             paddingTop: 10,
             paddingBottom: insets.bottom,
             paddingHorizontal: 16,
+            gap: 16,
           }}
         >
           {data && data.length > 0 ? (

@@ -58,7 +58,8 @@ export default function CustomSplashScreen() {
         </View>
 
         <View style={styles.loadingTextContainer}>
-          <Text style={styles.loadingText}>Loading{dots}</Text>
+          <Text style={styles.loadingText}>Loading</Text>
+          <Text style={styles.dotsText}>{dots}</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -117,12 +118,19 @@ const styles = StyleSheet.create({
   },
   loadingTextContainer: {
     marginTop: 16,
-    width: 100, // Fixed width prevents the word "Loading" from bouncing horizontally when dots change
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     color: '#FFFFFF',
     fontFamily: 'Poppins_400Regular',
     fontSize: 18,
-    textAlign: 'left',
+  },
+  dotsText: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 18,
+    width: 24, // Fixed width prevents the text block from resizing and bouncing
   },
 });

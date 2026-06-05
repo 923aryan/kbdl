@@ -28,7 +28,7 @@ import translations from '@/translations';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuthStore();
+  const { user, status } = useAuthStore();
   const selectedLanguage = user?.preferences?.language || 'en-IN';
   const isHindi = selectedLanguage.startsWith('hi');
   const t = isHindi ? translations.hi : translations.en;
@@ -60,18 +60,21 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View>
-              <Text style={styles.greetingText}>
-                {t.hello} {name}
-              </Text>
-              <TouchableOpacity style={styles.locationRow}>
+              {status === 'authenticated' && (
+                <Text style={[styles.greetingText, { color: theme.text }]}>
+                  <Text style={{ fontWeight: '500', color: theme.primary }}>{t.hello}, </Text>
+                  <Text style={{ color: theme.primary }}>{name}</Text> 👋
+                </Text>
+              )}
+              {/* <TouchableOpacity style={styles.locationRow}>
                 <Ionicons name="navigate" size={12} color="#000" />
                 <Text style={styles.locationText}>{t.locationText}</Text>
                 <Ionicons name="chevron-down" size={12} color="#6B7280" />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </View>
           <TouchableOpacity>
-            <Ionicons name="menu" size={28} color="#000" />
+            {/* <Ionicons name="menu" size={28} color="#000" /> */}
           </TouchableOpacity>
         </View>
 
@@ -262,7 +265,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 12,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -278,9 +281,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   greetingText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#000',
+    letterSpacing: 0.2,
   },
   locationRow: {
     flexDirection: 'row',

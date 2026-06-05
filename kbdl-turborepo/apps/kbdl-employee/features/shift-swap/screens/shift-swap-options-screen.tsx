@@ -1,5 +1,14 @@
 import React, { useRef, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import CreateShiftScreen from './create-shift-swap-screen';
 import ExtraShiftScreen from './extra-shifts-screen';
 
@@ -22,7 +31,10 @@ export default function ShiftSwapOptionsScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <View style={styles.tabsContainer}>
         <ScrollView
           horizontal
@@ -58,15 +70,15 @@ export default function ShiftSwapOptionsScreen() {
             setActiveTab(page === 0 ? 'create' : 'extra');
           }}
         >
-          <View style={{ width, height: '100%' }}>
+          <View style={{ width, flex: 1 }}>
             <CreateShiftScreen />
           </View>
-          <View style={{ width, height: '100%' }}>
+          <View style={{ width, flex: 1 }}>
             <ExtraShiftScreen />
           </View>
         </ScrollView>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
