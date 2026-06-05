@@ -621,6 +621,9 @@ export const getOpenShiftsForEmployeeService = async (
     where: {
       replacement_employee_id: userId,
       status: ShiftStatus.open,
+      shift_start: {
+        gt: new Date(),
+      },
     },
 
     include: {
@@ -683,6 +686,9 @@ export const getOpenShiftsForEmployeeService = async (
 
             // Ensure still public
             replacement_employee_id: null,
+            shift_start: {
+              gt: new Date(),
+            },
           },
 
           include: {
