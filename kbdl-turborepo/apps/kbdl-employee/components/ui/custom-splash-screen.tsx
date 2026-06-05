@@ -48,7 +48,7 @@ export default function CustomSplashScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <View style={styles.divider} />
+        {/* <View style={styles.divider} /> */}
       </View>
 
       {/* Bottom content (Progress Bar, Loading text) */}
@@ -78,8 +78,8 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -40 }], // Visually balances the center given the bottom loader
   },
   logo: {
-    width: width * 0.4, // Roughly 40% of screen width
-    aspectRatio: 2, // Maintains aspect ratio
+    width: width * 0.2, // Roughly 20% of screen width
+    aspectRatio: 1.5, // Maintains aspect ratio
   },
   divider: {
     width: '85%', // 80-90% of screen width

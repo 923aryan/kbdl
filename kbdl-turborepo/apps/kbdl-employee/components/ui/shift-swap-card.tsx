@@ -248,9 +248,14 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
               {paySuffix}
             </Typography>
           </View>
-          <Typography variant="caption" style={styles.statusText}>
-            {statusConfig.text}
-          </Typography>
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+            <Typography
+              variant="caption"
+              style={[styles.statusText, { color: statusConfig.color }]}
+            >
+              {statusConfig.text}
+            </Typography>
+          </View>
         </View>
       </View>
 
@@ -364,14 +369,14 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
       </View>
 
       {/* Pending Status Notice for Employee */}
-      {status === ShiftStatus.pending && (
+      {/* {status === ShiftStatus.pending && (
         <View style={styles.pendingNotice}>
           <Ionicons name="time-outline" size={16} color="#D97706" style={{ marginRight: 6 }} />
           <Typography variant="caption" style={{ color: '#D97706', flex: 1 }}>
             Waiting for approval from employer
           </Typography>
         </View>
-      )}
+      )} */}
 
       <SuccessCard
         visible={isSuccessModalVisible}
@@ -480,10 +485,14 @@ const createStyles = (theme: typeof Colors.light) =>
     paySuffix: {
       color: theme.text,
     },
+    statusBadge: {
+      marginTop: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
     statusText: {
-      color: theme.text,
-      marginTop: 6,
-      marginRight: 4,
+      fontWeight: '600',
     },
 
     /* Divider Styles */
