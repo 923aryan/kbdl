@@ -270,6 +270,7 @@ export const getEmployeeShiftsService = async (
       s.replacement_employee_id = ${employeeId}
       AND s.request_accepted = true
       AND s.status IN ('pending', 'approved')
+      AND s.shift_start > NOW()
 
     ORDER BY s.shift_start ASC
   `;
