@@ -381,6 +381,10 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
           setIsSuccessModalVisible(false);
           setSuccessMessage('Shift accepted successfully!');
           await queryClient.invalidateQueries({
+            queryKey: ['employee-shifts'],
+          });
+
+          await queryClient.invalidateQueries({
             queryKey: ['employee-open-shifts'],
           });
 
