@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+const phoneValidation = z
+  .string()
+  .transform((val) => {
+    const trimmed = val.trim();
+    return /^\d{10}$/.test(trimmed) ? `+91${trimmed}` : trimmed;
+  })
+  .refine((val) => /^\+91\d{10}$/.test(val), {
+    message: 'Phone number must strictly have +91 in front followed by a 10-digit number',
+  });
+
 const isAtLeast30MinsInFuture = (val: string) => {
   return new Date(val).getTime() >= Date.now() + 30 * 60 * 1000;
 };
@@ -97,11 +107,7 @@ export const updateShiftSchema = z.object({
 
 export const getReferredEmployeeSchema = z.object({
   body: z.object({
-    phone_no: z
-      .string()
-      .min(10, 'Phone number must be at least 10 characters')
-      .max(15, 'Phone number is too long')
-      .regex(/^\+?[0-9]+$/, "Phone number can only contain numbers and an optional leading '+'"),
+    phone_no: phoneValidation,
   }),
 });
 
