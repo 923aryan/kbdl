@@ -8,6 +8,15 @@ import { type ShiftStatus, useShiftStore } from '../stores/use-shift-store';
 type EmployeeSummary = {
   name?: string | null;
   phone_no?: string | null;
+  experience?: number | null;
+  rating_avg?: number | string | null;
+  skills?: string[] | null;
+};
+
+type RatingSummary = {
+  score: number;
+  flagged_issue?: boolean | null;
+  created_at?: string | Date;
 };
 
 export type EmployerShift = {
@@ -20,7 +29,9 @@ export type EmployerShift = {
   status: string;
   created_by?: string;
   organization_approved?: boolean;
+  no_show_reported?: boolean;
   original_employee_id?: string;
+  replacement_employee_id?: string | null;
   original_employee?: EmployeeSummary;
   replacement_employee?: EmployeeSummary | null;
   employer?: {
@@ -29,6 +40,7 @@ export type EmployerShift = {
   applications?: unknown[];
   requests?: unknown[];
   applicant_count?: number;
+  ratings?: RatingSummary[];
 };
 
 const statusStyles: Record<string, string> = {
@@ -37,6 +49,7 @@ const statusStyles: Record<string, string> = {
   approved: 'border-violet-300 bg-violet-50 text-violet-600',
   rejected: 'border-red-300 bg-red-50 text-red-600',
   completed: 'border-green-300 bg-green-50 text-green-600',
+  absent: 'border-red-300 bg-red-50 text-red-600',
   cancelled: 'border-red-300 bg-red-50 text-red-600',
 };
 
@@ -44,7 +57,12 @@ export const getApprovalStatus = (shift: {
   created_by?: string;
   organization_approved?: boolean;
   status: string;
+  no_show_reported?: boolean;
 }) => {
+  if (shift.no_show_reported) {
+    return 'absent';
+  }
+
   if (shift.created_by === 'user' && !shift.organization_approved && shift.status === 'cancelled') {
     return 'rejected';
   }
@@ -88,6 +106,9 @@ const getCreator = (shift: EmployerShift) => (shift.created_by === 'user' ? 'wor
 
 const getEmployeeName = (employee?: EmployeeSummary | null, fallback = 'Open Shift') =>
   employee?.name || employee?.phone_no || fallback;
+
+const canShowAssignedWorker = (status: string) =>
+  status === 'approved' || status === 'completed' || status === 'absent';
 
 const getApplicantCount = (shift: EmployerShift) => {
   if (typeof shift.applicant_count === 'number') return shift.applicant_count;
@@ -205,14 +226,19 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
             {filteredShifts.map((shift) => {
               const status = getApprovalStatus(shift);
               const creator = getCreator(shift);
+              const showAssignedWorker = canShowAssignedWorker(status);
               const createdByName =
                 creator === 'worker'
                   ? getEmployeeName(shift.original_employee, 'Worker')
                   : shift.employer?.company_name || companyName;
-              const assignee = shift.replacement_employee;
+              const assignee = showAssignedWorker ? shift.replacement_employee : null;
               const assigneeName = getEmployeeName(assignee);
-              const isOpen = status === 'open' && !assignee;
+              const isUnassigned = !showAssignedWorker || !assignee;
               const applicantCount = getApplicantCount(shift);
+              const applicantLabel =
+                applicantCount > 0
+                  ? `${applicantCount} worker request${applicantCount === 1 ? '' : 's'}`
+                  : 'Publicly posted';
 
               return (
                 <tr key={shift.id} className="bg-white transition hover:bg-gray-50/80">
@@ -248,13 +274,11 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                       </span>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {isOpen ? 'Open Shift' : assigneeName}
+                          {showAssignedWorker && assignee ? assigneeName : 'Open Shift'}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {isOpen
-                            ? applicantCount > 0
-                              ? `${applicantCount} worker request${applicantCount === 1 ? '' : 's'}`
-                              : 'Publicly posted'
+                          {isUnassigned
+                            ? applicantLabel
                             : assignee?.phone_no || 'Assigned worker'}
                         </p>
                       </div>

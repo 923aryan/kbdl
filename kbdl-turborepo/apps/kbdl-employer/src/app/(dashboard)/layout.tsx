@@ -95,9 +95,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="p-6 border-b border-gray-100">
           <h1 className="text-xl font-bold text-gray-800">KBDL Employer</h1>
           <div className="flex items-center gap-2 mt-2">
-            <p className="text-sm text-gray-500">
-              Welcome, {employer?.company_name || employer?.name || 'Employer'}
-            </p>
+            <p className="text-sm text-gray-500">Welcome, {employer?.company_name || 'Employer'}</p>
           </div>
         </div>
 

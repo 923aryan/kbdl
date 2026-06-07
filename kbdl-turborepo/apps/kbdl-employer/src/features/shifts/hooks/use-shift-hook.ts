@@ -1,8 +1,13 @@
 import type {
   CreateShiftPayload,
   CreateShiftResponse,
-  EmployerShiftActionResponse,
+  ApproveShiftCompletionResponse,
+  ApproveShiftResponse,
   GetEmployerShiftsResponse,
+  GetPublicUserProfileResponse,
+  RateShiftPayload,
+  RateShiftResponse,
+  ReportShiftNoShowResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
 } from '@repo/types';
@@ -34,14 +39,23 @@ export const useGetEmployerShifts = () => {
   });
 };
 
+export const useGetPublicUserProfile = (userId?: string | null) => {
+  return useQuery({
+    queryKey: ['public-user-profile', userId],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const response = await api.get<GetPublicUserProfileResponse>(`/profile/users/${userId}`);
+      return response.data;
+    },
+  });
+};
+
 export const useApproveShift = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (shiftId: string) => {
-      const response = await api.post<EmployerShiftActionResponse>('/shift-swap/approve', {
-        shift_id: shiftId,
-      });
+      const response = await api.patch<ApproveShiftResponse>(`/shift-swap/${shiftId}/approve`);
       return response.data;
     },
     onSuccess: () => {
@@ -55,9 +69,53 @@ export const useRejectShift = () => {
 
   return useMutation({
     mutationFn: async (shiftId: string) => {
-      const response = await api.post<EmployerShiftActionResponse>('/shift-swap/reject', {
-        shift_id: shiftId,
-      });
+      void shiftId;
+      throw new Error(
+        'Rejecting shift requests is not available in the current backend API. Please add a reject endpoint to reopen the shift.',
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
+    },
+  });
+};
+
+export const useCompleteShift = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (shiftId: string) => {
+      const response = await api.patch<ApproveShiftCompletionResponse>(
+        `/shift-swap/${shiftId}/complete`,
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
+    },
+  });
+};
+
+export const useReportShiftNoShow = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (shiftId: string) => {
+      const response = await api.patch<ReportShiftNoShowResponse>(`/shift-swap/${shiftId}/no-show`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
+    },
+  });
+};
+
+export const useRateShift = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: RateShiftPayload) => {
+      const response = await api.post<RateShiftResponse>('/shift-swap/rate', payload);
       return response.data;
     },
     onSuccess: () => {

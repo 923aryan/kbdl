@@ -5,6 +5,7 @@ export type ShiftStatus =
   | 'approved'
   | 'rejected'
   | 'open'
+  | 'absent'
   | 'cancelled'
   | 'completed'
   | 'all';

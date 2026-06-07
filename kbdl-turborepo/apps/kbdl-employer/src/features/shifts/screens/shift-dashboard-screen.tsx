@@ -12,6 +12,7 @@ const STATUS_OPTIONS: Exclude<ShiftStatus, 'all'>[] = [
   'pending',
   'approved',
   'rejected',
+  'absent',
   'completed',
   'cancelled',
 ];
