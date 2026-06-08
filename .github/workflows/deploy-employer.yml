@@ -1,0 +1,56 @@
+name: Deploy Employer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "kbdl-turborepo/apps/kbdl-employer/**"
+      - "kbdl-turborepo/packages/ui/**"
+      - "kbdl-turborepo/packages/validator/**"
+      - "kbdl-turborepo/pnpm-lock.yaml"
+      - "kbdl-turborepo/turbo.json"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy Employer via SSH
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_KEY }}
+
+          script: |
+            set -e
+
+            export PATH="$PATH:/usr/local/bin"
+
+            cd ~/app/kbdl/kbdl-turborepo
+
+            echo "📥 Pull latest"
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "🧹 Clean old build"
+            rm -rf apps/kbdl-employer/.next
+
+            echo "📦 Install deps"
+            pnpm install --frozen-lockfile
+
+            echo "🏗 Build employer"
+            pnpm --filter kbdl-employer build
+
+            echo "🚀 Restart employer"
+
+            pm2 delete employer || true
+
+            pm2 start "pnpm start" \
+              --name employer \
+              --cwd apps/kbdl-employer
+
+            pm2 save
+
+            echo "✅ Done"
