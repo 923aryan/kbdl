@@ -14,6 +14,7 @@ import {
   getReferredEmployeeSchema,
   getShiftDetailsSchema,
   rateShiftSchema,
+  rejectShiftSchema,
   reportShiftNoShowSchema,
   updateShiftSchema,
 } from '@repo/validator/shared';
@@ -106,6 +107,8 @@ export type GetOpenShiftsForEmployeeResponse = ShiftWithNotification[];
 
 export type ApproveShiftRequest = z.infer<typeof approveShiftSchema>;
 export type ApproveShiftResponse = Shift;
+export type RejectShiftRequest = z.infer<typeof rejectShiftSchema>;
+export type RejectShiftResponse = Shift;
 
 export type GetShiftDetailsRequest = z.infer<typeof getShiftDetailsSchema>;
 export type GetShiftDetailsResponse = Shift & {

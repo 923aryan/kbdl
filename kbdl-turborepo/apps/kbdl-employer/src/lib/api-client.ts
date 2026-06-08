@@ -22,6 +22,10 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 async function http<T>(path: string, config: RequestInit = {}): Promise<ApiSuccess<T>> {
   const url = `${BASE_URL}${path}`;
+  console.log('API CLIENT FILE LOADED');
+  console.log('PATH:', path);
+  console.log('FINAL URL:', url);
+  console.trace();
 
   const requestConfig: RequestInit = {
     credentials: 'include', // IMPORTANT: send cookies

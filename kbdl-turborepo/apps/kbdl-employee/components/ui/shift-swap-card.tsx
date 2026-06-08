@@ -62,6 +62,7 @@ const formatTime = (dateInput: string | Date) => {
 };
 
 export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
+export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
@@ -383,6 +384,10 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         onClose={async () => {
           setIsSuccessModalVisible(false);
           setSuccessMessage('Shift accepted successfully!');
+          await queryClient.invalidateQueries({
+            queryKey: ['employee-shifts'],
+          });
+
           await queryClient.invalidateQueries({
             queryKey: ['employee-open-shifts'],
           });

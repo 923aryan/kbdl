@@ -193,6 +193,12 @@ export const approveShiftSchema = z.object({
   }),
 });
 
+export const rejectShiftSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
 export const getShiftDetailsSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid shift ID format'),
