@@ -158,7 +158,7 @@ export const CreateShiftModal = () => {
             </button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 p-6">
             <Controller
               control={control}
               name="original_employee_phone"
@@ -185,16 +185,16 @@ export const CreateShiftModal = () => {
               )}
             />
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Controller
                 control={control}
                 name="skill_required"
                 render={({ field }) => (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Skill *</label>
+                  <div className='flex w-full flex-col gap-1.5'>
+                    <label className="block text-sm font-medium text-gray-700">Skill *</label>
                     <select
                       {...field}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                      className="min-h-[48px] w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select skill</option>
                       {SKILLS.map((skill) => (
@@ -230,13 +230,13 @@ export const CreateShiftModal = () => {
                 control={control}
                 name="payType"
                 render={({ field }) => (
-                  <div>
+                  <div className='flex w-full flex-col gap-1.5'>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
                       Pay Type *
                     </label>
                     <select
                       {...field}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                      className="min-h-[48px] w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="FIXED">Fixed</option>
                       <option value="HOURLY">Hourly</option>
@@ -289,6 +289,13 @@ export const CreateShiftModal = () => {
             </div>
 
             <div className="flex gap-3 pt-2">
+               <Button
+                type="button"
+                onClick={handleClose}
+                className="rounded-lg border border-blue-600 bg-white px-6 py-2.5 font-medium !text-black"
+              >
+                Cancel
+              </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
@@ -296,13 +303,7 @@ export const CreateShiftModal = () => {
               >
                 {isSubmitting ? 'Creating...' : 'Create Shift Swap'}
               </Button>
-              <Button
-                type="button"
-                onClick={handleClose}
-                className="rounded-lg border border-gray-300 bg-white px-6 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </Button>
+             
             </div>
           </form>
         </div>

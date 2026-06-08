@@ -1,6 +1,7 @@
 'use client';
 
-import { Calendar, ChevronRight, UserRound } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Eye, UserRound } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 import { useGetEmployerShifts } from '../hooks/use-shift-hook';
 import { type ShiftStatus, useShiftStore } from '../stores/use-shift-store';
@@ -53,12 +54,23 @@ const statusStyles: Record<string, string> = {
   cancelled: 'border-red-300 bg-red-50 text-red-600',
 };
 
+const ROWS_PER_PAGE = 10;
+
 export const getApprovalStatus = (shift: {
   created_by?: string;
   organization_approved?: boolean;
   status: string;
   no_show_reported?: boolean;
+  request_accepted?: boolean;
+  replacement_employee_id?: string | null;
+  replacement_employee?: EmployeeSummary | null;
+  applicant_count?: number;
+  applications?: unknown[];
+  requests?: unknown[];
 }) => {
+  const applicantCount = getApplicantCount(shift);
+  const hasDirectAssignee = Boolean(shift.replacement_employee_id || shift.replacement_employee);
+
   if (shift.no_show_reported) {
     return 'absent';
   }
@@ -68,11 +80,33 @@ export const getApprovalStatus = (shift: {
   }
 
   if (shift.created_by === 'user' && !shift.organization_approved) {
+    if (!shift.replacement_employee_id && !shift.replacement_employee && applicantCount === 0) {
+      return 'open';
+    }
+
     return 'pending';
+  }
+
+  if (
+    shift.created_by !== 'user' &&
+    hasDirectAssignee &&
+    !shift.request_accepted &&
+    shift.status === 'open'
+  ) {
+    return 'approved';
   }
 
   if (shift.status === 'matched') {
     return 'pending';
+  }
+
+  if (
+    shift.created_by === 'user' &&
+    shift.status === 'pending' &&
+    !hasDirectAssignee &&
+    applicantCount === 0
+  ) {
+    return 'open';
   }
 
   return shift.status || 'approved';
@@ -107,10 +141,11 @@ const getCreator = (shift: EmployerShift) => (shift.created_by === 'user' ? 'wor
 const getEmployeeName = (employee?: EmployeeSummary | null, fallback = 'Open Shift') =>
   employee?.name || employee?.phone_no || fallback;
 
-const canShowAssignedWorker = (status: string) =>
-  status === 'approved' || status === 'completed' || status === 'absent';
-
-const getApplicantCount = (shift: EmployerShift) => {
+const getApplicantCount = (shift: {
+  applicant_count?: number;
+  applications?: unknown[];
+  requests?: unknown[];
+}) => {
   if (typeof shift.applicant_count === 'number') return shift.applicant_count;
   if (Array.isArray(shift.applications)) return shift.applications.length;
   if (Array.isArray(shift.requests)) return shift.requests.length;
@@ -128,19 +163,13 @@ const StatusBadge = ({ status }: { status: string }) => (
   </span>
 );
 
-const getActionLabel = (status: string) => {
-  if (status === 'open') return 'View Applicants';
-  if (status === 'pending') return 'Review Requests';
-  if (status === 'approved') return 'Finalize Detail';
-  return 'View Details';
-};
-
 interface ShiftListScreenProps {
   onSelectShift: (id: string) => void;
 }
 
 export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
   const { filters } = useShiftStore();
+  const [currentPage, setCurrentPage] = useState(1);
   const employer = useAuthStore((state) => state.employer);
   const { data: shifts = [], isLoading, error } = useGetEmployerShifts();
   const employerShifts = shifts as unknown as EmployerShift[];
@@ -191,6 +220,22 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
     return true;
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredShifts.length / ROWS_PER_PAGE));
+  const pageShifts = useMemo(() => {
+    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+    return filteredShifts.slice(startIndex, startIndex + ROWS_PER_PAGE);
+  }, [currentPage, filteredShifts]);
+  const firstRow = filteredShifts.length ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0;
+  const lastRow = Math.min(currentPage * ROWS_PER_PAGE, filteredShifts.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters.createdBy, filters.dateFrom, filters.dateTo, filters.search, filters.statuses]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
   if (isLoading) {
     return (
       <div className="rounded-b-xl border border-t-0 border-gray-200 bg-white py-16 text-center">
@@ -217,23 +262,22 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
               <th className="px-5 py-3">Created By</th>
               <th className="px-5 py-3">Worker/Assignee</th>
               <th className="px-5 py-3">Shift Date & Time</th>
+              <th className="px-5 py-3">Shift Date & Time</th>
               <th className="px-5 py-3">Pay/Shift</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 text-sm">
-            {filteredShifts.map((shift) => {
+            {pageShifts.map((shift) => {
               const status = getApprovalStatus(shift);
               const creator = getCreator(shift);
-              const showAssignedWorker = canShowAssignedWorker(status);
               const createdByName =
                 creator === 'worker'
                   ? getEmployeeName(shift.original_employee, 'Worker')
                   : shift.employer?.company_name || companyName;
-              const assignee = showAssignedWorker ? shift.replacement_employee : null;
+              const assignee = shift.replacement_employee;
               const assigneeName = getEmployeeName(assignee);
-              const isUnassigned = !showAssignedWorker || !assignee;
               const applicantCount = getApplicantCount(shift);
               const applicantLabel =
                 applicantCount > 0
@@ -251,9 +295,9 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                         <p className="font-medium text-gray-900">
                           {titleCase(shift.skill_required || 'Shift')}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        {/* <p className="text-xs text-gray-500">
                           {creator === 'worker' ? 'Worker requested swap' : 'Employer created'}
-                        </p>
+                        </p> */}
                       </div>
                     </div>
                   </td>
@@ -262,7 +306,7 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                     <p className="font-medium text-gray-900">{titleCase(creator)}</p>
                     <p className="text-xs text-gray-500">{createdByName}</p>
                   </td>
-
+                          
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
                       <span
@@ -274,12 +318,10 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                       </span>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {showAssignedWorker && assignee ? assigneeName : 'Open Shift'}
+                          {assignee ? assigneeName : 'Open Shift'}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {isUnassigned
-                            ? applicantLabel
-                            : assignee?.phone_no || 'Assigned worker'}
+                          {assignee ? assignee.phone_no || 'Assigned worker' : applicantLabel}
                         </p>
                       </div>
                     </div>
@@ -287,7 +329,13 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
 
                   <td className="px-5 py-3">
                     <p className="font-medium text-gray-900">{formatDate(shift.shift_date)}</p>
-                    <p className="text-xs text-gray-500">
+                    {/* <p className="text-xs text-gray-500">
+                      {formatTime(shift.shift_start)} - {formatTime(shift.shift_end)}
+                    </p> */}
+                  </td>
+                                    <td className="px-5 py-3">
+                    {/* <p className="font-medium text-gray-900">{formatDate(shift.shift_date)}</p> */}
+                    <p className="font-medium text-gray-900">
                       {formatTime(shift.shift_start)} - {formatTime(shift.shift_end)}
                     </p>
                   </td>
@@ -304,11 +352,10 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                     <button
                       type="button"
                       onClick={() => onSelectShift(shift.id)}
-                      className="ml-auto flex h-8 items-center justify-center gap-2 rounded-md px-2 text-xs font-medium text-blue-600 transition hover:bg-blue-50"
+                      className="mx-auto flex h-9 w-9 items-center justify-center rounded-full text-blue-600 transition hover:bg-blue-50"
                       aria-label="View shift details"
                     >
-                      {getActionLabel(status)}
-                      <ChevronRight className="h-4 w-4" />
+                      <Eye className="h-5 w-5" />
                     </button>
                   </td>
                 </tr>
@@ -325,12 +372,46 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-4 text-xs text-gray-500">
-        <button className="rounded-md border border-gray-200 px-2 py-1 text-gray-700">1</button>
-        <span>2</span>
-        <span>3</span>
-        <span>...</span>
-        <span>10</span>
+      <div className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          Showing <span className="font-medium text-gray-900">{firstRow}</span>-
+          <span className="font-medium text-gray-900">{lastRow}</span> of{' '}
+          <span className="font-medium text-gray-900">{filteredShifts.length}</span>
+        </p>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+            <button
+              key={page}
+              type="button"
+              onClick={() => setCurrentPage(page)}
+              className={`h-9 min-w-9 rounded-md border px-3 text-sm font-medium transition ${
+                currentPage === page
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
