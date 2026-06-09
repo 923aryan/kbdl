@@ -117,6 +117,12 @@ export const cancelShiftSchema = z.object({
   }),
 });
 
+export const rejectShiftSchema = z.object({
+  body: z.object({
+    shift_id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
 export const getExtraShiftsSchema = z.object({
   query: z.object({
     skill: z.string().optional(),
@@ -188,12 +194,6 @@ export const rateShiftSchema = z.object({
 export const getPendingShiftsSchema = z.object({});
 
 export const approveShiftSchema = z.object({
-  params: z.object({
-    id: z.string().uuid('Invalid shift ID format'),
-  }),
-});
-
-export const rejectShiftSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid shift ID format'),
   }),

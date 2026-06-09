@@ -66,6 +66,7 @@ enum ShiftStatus {
   approved
   completed
   cancelled
+  rejected
 
   @@map("shift_status")
 }

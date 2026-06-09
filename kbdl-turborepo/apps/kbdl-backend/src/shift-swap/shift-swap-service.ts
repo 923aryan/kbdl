@@ -133,7 +133,7 @@ export const createShiftService = async (
       shift_start: new Date(payload.shift_start),
       shift_end: new Date(payload.shift_end),
       skill_required: payload.skill_required,
-      status: 'open',
+      status: ShiftStatus.open,
       request_accepted: false,
       organization_approved: userType === ROLES.EMPLOYER, // Auto-approve if created by employer
     },
@@ -327,6 +327,9 @@ export const getScheduledShiftsService = async (employeeId: string): Promise<Shi
       status: {
         in: [ShiftStatus.approved, ShiftStatus.pending, ShiftStatus.matched],
       },
+      shift_start: {
+        gt: new Date(),
+      },
     },
     include: {
       employer: {
@@ -449,6 +452,7 @@ export const getExtraShiftsService = async (
     `s.request_accepted = false`,
     `s.replacement_employee_id IS NULL`,
     `e.company_location IS NOT NULL`,
+    `s.shift_start > NOW()`,
   ];
 
   const values: any[] = [];
@@ -782,6 +786,7 @@ export const getLatestShiftsService = async (
       AND s.replacement_employee_id IS NULL
       AND s.original_employee_id != $3
       AND e.company_location IS NOT NULL
+      AND s.shift_start > NOW()
     ORDER BY s.created_at DESC
     LIMIT $4 OFFSET $5
   `,
@@ -835,6 +840,7 @@ export const getBestShiftMatchesService = async (
     `s.replacement_employee_id IS NULL`,
     `s.original_employee_id != $3`,
     `e.company_location IS NOT NULL`,
+    `s.shift_start > NOW()`,
   ];
 
   // 2. Dynamically add the skill filter if the user has skills
@@ -880,6 +886,9 @@ export const getPendingShiftsForEmployerService = async (employerId: string) => 
     where: {
       employer_id: employerId,
       status: 'pending',
+      shift_start: {
+        gt: new Date(),
+      },
     },
     include: {
       original_employee: {
@@ -918,6 +927,22 @@ export const approveShiftRequestService = async (
       status: ShiftStatus.approved,
       organization_approved: true,
     },
+  });
+};
+
+export const rejectShiftService = async (employerId: string, shiftId: string): Promise<Shift> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id: shiftId },
+  });
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
+  }
+  if (shift.employer_id !== employerId) {
+    throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to reject this shift.');
+  }
+  return prisma.shift.update({
+    where: { id: shiftId },
+    data: { status: ShiftStatus.rejected },
   });
 };
 

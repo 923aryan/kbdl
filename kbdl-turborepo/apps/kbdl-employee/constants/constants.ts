@@ -13,6 +13,7 @@ export const ShiftStatus = {
   approved: 'approved',
   completed: 'completed',
   cancelled: 'cancelled',
+  rejected: 'rejected',
 } as const;
 
 export type ShiftStatus = (typeof ShiftStatus)[keyof typeof ShiftStatus];

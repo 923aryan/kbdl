@@ -29,6 +29,7 @@ import {
   getReferredEmployeeSchema,
   getShiftDetailsSchema,
   rateShiftSchema,
+  rejectShiftSchema,
   reportShiftNoShowSchema,
   updateShiftSchema,
 } from '@repo/validator/shared';
@@ -54,6 +55,7 @@ import {
   getScheduledShiftsService,
   getShiftDetailsService,
   rateShiftService,
+  rejectShiftService,
   reportShiftNoShowService,
   updateShiftService,
 } from './shift-swap-service';
@@ -213,6 +215,13 @@ const reportShiftNoShow = async (req: Request, res: Response) => {
   sendSuccess(res, 'No-show reported successfully', shift, 200);
 };
 
+// B3. Cancel Shift (Both User Types)
+const rejectShift = async (req: Request, res: Response) => {
+  const input: CancelShiftRequest = validate(rejectShiftSchema, req);
+  const employerId = (req.payload as any).employer.id;
+  const shift = await rejectShiftService(employerId, input.body.shift_id);
+  sendSuccess(res, 'Shift rejected successfully', shift, 200);
+};
 export {
   acceptShiftSwap,
   approveShiftCompletion,
@@ -231,6 +240,7 @@ export {
   getScheduledShifts,
   getShiftDetails,
   rateShift,
+  rejectShift,
   reportShiftNoShow,
   updateShift,
 };

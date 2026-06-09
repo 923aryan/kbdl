@@ -19,6 +19,7 @@ import {
   getScheduledShifts,
   getShiftDetails,
   rateShift,
+  rejectShift,
   reportShiftNoShow,
   updateShift,
 } from './shift-swap-controller';
@@ -46,6 +47,7 @@ shiftSwapRouter.get('/best-matches', authenticate([ROLES.USER]), getBestShiftMat
 // --- Manage Shifts ---
 shiftSwapRouter.patch('/', authenticate([ROLES.EMPLOYER, ROLES.USER]), updateShift);
 shiftSwapRouter.post('/cancel', authenticate([ROLES.EMPLOYER, ROLES.USER]), cancelShift);
+shiftSwapRouter.post('/reject', authenticate([ROLES.EMPLOYER]), rejectShift);
 shiftSwapRouter.patch('/:id/approve', authenticate([ROLES.EMPLOYER]), approveShiftRequest);
 
 // --- Ratings ---
