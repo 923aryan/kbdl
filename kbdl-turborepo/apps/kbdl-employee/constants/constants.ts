@@ -7,15 +7,28 @@ export const ROLES = {
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 export const ShiftStatus = {
-  pending: 'pending',
   open: 'open',
-  matched: 'matched',
   approved: 'approved',
   completed: 'completed',
   cancelled: 'cancelled',
 } as const;
 
 export type ShiftStatus = (typeof ShiftStatus)[keyof typeof ShiftStatus];
+
+export const ShiftApplicationStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+  withdrawn: 'withdrawn',
+} as const;
+export type ShiftApplicationStatus =
+  (typeof ShiftApplicationStatus)[keyof typeof ShiftApplicationStatus];
+
+export const ShiftApplicationType = {
+  invited: 'invited',
+  applied: 'applied',
+} as const;
+export type ShiftApplicationType = (typeof ShiftApplicationType)[keyof typeof ShiftApplicationType];
 
 export const OTP_ROLES = {
   USER_REGISTER: 'USER_REGISTER',
@@ -38,6 +51,7 @@ export const NotificationTypes = {
   shiftSwapRequest: 'shift_swap_request',
   publicShiftSwap: 'public_shift',
   onboardRequest: 'onboard_request',
+  shiftApproved: 'shift_approved',
 } as const;
 
 export type NotificationTypes = (typeof NotificationTypes)[keyof typeof NotificationTypes];

@@ -1,5 +1,6 @@
 import Security from '@/assets/icons/security.svg';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
@@ -12,9 +13,9 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useVerifyUserOTP } from '../api';
 import { useAuthStore } from '../hooks/useAuth';

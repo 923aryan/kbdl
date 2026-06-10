@@ -195,6 +195,7 @@ export default function RootLayout() {
           try {
             if (
               data?.type === NotificationTypes.publicShiftSwap ||
+              data?.type === NotificationTypes.shiftApproved ||
               data?.type === NotificationTypes.shiftSwapRequest ||
               (data as any)?.shiftId // <-- Fallback in case backend misses 'type' in the payload
             ) {
@@ -203,7 +204,10 @@ export default function RootLayout() {
                 params: { id: (data as any).data?.shiftId as string, buttonTitle: 'Notification' },
               });
             } else if (data?.type === NotificationTypes.onboardRequest) {
-              router.push('/(tabs)/notifications');
+              router.push({
+                pathname: '/(tabs)/notifications',
+                params: { tab: 'jobs' },
+              });
             }
           } catch (e) {
             console.error('[Layout] Cold-start routing failed:', e);

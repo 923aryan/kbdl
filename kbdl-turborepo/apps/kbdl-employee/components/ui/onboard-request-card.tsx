@@ -1,6 +1,7 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import CustomButton from '@/components/ui/button';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';

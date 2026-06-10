@@ -2,6 +2,7 @@ import {
   GetAllEmployeeEmploymentRequest,
   GetEmployeeDetailsRequest,
   GetEmployeeEmploymentRequest,
+  GetEmployeePendingEmploymentsRequest,
   GetEmployerRosterRequest,
   OnboardEmployeeRequest,
   SearchAddressRequest,
@@ -11,6 +12,7 @@ import {
   getAllEmployeeEmploymentSchema,
   getEmployeeDetailsSchema,
   getEmployeeEmploymentSchema,
+  getEmployeePendingEmploymentsSchema,
   getEmployerRosterSchema,
   onboardEmployeeSchema,
   searchAddressSchema,
@@ -36,8 +38,8 @@ export const getEmployerRoster = async (req: Request, res: Response) => {
   const input: GetEmployerRosterRequest = validate(getEmployerRosterSchema, req);
   const employerId = req.payload.employer.id;
 
-  const roster = await getEmployerRosterService(employerId, input.query);
-  sendSuccess(res, 'Employer roster retrieved successfully', roster);
+  const { roster, meta } = await getEmployerRosterService(employerId, input.query);
+  sendSuccess(res, 'Employer roster retrieved successfully', roster, 200, meta);
 };
 
 export const getEmployeeDetails = async (req: Request, res: Response) => {
@@ -72,8 +74,8 @@ export const updateEmploymentStatus = async (req: Request, res: Response) => {
 export const getAllEmployeeEmployment = async (req: Request, res: Response) => {
   const input: GetAllEmployeeEmploymentRequest = validate(getAllEmployeeEmploymentSchema, req);
   const employeeId = req.payload.user.id;
-  const employments = await getAllEmployeeEmploymentService(employeeId);
-  sendSuccess(res, 'Employee employments retrieved successfully', employments);
+  const { employments, meta } = await getAllEmployeeEmploymentService(employeeId, input.query);
+  sendSuccess(res, 'Employee employments retrieved successfully', employments, 200, meta);
 };
 
 export const getEmployeeEmployment = async (req: Request, res: Response) => {
@@ -85,9 +87,13 @@ export const getEmployeeEmployment = async (req: Request, res: Response) => {
 };
 
 export const getEmployeePendingEmployments = async (req: Request, res: Response) => {
+  const input: GetEmployeePendingEmploymentsRequest = validate(
+    getEmployeePendingEmploymentsSchema,
+    req,
+  );
   const employeeId = (req.payload as any).user.id;
-  const employment = await getEmployeePendingEmploymentsService(employeeId);
-  sendSuccess(res, 'Employee pending employments retrieved successfully', employment);
+  const { employments, meta } = await getEmployeePendingEmploymentsService(employeeId, input.query);
+  sendSuccess(res, 'Employee pending employments retrieved successfully', employments, 200, meta);
 };
 
 export const acceptEmploymentRequest = async (req: Request, res: Response) => {

@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+const phoneValidation = z
+  .string()
+  .transform((val) => {
+    const trimmed = val.trim();
+    return /^\d{10}$/.test(trimmed) ? `+91${trimmed}` : trimmed;
+  })
+  .refine((val) => /^\+91\d{10}$/.test(val), {
+    message: 'Phone number must strictly have +91 in front followed by a 10-digit number',
+  });
+
 const userPreferencesSchema = z.object({
   language: z.string().min(2).max(10).default('en-IN'),
   theme: z.enum(['light', 'dark', 'system']).default('system'),
@@ -76,12 +86,7 @@ export const removePushTokenSchema = z.object({
 export const updateEmployerProfileSchema = z.object({
   body: z.object({
     company_name: z.string().min(1, 'Company name is required').max(255).optional(),
-    phone_no: z
-      .string()
-      .min(10)
-      .max(15)
-      .regex(/^\+?[0-9]+$/)
-      .optional(),
+    phone_no: phoneValidation.optional(),
     company_address: z.string().max(500).optional(),
     gst_number: z
       .string()

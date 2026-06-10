@@ -1,4 +1,5 @@
 import { Colors, Fonts } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React, { ReactNode } from 'react';
 import {
   StyleProp,
@@ -6,7 +7,6 @@ import {
   Text,
   TextInput,
   TextInputProps,
-  useColorScheme,
   View,
   ViewStyle,
 } from 'react-native';
@@ -29,7 +29,7 @@ export default function CustomInput({
 }: CustomInputProps) {
   // Fallback to 'light' if colorScheme is null/undefined
   const colorScheme = useColorScheme() ?? 'light';
-  const themeColors = Colors[colorScheme];
+  const themeColors = Colors.light;
 
   // Standard error color (Red)
   const errorColor = '#EF4444';

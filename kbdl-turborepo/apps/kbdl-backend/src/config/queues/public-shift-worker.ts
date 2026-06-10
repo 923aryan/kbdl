@@ -48,7 +48,7 @@ new Worker(
           AND ST_DWithin(
             u.location,
             e.company_location,
-            10000
+            10000000
           )
       `;
 

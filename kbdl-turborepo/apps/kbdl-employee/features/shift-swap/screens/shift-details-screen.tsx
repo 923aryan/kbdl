@@ -1,19 +1,24 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View, useColorScheme } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import CustomButton from '@/components/ui/button';
 import { SuccessCard } from '@/components/ui/success-card';
 import { Typography } from '@/components/ui/typography';
-import { ShiftStatus } from '@/constants/constants';
+import { ShiftApplicationStatus, ShiftApplicationType, ShiftStatus } from '@/constants/constants';
 import { Colors } from '@/constants/theme';
-import { markNotificationRead } from '@/features/notifications/api';
-import { useNotificationStore } from '@/features/notifications/store/notification-store';
-import { useAcceptShiftSwap, useCancelShift, useGetShiftDetails } from '@/features/shift-swap/api';
+import { useAuthStore } from '@/features/auth/hooks/useAuth';
+import {
+  useAcceptShiftSwap,
+  useApplyForPublicShift,
+  useGetShiftDetails,
+  useWithdrawShiftApplication,
+} from '@/features/shift-swap/api';
 
 const formatDate = (dateInput: string | Date) => {
   if (!dateInput) return '';
@@ -34,11 +39,14 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams();
 
+  const { user, status: authStatus } = useAuthStore();
+
   const { mutate: acceptShift } = useAcceptShiftSwap();
-  const { mutate: cancelShift } = useCancelShift();
-  const markAsRead = useNotificationStore((state) => state.markAsRead);
+  const { mutate: applyForShift } = useApplyForPublicShift();
+  const { mutate: withdrawShift, isPending: isWithdrawing } = useWithdrawShiftApplication();
 
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Shift accepted successfully!');
 
   // Fetch shift details if navigating from notification where only ID is available
   const shiftId = (id as string) || shift?.id;
@@ -89,7 +97,6 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
     switch (shiftStatus) {
       case ShiftStatus.open:
         return { text: 'Open', bg: '#E5EFFF', color: '#0658C2' };
-      case ShiftStatus.matched:
       case ShiftStatus.approved:
         return { text: 'Upcoming', bg: '#FFF0E3', color: '#F97316' };
       case ShiftStatus.completed:
@@ -103,11 +110,17 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
 
   const statusConfig = getStatusConfig(status);
 
+  const shiftApplication =
+    currentShift.shiftApplication ||
+    currentShift.shiftApplications?.find((app: any) => app.user_id === user?.id);
+
   const onAcceptPress = () => {
+    if (authStatus !== 'authenticated') return;
     acceptShift(
       { shift_id: currentShift.id },
       {
-        onSuccess: () => {
+        onSuccess: (data: any) => {
+          setSuccessMessage(data?.message || 'Shift accepted successfully!');
           setIsSuccessModalVisible(true);
         },
         onError: (error) => {
@@ -118,35 +131,100 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
     );
   };
 
-  const onCancelPress = async () => {
-    if (currentShift?.notificationId) {
-      try {
-        await markNotificationRead(currentShift.notificationId);
-        markAsRead(currentShift.notificationId);
-        queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
-        router.back();
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error);
+  const onApplyPress = () => {
+    if (authStatus !== 'authenticated') return;
+    applyForShift(
+      { shift_id: currentShift.id },
+      {
+        onSuccess: (data: any) => {
+          setSuccessMessage(data?.message || 'Applied to shift successfully!');
+          setIsSuccessModalVisible(true);
+        },
+        onError: (error: any) => {
+          Toast.show({ type: 'error', text1: error?.message || 'Failed to apply to shift' });
+        },
+      },
+    );
+  };
+
+  const onWithdrawPress = () => {
+    if (authStatus !== 'authenticated') return;
+    withdrawShift(
+      { shift_application_id: currentShift.id },
+      {
+        onSuccess: (data: any) => {
+          Toast.show({ type: 'success', text1: 'Application withdrawn successfully!' });
+          queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['extra-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['employee-shifts'] });
+          router.back();
+        },
+        onError: (error: any) => {
+          Toast.show({ type: 'error', text1: error?.message || 'Failed to withdraw application' });
+        },
+      },
+    );
+  };
+
+  const getPrimaryAction = () => {
+    if (shiftApplication) {
+      if (
+        shiftApplication.type === ShiftApplicationType.invited &&
+        shiftApplication.status === ShiftApplicationStatus.pending &&
+        !currentShift.request_accepted
+      ) {
+        return { label: 'Accept Request', onPress: onAcceptPress, disabled: false };
+      }
+      if (
+        shiftApplication.type === ShiftApplicationType.applied &&
+        shiftApplication.status === ShiftApplicationStatus.pending
+      ) {
+        return { label: 'Applied', onPress: undefined, disabled: true };
+      }
+      if (shiftApplication.status === ShiftApplicationStatus.accepted) {
+        return { label: 'Accepted', onPress: undefined, disabled: true };
+      }
+      if (shiftApplication.status === ShiftApplicationStatus.rejected) {
+        return { label: 'Rejected', onPress: undefined, disabled: true };
       }
     } else {
-      cancelShift(
-        { shift_id: currentShift.id },
-        {
-          onSuccess: () => {
-            Toast.show({ type: 'success', text1: 'Shift cancelled successfully!' });
-            queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
-            queryClient.invalidateQueries({ queryKey: ['extra-shifts'] });
-            queryClient.invalidateQueries({ queryKey: ['employee-latest-shifts'] });
-            queryClient.invalidateQueries({ queryKey: ['employee-best-matches-shifts'] });
-            router.back();
-          },
-          onError: (error) => {
-            Toast.show({ type: 'error', text1: error.message });
-          },
-        },
-      );
+      if (currentShift.status === ShiftStatus.open) {
+        return { label: 'Apply', onPress: onApplyPress, disabled: false };
+      }
     }
+    return null;
   };
+
+  const getSecondaryAction = () => {
+    if (shiftApplication?.type === ShiftApplicationType.invited) {
+      if (
+        shiftApplication.status === ShiftApplicationStatus.pending &&
+        !currentShift.request_accepted
+      ) {
+        return { label: 'Reject Request', onPress: onWithdrawPress, disabled: isWithdrawing };
+      } else if (
+        shiftApplication.status === ShiftApplicationStatus.accepted ||
+        currentShift.request_accepted
+      ) {
+        return { label: 'Withdraw', onPress: onWithdrawPress, disabled: isWithdrawing };
+      }
+    }
+
+    if (shiftApplication?.type === ShiftApplicationType.applied) {
+      if (
+        shiftApplication.status === ShiftApplicationStatus.pending ||
+        shiftApplication.status === ShiftApplicationStatus.accepted
+      ) {
+        return { label: 'Withdraw', onPress: onWithdrawPress, disabled: isWithdrawing };
+      }
+    }
+
+    return null;
+  };
+
+  const primaryAction = getPrimaryAction();
+  const secondaryAction = getSecondaryAction();
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.background }]}
@@ -261,28 +339,26 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
         </ScrollView>
 
         {/* Fixed Footer Logic Buttons */}
-        {buttonTitle && (
+        {(primaryAction || secondaryAction) && (
           <View style={styles.footer}>
             <View style={styles.logicButtons}>
-              {(buttonTitle === 'Notification' || currentShift?.replacement_employee_id) && (
-                <View style={{ flex: 1, marginRight: 12 }}>
+              {secondaryAction && (
+                <View style={{ flex: 1, marginRight: primaryAction ? 12 : 0 }}>
                   <CustomButton
-                    title={!currentShift?.replacement_employee_id ? 'Remove' : 'Reject Request'}
+                    title={secondaryAction.label}
                     variant="destructive"
-                    onPress={onCancelPress}
+                    onPress={secondaryAction.onPress}
+                    disabled={secondaryAction.disabled}
                   />
                 </View>
               )}
-              {status !== ShiftStatus.matched && status !== ShiftStatus.approved && (
+              {primaryAction && (
                 <View style={{ flex: 1 }}>
                   <CustomButton
-                    title={
-                      buttonTitle === 'Apply' || !currentShift?.replacement_employee_id
-                        ? 'Apply for Shift'
-                        : 'Approve Request'
-                    }
+                    title={primaryAction.label}
                     variant="primary"
-                    onPress={onAcceptPress}
+                    onPress={primaryAction.onPress}
+                    disabled={primaryAction.disabled}
                   />
                 </View>
               )}
@@ -292,9 +368,10 @@ export default function ShiftDetailsScreen({ shift, distance, buttonTitle }: any
 
         <SuccessCard
           visible={isSuccessModalVisible}
-          message="Shift accepted successfully!"
+          message={successMessage}
           onClose={async () => {
             setIsSuccessModalVisible(false);
+            await queryClient.invalidateQueries({ queryKey: ['employee-shifts'] });
             await queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
             await queryClient.invalidateQueries({ queryKey: ['extra-shifts'] });
             await queryClient.invalidateQueries({ queryKey: ['employee-latest-shifts'] });

@@ -48,7 +48,7 @@ export default function CustomSplashScreen() {
           style={styles.logo}
           resizeMode="contain"
         />
-        <View style={styles.divider} />
+        {/* <View style={styles.divider} /> */}
       </View>
 
       {/* Bottom content (Progress Bar, Loading text) */}
@@ -58,7 +58,8 @@ export default function CustomSplashScreen() {
         </View>
 
         <View style={styles.loadingTextContainer}>
-          <Text style={styles.loadingText}>Loading{dots}</Text>
+          <Text style={styles.loadingText}>Loading</Text>
+          <Text style={styles.dotsText}>{dots}</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -78,8 +79,8 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -40 }], // Visually balances the center given the bottom loader
   },
   logo: {
-    width: width * 0.4, // Roughly 40% of screen width
-    aspectRatio: 2, // Maintains aspect ratio
+    width: width * 0.2, // Roughly 20% of screen width
+    aspectRatio: 1.5, // Maintains aspect ratio
   },
   divider: {
     width: '85%', // 80-90% of screen width
@@ -117,12 +118,19 @@ const styles = StyleSheet.create({
   },
   loadingTextContainer: {
     marginTop: 16,
-    width: 100, // Fixed width prevents the word "Loading" from bouncing horizontally when dots change
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     color: '#FFFFFF',
     fontFamily: 'Poppins_400Regular',
     fontSize: 18,
-    textAlign: 'left',
+  },
+  dotsText: {
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 18,
+    width: 24, // Fixed width prevents the text block from resizing and bouncing
   },
 });

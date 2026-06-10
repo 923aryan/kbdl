@@ -12,7 +12,9 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 export const useRegisterUser = () => {
   return useMutation({
     mutationFn: async (credentials: UserRegisterPayload) => {
-      const response = await api.post<null>('/auth/register/user', credentials);
+      const response = await api.post<null>('/auth/register/user', credentials, {
+        requireAuth: false,
+      });
       return response.data;
     },
   });
@@ -24,6 +26,7 @@ export const useVerifyRegisterUser = () => {
       const response = await api.post<{ user: User; accessToken: string; refreshToken: string }>(
         '/auth/register/user/verify',
         credentials,
+        { requireAuth: false },
       );
       return response.data; // { user, accessToken, refreshToken }
     },
@@ -37,7 +40,9 @@ export const useSendUserOTP = () => {
   return useMutation({
     mutationFn: async (credentials: UserSendOTPRequest) => {
       // Backend returns null data for this endpoint
-      const response = await api.post<null>('/auth/user/send-otp', credentials);
+      const response = await api.post<null>('/auth/user/send-otp', credentials, {
+        requireAuth: false,
+      });
       return response.data;
     },
   });
@@ -49,7 +54,9 @@ export const useSendUserOTP = () => {
 export const useVerifyUserOTP = () => {
   return useMutation({
     mutationFn: async (credentials: UserVerifyOTPPayload) => {
-      const response = await api.post<UserVerifyOTPResponse>('/auth/user/verify-otp', credentials);
+      const response = await api.post<UserVerifyOTPResponse>('/auth/user/verify-otp', credentials, {
+        requireAuth: false,
+      });
       return response.data; // { user, accessToken, refreshToken }
     },
   });

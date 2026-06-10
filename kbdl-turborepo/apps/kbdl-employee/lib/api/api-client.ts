@@ -20,27 +20,42 @@ export type ApiError = {
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
+export interface ApiRequestConfig extends RequestInit {
+  requireAuth?: boolean;
+  showToast?: boolean;
+}
+
 // 1. Android emulators cannot resolve 'localhost'. They need '10.0.2.2'.
 // For physical devices, you must use your machine's local IP (e.g., 192.168.1.X).
 const FALLBACK_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
 const BASE_URL = apiUrl || FALLBACK_URL;
 
-async function http<T>(
-  path: string,
-  config: RequestInit,
-  showToast: boolean = false,
-): Promise<ApiSuccess<T>> {
+async function http<T>(path: string, config: ApiRequestConfig = {}): Promise<ApiSuccess<T>> {
+  const { requireAuth = true, showToast = false, ...fetchConfig } = config;
   const url = `${BASE_URL}${path}`;
 
-  const accessToken = await SecureStore.getItemAsync('accessToken');
+  let accessToken: string | null = null;
+  if (requireAuth) {
+    accessToken = await SecureStore.getItemAsync('accessToken');
+    console.log('access token is ', accessToken);
+
+    if (!accessToken) {
+      // Reject the promise so TanStack Query stops its pending state immediately.
+      // We attach a specific code to tell TanStack Query NOT to retry this.
+      const silentError = new Error('No access token');
+      (silentError as any).code = 'UNAUTHORIZED_NO_TOKEN';
+      return Promise.reject(silentError);
+    }
+  }
 
   const requestConfig: RequestInit = {
-    ...config,
+    credentials: 'omit',
+    ...fetchConfig,
     headers: {
       'Content-Type': 'application/json',
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...config.headers,
+      ...fetchConfig.headers,
     },
   };
 
@@ -50,12 +65,13 @@ async function http<T>(
     let response = await fetch(url, requestConfig);
 
     // TOKEN REFRESH
-    if (response.status === 401) {
+    if (requireAuth && response.status === 401) {
       try {
         const refreshToken = await SecureStore.getItemAsync('refreshToken');
 
         const refreshResponse = await fetch(`${BASE_URL}/auth/token-refresh`, {
           method: 'POST',
+          credentials: 'omit',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -170,10 +186,10 @@ async function http<T>(
 }
 
 export const api = {
-  get: <T>(path: string, config?: RequestInit) => http<T>(path, { method: 'GET', ...config }),
+  get: <T>(path: string, config?: ApiRequestConfig) => http<T>(path, { method: 'GET', ...config }),
 
-  post: <T>(path: string, body: any, config?: RequestInit) => {
-    const fetchConfig: RequestInit = {
+  post: <T>(path: string, body: any, config?: ApiRequestConfig) => {
+    const fetchConfig: ApiRequestConfig = {
       method: 'POST',
       ...config,
     };
@@ -184,11 +200,12 @@ export const api = {
 
     return http<T>(path, fetchConfig);
   },
-  put: <T>(path: string, body: any, config?: RequestInit) =>
+  put: <T>(path: string, body: any, config?: ApiRequestConfig) =>
     http<T>(path, { method: 'PUT', body: JSON.stringify(body), ...config }),
 
-  patch: <T>(path: string, body: any, config?: RequestInit) =>
+  patch: <T>(path: string, body: any, config?: ApiRequestConfig) =>
     http<T>(path, { method: 'PATCH', body: JSON.stringify(body), ...config }),
 
-  delete: <T>(path: string, config?: RequestInit) => http<T>(path, { method: 'DELETE', ...config }),
+  delete: <T>(path: string, config?: ApiRequestConfig) =>
+    http<T>(path, { method: 'DELETE', ...config }),
 };

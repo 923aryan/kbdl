@@ -1,9 +1,29 @@
 import { z } from 'zod';
 
+const phoneValidation = z
+  .string()
+  .transform((val) => {
+    const trimmed = val.trim();
+    return /^\d{10}$/.test(trimmed) ? `+91${trimmed}` : trimmed;
+  })
+  .refine((val) => /^\+91\d{10}$/.test(val), {
+    message: 'Phone number must strictly have +91 in front followed by a 10-digit number',
+  });
+
 export const getEmployerRosterSchema = z.object({
   query: z.object({
     status: z.enum(['active', 'inactive', 'terminated', 'resigned']).optional(),
     search: z.string().optional(),
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
   }),
 });
 
@@ -16,7 +36,7 @@ export const getEmployeeDetailsSchema = z.object({
 export const onboardEmployeeSchema = z.object({
   body: z
     .object({
-      phone_no: z.string().min(10, 'Phone number must be at least 10 characters').optional(),
+      phone_no: phoneValidation.optional(),
       karigari_id: z.string().min(1, 'Karigari ID cannot be empty').optional(),
       employee_no: z.string().max(50, 'Employee number is too long').optional(),
     })
@@ -37,7 +57,35 @@ export const updateEmploymentStatusSchema = z.object({
   }),
 });
 
-export const getAllEmployeeEmploymentSchema = z.object({});
+export const getAllEmployeeEmploymentSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
+export const getEmployeePendingEmploymentsSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
 
 export const getEmployeeEmploymentSchema = z.object({
   params: z.object({

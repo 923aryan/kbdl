@@ -1,4 +1,5 @@
 import Security from '@/assets/icons/security.svg';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
@@ -11,7 +12,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ import { Colors } from '@/constants/theme';
 import { useVerifyRegisterUser } from '../api';
 
 export default function OtpVerificationScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme();
   const phone = useAuthStore((state) => state.registerData.phone_no);
   const router = useRouter();
   const theme = Colors[colorScheme];
@@ -77,10 +77,15 @@ export default function OtpVerificationScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} bounces={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
           {/* Header Bar */}
           <View style={styles.header}>
             <TouchableOpacity

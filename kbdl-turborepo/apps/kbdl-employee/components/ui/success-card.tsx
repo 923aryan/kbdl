@@ -1,7 +1,8 @@
 import CheckMark from '@/assets/images/check-mark.svg'; // Using the pre-imported SVG
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface SuccessCardProps {
   visible: boolean;

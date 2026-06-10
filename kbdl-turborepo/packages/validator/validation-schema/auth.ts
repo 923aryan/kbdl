@@ -1,4 +1,15 @@
 import { z } from 'zod';
+
+const phoneValidation = z
+  .string()
+  .transform((val) => {
+    const trimmed = val.trim();
+    return /^\d{10}$/.test(trimmed) ? `+91${trimmed}` : trimmed;
+  })
+  .refine((val) => /^\+91\d{10}$/.test(val), {
+    message: 'Phone number must strictly have +91 in front followed by a 10-digit number',
+  });
+
 export const userRegisterSchema = z.object({
   body: z.object({
     name: z
@@ -17,21 +28,13 @@ export const userRegisterSchema = z.object({
         theme: 'system',
       })
       .optional(),
-    phone_no: z
-      .string()
-      .min(10, 'Phone number must be at least 10 characters')
-      .max(15, 'Phone number is too long')
-      .regex(/^\+?[0-9]+$/, "Phone number can only contain numbers and an optional leading '+'"),
+    phone_no: phoneValidation,
   }),
 });
 
 export const userVerifyRegisterSchema = z.object({
   body: z.object({
-    phone_no: z
-      .string()
-      .min(10, 'Phone number must be at least 10 characters')
-      .max(15, 'Phone number is too long')
-      .regex(/^\+?[0-9]+$/, "Phone number can only contain numbers and an optional leading '+'"),
+    phone_no: phoneValidation,
     otp: z
       .string()
       .length(6, 'OTP must be exactly 6 digits')
@@ -66,11 +69,7 @@ export const employerRegisterSchema = z.object({
       .email('Invalid email format')
       .max(255, 'Email is too long'),
 
-    phone_no: z
-      .string()
-      .min(10, 'Phone number must be at least 10 characters')
-      .max(15, 'Phone number is too long')
-      .regex(/^\+?[0-9]+$/, "Phone number can only contain numbers and an optional leading '+'"),
+    phone_no: phoneValidation,
 
     company_address: z.string().max(500).optional(),
 
@@ -109,18 +108,13 @@ export const employerVerifyOtpSchema = z.object({
 
 export const userSendOtpSchema = z.object({
   body: z.object({
-    phone: z
-      .string()
-      .regex(/^\+?[0-9]+$/, "Phone number can only contain numbers and an optional leading '+'"),
+    phone: phoneValidation,
   }),
 });
 
 export const userVerifyOtpSchema = z.object({
   body: z.object({
-    phone: z
-      .string()
-      .max(15, 'Phone number is too long')
-      .regex(/^\+?[0-9]+$/, "Phone number can only contain numbers and an optional leading '+'"),
+    phone: phoneValidation,
     otp: z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d+$/, 'OTP must be numeric'),
   }),
 });

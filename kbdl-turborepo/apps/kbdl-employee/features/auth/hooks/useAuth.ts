@@ -2,6 +2,7 @@
 import { AppUser, UserRegisterPayload } from '@repo/types';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
+import { queryClient } from '../../../lib/api/query-client';
 import { useShiftSwapStore } from '../../shift-swap/hooks/use-shift-swap';
 import { getMe } from '../api';
 
@@ -51,6 +52,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Clear out shifts from memory and sync the empty state
     useShiftSwapStore.getState().clearShifts();
 
+    // Clear out TanStack Query cache
+    queryClient.clear();
+
     // 2. Reset Zustand state
     set({ accessToken: null, user: null, status: 'unauthenticated' });
   },
@@ -97,6 +101,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       ]);
 
       useShiftSwapStore.getState().clearShifts();
+
+      // Clear out TanStack Query cache on hydration failure
+      queryClient.clear();
 
       set({
         accessToken: null,

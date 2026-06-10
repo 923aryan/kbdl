@@ -1,6 +1,7 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, useColorScheme } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { Colors } from '@/constants/theme';
 

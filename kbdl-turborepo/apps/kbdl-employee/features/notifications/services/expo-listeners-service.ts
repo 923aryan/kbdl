@@ -35,6 +35,7 @@ export function registerExpoListeners() {
     if (isRouterReady) {
       if (
         data.type === NotificationTypes.publicShiftSwap ||
+        data.type === NotificationTypes.shiftApproved ||
         data.type === NotificationTypes.shiftSwapRequest ||
         data.shiftId // <-- Fallback in case backend misses 'type' in the payload
       ) {
@@ -43,7 +44,10 @@ export function registerExpoListeners() {
           params: { id: data.shiftId as string, buttonTitle: 'Notification' },
         });
       } else if (data.type === NotificationTypes.onboardRequest) {
-        router.push('/(tabs)/notifications');
+        router.push({
+          pathname: '/(tabs)/notifications',
+          params: { tab: 'jobs' },
+        });
       }
     }
   });

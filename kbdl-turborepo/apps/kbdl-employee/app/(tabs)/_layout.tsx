@@ -1,8 +1,9 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
 import React, { useEffect } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, useColorScheme, View } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -166,6 +167,8 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 export default function TabLayout() {
   return (
     <Tabs
+      initialRouteName="index"
+      backBehavior="history"
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,

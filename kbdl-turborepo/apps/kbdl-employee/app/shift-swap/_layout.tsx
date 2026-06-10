@@ -23,6 +23,12 @@ export default function ShiftSwapLayout() {
         }}
       />
       <Stack.Screen
+        name="lists"
+        options={{
+          header: () => <CustomHeader title="Shifts List" />,
+        }}
+      />
+      <Stack.Screen
         name="options"
         options={{
           header: () => <CustomHeader title="Shift Swap Options" />,

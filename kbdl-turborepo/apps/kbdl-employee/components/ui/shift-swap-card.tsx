@@ -1,18 +1,20 @@
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 // Import your custom UI components and theme
 import CustomButton from '@/components/ui/button'; // Adjust path
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Typography } from '@/components/ui/typography';
-import { ShiftStatus } from '@/constants/constants';
+import { ShiftApplicationStatus, ShiftApplicationType, ShiftStatus } from '@/constants/constants';
 import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
-import { markNotificationRead } from '@/features/notifications/api';
-import { useNotificationStore } from '@/features/notifications/store/notification-store';
-import { useAcceptShiftSwap, useCancelShift } from '@/features/shift-swap/api';
+import {
+  useAcceptShiftSwap,
+  useApplyForPublicShift,
+  useWithdrawShiftApplication,
+} from '@/features/shift-swap/api';
 import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
 import { Shift } from '@repo/db';
 import { router } from 'expo-router';
@@ -30,6 +32,7 @@ type ShiftCardShift = Pick<
   | 'skill_required'
   | 'shift_pay'
   | 'payType'
+  | 'request_accepted'
   | 'status'
 > & {
   notificationId?: string | null;
@@ -38,6 +41,12 @@ type ShiftCardShift = Pick<
     company_name: string;
     company_address: string | null;
   };
+
+  shiftApplication?: {
+    id: string;
+    type: ShiftApplicationType;
+    status: ShiftApplicationStatus;
+  } | null;
 };
 
 interface ShiftCardProps {
@@ -61,19 +70,17 @@ const formatTime = (dateInput: string | Date) => {
 };
 
 export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
-export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
   console.log('button title ', buttonTitle);
   const queryClient = useQueryClient();
   const { mutate: acceptShift } = useAcceptShiftSwap();
-  const { mutate: cancelShift, isPending: isCancelling } = useCancelShift();
+  const { mutate: applyForShift } = useApplyForPublicShift();
+  const { mutate: withdrawShift, isPending: isWithdrawing } = useWithdrawShiftApplication();
   const removeShift = useShiftSwapStore((state) => state.removeShift);
-  const markAsRead = useNotificationStore((state) => state.markAsRead);
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Shift accepted successfully!');
-  const [isCancelModalVisible, setIsCancelModalVisible] = useState(false);
   const authStatus = useAuthStore((state) => state.status);
 
   const toggleSavedShift = useShiftSwapStore((state) => state.toggleSavedShift);
@@ -89,6 +96,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
     shift_end,
     status,
     employer,
+    shiftApplication,
   } = shift;
 
   // Format data for display
@@ -105,19 +113,14 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
   // Helper to get Status Tag styling and text
   const getStatusConfig = (shiftStatus: ShiftStatus | string) => {
     switch (shiftStatus) {
-      case ShiftStatus.pending:
-      case 'pending':
-        return { text: 'Waiting Approval', bg: '#FEF3C7', color: '#D97706' };
       case ShiftStatus.open:
         return { text: 'Open', bg: '#E5EFFF', color: '#0658C2' };
-      case ShiftStatus.matched:
-        return { text: 'Upcoming', bg: '#FFF0E3', color: '#F97316' };
       case ShiftStatus.approved:
         return { text: 'Approved', bg: '#DCFCE7', color: '#059669' };
       case ShiftStatus.completed:
         return { text: 'Completed', bg: '#E6FBEB', color: '#22C55E' };
       case ShiftStatus.cancelled:
-        return { text: 'CANCELLED', bg: '#FFE5E5', color: '#EF4444' };
+        return { text: 'Cancelled', bg: '#FFE5E5', color: '#EF4444' };
       default:
         return { text: String(shiftStatus), bg: theme.surface, color: theme.text };
     }
@@ -163,43 +166,56 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
     );
   };
 
-  const onCancelPress = async () => {
-    if (shift?.notificationId) {
-      // Condition A: If notificationId is present, mark the notification as read
-      try {
-        await markNotificationRead(shift.notificationId);
-        console.log('Notification marked as read successfully');
-        markAsRead(shift.notificationId);
-        queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
-      } catch (error) {
-        console.error('Failed to mark notification as read:', error);
-      }
-    } else {
-      // Condition B: If notificationId is NOT present, show confirmation modal
-      setIsCancelModalVisible(true);
+  const onApplyPress = () => {
+    console.log('apply - id:  ', shift.id);
+    if (authStatus !== 'authenticated') {
+      handleCardPress();
+      return;
     }
-  };
 
-  const handleConfirmCancel = () => {
-    cancelShift(
+    applyForShift(
       { shift_id: shift.id },
       {
-        onSuccess: (data) => {
-          setIsCancelModalVisible(false);
-          console.log('Shift cancelled successfully!', data);
-          Toast.show({
-            type: 'success',
-            text1: 'Shift cancelled successfully!',
-          });
-          queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
-          queryClient.invalidateQueries({ queryKey: ['employee-shifts'] });
+        onSuccess: (data: any) => {
+          console.log('Applied to shift successfully!', data);
+          setSuccessMessage(data?.message || 'Applied to shift successfully!');
+          setIsSuccessModalVisible(true);
         },
-        onError: (error) => {
-          setIsCancelModalVisible(false);
-          console.error('Failed to cancel the shift:', error);
+        onError: (error: any) => {
+          console.error('Failed to apply to the shift:', error);
           Toast.show({
             type: 'error',
-            text1: error.message,
+            text1: error?.message || 'Failed to apply to shift',
+          });
+        },
+      },
+    );
+  };
+
+  const onWithdrawPress = () => {
+    if (authStatus !== 'authenticated') {
+      handleCardPress();
+      return;
+    }
+
+    withdrawShift(
+      { shift_application_id: shift.id },
+      {
+        onSuccess: (data: any) => {
+          console.log('Shift application withdrawn successfully!', data);
+          Toast.show({
+            type: 'success',
+            text1: 'Application withdrawn successfully!',
+          });
+          queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['extra-shifts'] });
+          queryClient.invalidateQueries({ queryKey: ['employee-shifts'] });
+        },
+        onError: (error: any) => {
+          console.error('Failed to withdraw application:', error);
+          Toast.show({
+            type: 'error',
+            text1: error?.message || 'Failed to withdraw application',
           });
         },
       },
@@ -208,10 +224,70 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
 
   const statusConfig = getStatusConfig(status);
 
-  const showPrimaryButton =
-    status !== ShiftStatus.matched &&
-    status !== ShiftStatus.approved &&
-    status !== ShiftStatus.pending;
+  const getPrimaryAction = () => {
+    if (shiftApplication) {
+      // When there is an application
+      if (
+        shiftApplication.type === ShiftApplicationType.invited &&
+        shiftApplication.status === ShiftApplicationStatus.pending &&
+        !shift.request_accepted
+      ) {
+        return { label: 'Accept Request', onPress: onAcceptPress, disabled: false };
+      }
+      if (
+        shiftApplication.type === ShiftApplicationType.applied &&
+        shiftApplication.status === ShiftApplicationStatus.pending
+      ) {
+        return { label: 'Applied', onPress: undefined, disabled: true };
+      }
+      if (shiftApplication.status === ShiftApplicationStatus.accepted) {
+        return { label: 'Accepted', onPress: undefined, disabled: true };
+      }
+      if (shiftApplication.status === ShiftApplicationStatus.rejected) {
+        return { label: 'Rejected', onPress: undefined, disabled: true };
+      }
+    } else {
+      // When there is no application, show Apply if the shift is open
+      if (shift.status === ShiftStatus.open) {
+        return { label: 'Apply', onPress: onApplyPress, disabled: false };
+      }
+    }
+
+    return null;
+  };
+
+  const getSecondaryAction = () => {
+    if (shiftApplication?.type === ShiftApplicationType.invited) {
+      if (shiftApplication.status === ShiftApplicationStatus.pending && !shift.request_accepted) {
+        return { label: 'Reject Request', onPress: onWithdrawPress, disabled: isWithdrawing };
+      } else if (
+        shiftApplication.status === ShiftApplicationStatus.accepted ||
+        shift.request_accepted
+      ) {
+        return { label: 'Withdraw', onPress: onWithdrawPress, disabled: isWithdrawing };
+      }
+    }
+
+    // can withdraw the shift if its ShiftApplicationType is applied
+    if (shiftApplication?.type === ShiftApplicationType.applied) {
+      if (
+        shiftApplication.status === ShiftApplicationStatus.pending ||
+        shiftApplication.status === ShiftApplicationStatus.accepted
+      ) {
+        return { label: 'Withdraw', onPress: onWithdrawPress, disabled: isWithdrawing };
+      }
+    }
+
+    return null;
+  };
+
+  const getApplicationLabel = () => {
+    return null;
+  };
+
+  const primaryAction = getPrimaryAction();
+  const secondaryAction = getSecondaryAction();
+  const appLabel = getApplicationLabel();
 
   return (
     <TouchableOpacity style={styles.cardContainer} activeOpacity={0.9} onPress={handleCardPress}>
@@ -249,9 +325,32 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
               {paySuffix}
             </Typography>
           </View>
-          <Typography variant="caption" style={styles.statusText}>
-            {statusConfig.text}
-          </Typography>
+          <View style={styles.badgesContainer}>
+            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bg }]}>
+              <Typography
+                variant="caption"
+                style={[styles.statusText, { color: statusConfig.color }]}
+              >
+                {statusConfig.text}
+              </Typography>
+            </View>
+            {appLabel && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  styles.appLabelBadge,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                ]}
+              >
+                <Typography
+                  variant="caption"
+                  style={[styles.statusText, { color: theme.textSecondary }]}
+                >
+                  {appLabel}
+                </Typography>
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -268,18 +367,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
                 <Typography variant="bodySmall" style={styles.infoText} numberOfLines={1}>
                   {location}
                 </Typography>
-                {distance && (
-                  <View style={styles.distanceContainer}>
-                    <Typography variant="bodySmall" style={styles.separator}>
-                      |
-                    </Typography>
-                    <View style={styles.distancePill}>
-                      <Typography variant="bodySmall" style={styles.distanceText}>
-                        {distance}
-                      </Typography>
-                    </View>
-                  </View>
-                )}
               </View>
             )}
 
@@ -292,70 +379,68 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             </View>
 
             {/* Date Row */}
-            <View style={[styles.infoRow, { marginBottom: 0 }]}>
+            <View style={[styles.infoRow, !distance && { marginBottom: 0 }]}>
               <Feather name="calendar" size={14} color={theme.icon} />
               <Typography variant="bodySmall" style={styles.infoText}>
                 {displayDate}
               </Typography>
             </View>
+
+            {/* Distance Row */}
+            {distance && (
+              <View style={[styles.infoRow, { marginBottom: 0 }]}>
+                <Feather name="map" size={14} color={theme.icon} />
+                <Typography variant="bodySmall" style={styles.infoText}>
+                  {distance}
+                </Typography>
+              </View>
+            )}
           </View>
 
           {/* Bookmark UI Element is now a sibling to infoCol for alignment */}
-          {buttonTitle && (
-            <TouchableOpacity
-              style={styles.bookmarkBtn}
-              onPress={(e) => {
-                e.stopPropagation();
-                if (authStatus !== 'authenticated') {
-                  handleCardPress();
-                  return;
-                }
-                toggleSavedShift(shift);
-              }}
-            >
-              <Ionicons
-                name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                size={24}
-                color={theme.primary}
-              />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.bookmarkBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              if (authStatus !== 'authenticated') {
+                handleCardPress();
+                return;
+              }
+              toggleSavedShift(shift);
+            }}
+          >
+            <Ionicons
+              name={isSaved ? 'bookmark' : 'bookmark-outline'}
+              size={24}
+              color={theme.primary}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Action Buttons Section */}
-        {buttonTitle && (
+        {(primaryAction || secondaryAction) && (
           <View style={styles.actionContainer}>
             {/* Preserved Business Logic Buttons */}
             <View style={styles.logicButtons}>
-              {(buttonTitle === 'Notification' || shift?.replacement_employee_id) && (
-                <View style={{ flex: 1, marginRight: showPrimaryButton ? 8 : 0 }}>
+              {secondaryAction && (
+                <View style={{ flex: 1, marginRight: primaryAction ? 8 : 0 }}>
                   <CustomButton
-                    title={
-                      !shift?.replacement_employee_id
-                        ? 'Remove'
-                        : status === ShiftStatus.pending
-                          ? 'Cancel Request'
-                          : status === ShiftStatus.approved || status === ShiftStatus.matched
-                            ? 'Cancel'
-                            : 'Reject Request'
-                    }
+                    title={secondaryAction.label}
                     variant="destructive"
                     size="small"
-                    onPress={onCancelPress}
+                    onPress={secondaryAction.onPress}
+                    disabled={secondaryAction.disabled}
                   />
                 </View>
               )}
-              {showPrimaryButton && (
+              {primaryAction && (
                 <View style={{ flex: 1 }}>
                   <CustomButton
-                    title={
-                      buttonTitle === 'Apply' || !shift.replacement_employee_id
-                        ? 'Apply'
-                        : 'Approve Request'
-                    }
+                    title={primaryAction.label}
                     variant="primary"
                     size="small"
-                    onPress={onAcceptPress}
+                    onPress={primaryAction.onPress}
+                    disabled={primaryAction.disabled}
                   />
                 </View>
               )}
@@ -363,16 +448,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
           </View>
         )}
       </View>
-
-      {/* Pending Status Notice for Employee */}
-      {status === ShiftStatus.pending && (
-        <View style={styles.pendingNotice}>
-          <Ionicons name="time-outline" size={16} color="#D97706" style={{ marginRight: 6 }} />
-          <Typography variant="caption" style={{ color: '#D97706', flex: 1 }}>
-            Waiting for approval from employer
-          </Typography>
-        </View>
-      )}
 
       <SuccessCard
         visible={isSuccessModalVisible}
@@ -400,18 +475,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
             queryKey: ['employee-best-matches-shifts'],
           });
         }}
-      />
-
-      <ConfirmationModal
-        visible={isCancelModalVisible}
-        title="Cancel Shift Request"
-        message="Are you sure you want to cancel this shift request? This action cannot be undone."
-        confirmText="Yes, Cancel"
-        cancelText="No, Keep It"
-        confirmVariant="destructive"
-        loading={isCancelling}
-        onConfirm={handleConfirmCancel}
-        onCancel={() => setIsCancelModalVisible(false)}
       />
     </TouchableOpacity>
   );
@@ -485,10 +548,21 @@ const createStyles = (theme: typeof Colors.light) =>
     paySuffix: {
       color: theme.text,
     },
+    statusBadge: {
+      marginTop: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 6,
+    },
     statusText: {
-      color: theme.text,
-      marginTop: 6,
-      marginRight: 4,
+      fontWeight: '600',
+    },
+    badgesContainer: {
+      alignItems: 'flex-end',
+    },
+    appLabelBadge: {
+      borderWidth: 1,
+      marginTop: 4,
     },
 
     /* Divider Styles */
@@ -523,24 +597,6 @@ const createStyles = (theme: typeof Colors.light) =>
     infoText: {
       color: theme.text,
       marginLeft: 8,
-    },
-    distanceContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    separator: {
-      marginHorizontal: 8,
-      color: theme.text,
-    },
-    distancePill: {
-      backgroundColor: '#FFF7ED',
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-    },
-    distanceText: {
-      color: '#F97316',
-      fontWeight: '600',
     },
 
     /* Action Buttons Styles */

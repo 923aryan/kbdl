@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth-middleware';
 import { ROLES } from '../utils/constants';
 import {
   acceptShiftSwap,
+  applyForPublicShifts,
   approveShiftCompletion,
   approveShiftRequest,
   cancelShift,
@@ -19,14 +20,18 @@ import {
   getScheduledShifts,
   getShiftDetails,
   rateShift,
+  rejectShift,
   reportShiftNoShow,
   updateShift,
+  withdrawShiftApplication,
 } from './shift-swap-controller';
 
 const shiftSwapRouter: Router = Router();
 
 shiftSwapRouter.post('/', authenticate([ROLES.EMPLOYER, ROLES.USER]), createShiftSwap);
 shiftSwapRouter.post('/accept', authenticate([ROLES.USER]), acceptShiftSwap);
+shiftSwapRouter.post('/apply', authenticate([ROLES.USER]), applyForPublicShifts);
+shiftSwapRouter.post('/withdraw', authenticate([ROLES.USER]), withdrawShiftApplication);
 
 // --- View Shifts ---
 shiftSwapRouter.get('/employee', authenticate([ROLES.USER]), getEmployeeShifts);
@@ -46,7 +51,12 @@ shiftSwapRouter.get('/best-matches', authenticate([ROLES.USER]), getBestShiftMat
 // --- Manage Shifts ---
 shiftSwapRouter.patch('/', authenticate([ROLES.EMPLOYER, ROLES.USER]), updateShift);
 shiftSwapRouter.post('/cancel', authenticate([ROLES.EMPLOYER, ROLES.USER]), cancelShift);
-shiftSwapRouter.patch('/:id/approve', authenticate([ROLES.EMPLOYER]), approveShiftRequest);
+shiftSwapRouter.post('/reject', authenticate([ROLES.EMPLOYER]), rejectShift);
+shiftSwapRouter.patch(
+  '/:shift_application_id/approve',
+  authenticate([ROLES.EMPLOYER]),
+  approveShiftRequest,
+);
 
 // --- Ratings ---
 shiftSwapRouter.post('/rate', authenticate([ROLES.EMPLOYER]), rateShift);

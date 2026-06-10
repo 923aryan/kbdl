@@ -4,7 +4,8 @@ import { useRef } from 'react';
 // Change SafeAreaView to standard View, and import useSafeAreaInsets
 import Loader from '@/components/ui/loader';
 import { Typography } from '@/components/ui/typography';
-import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetEmployeeShifts } from '../api';
 export default function ScheduledShifts() {
@@ -33,6 +34,7 @@ export default function ScheduledShifts() {
             paddingTop: 10,
             paddingBottom: insets.bottom,
             paddingHorizontal: 16,
+            gap: 16,
           }}
         >
           {data && data.length > 0 ? (
