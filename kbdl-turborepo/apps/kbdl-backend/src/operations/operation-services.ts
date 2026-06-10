@@ -1,9 +1,11 @@
 import { EmploymentStatus, prisma, safeEmployerSelect, safeUserSelect } from '@repo/db/server';
 import {
   EmployeeEmploymentDTO,
+  GetAllEmployeeEmploymentQuery,
   GetAllEmployeeEmploymentResponse,
   GetEmployeeEmploymentResponse,
   GetEmployeePendingEmploymentResponse,
+  GetEmployeePendingEmploymentsQuery,
   GetEmployerRosterQuery,
   OnboardEmployeePayload,
   SearchAddressResponse,
@@ -17,8 +19,9 @@ import { NotificationTypes } from '../utils/constants';
 export const getEmployerRosterService = async (
   employerId: string,
   query: GetEmployerRosterQuery,
-): Promise<EmployeeEmploymentDTO[]> => {
-  const { status, search } = query;
+): Promise<{ roster: EmployeeEmploymentDTO[]; meta: Record<string, number> }> => {
+  const { status, search, limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
 
   // Build the dynamic filter clause
   const whereClause: any = {
@@ -40,13 +43,28 @@ export const getEmployerRosterService = async (
     };
   }
 
-  return prisma.employeeEmployment.findMany({
-    where: whereClause,
-    include: {
-      employee: { select: safeUserSelect },
+  const [roster, total] = await Promise.all([
+    prisma.employeeEmployment.findMany({
+      where: whereClause,
+      include: {
+        employee: { select: safeUserSelect },
+      },
+      orderBy: { joined_at: 'desc' },
+      take: limit,
+      skip,
+    }),
+    prisma.employeeEmployment.count({ where: whereClause }),
+  ]);
+
+  return {
+    roster,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     },
-    orderBy: { joined_at: 'desc' },
-  });
+  };
 };
 
 export const getEmployeeDetailsService = async (
@@ -178,16 +196,37 @@ export const updateEmploymentStatusService = async (
 
 export const getAllEmployeeEmploymentService = async (
   employeeId: string,
-): Promise<GetAllEmployeeEmploymentResponse> => {
-  return prisma.employeeEmployment.findMany({
-    where: {
-      employee_id: employeeId,
+  query: GetAllEmployeeEmploymentQuery,
+): Promise<{ employments: GetAllEmployeeEmploymentResponse; meta: Record<string, number> }> => {
+  const { limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
+
+  const whereClause = {
+    employee_id: employeeId,
+  };
+
+  const [employments, total] = await Promise.all([
+    prisma.employeeEmployment.findMany({
+      where: whereClause,
+      include: {
+        employer: { select: safeEmployerSelect },
+      },
+      orderBy: { joined_at: 'desc' },
+      take: limit,
+      skip,
+    }),
+    prisma.employeeEmployment.count({ where: whereClause }),
+  ]);
+
+  return {
+    employments,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     },
-    include: {
-      employer: { select: safeEmployerSelect },
-    },
-    orderBy: { joined_at: 'desc' },
-  });
+  };
 };
 
 export const getEmployeeEmploymentService = async (
@@ -213,17 +252,38 @@ export const getEmployeeEmploymentService = async (
 
 export const getEmployeePendingEmploymentsService = async (
   employeeId: string,
-): Promise<GetEmployeePendingEmploymentResponse> => {
-  return prisma.employeeEmployment.findMany({
-    where: {
-      employee_id: employeeId,
-      employment_status: EmploymentStatus.pending,
+  query: GetEmployeePendingEmploymentsQuery,
+): Promise<{ employments: GetEmployeePendingEmploymentResponse; meta: Record<string, number> }> => {
+  const { limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
+
+  const whereClause = {
+    employee_id: employeeId,
+    employment_status: EmploymentStatus.pending,
+  };
+
+  const [employments, total] = await Promise.all([
+    prisma.employeeEmployment.findMany({
+      where: whereClause,
+      include: {
+        employer: { select: safeEmployerSelect },
+      },
+      orderBy: { joined_at: 'desc' },
+      take: limit,
+      skip,
+    }),
+    prisma.employeeEmployment.count({ where: whereClause }),
+  ]);
+
+  return {
+    employments,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     },
-    include: {
-      employer: { select: safeEmployerSelect },
-    },
-    orderBy: { joined_at: 'desc' },
-  });
+  };
 };
 
 export const acceptEmploymentRequestService = async (

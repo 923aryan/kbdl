@@ -3,6 +3,7 @@ import {
   getAllEmployeeEmploymentSchema,
   getEmployeeDetailsSchema,
   getEmployeeEmploymentSchema,
+  getEmployeePendingEmploymentsSchema,
   getEmployerRosterSchema,
   onboardEmployeeSchema,
   searchAddressSchema,
@@ -31,11 +32,18 @@ export type UpdateEmploymentStatusPayload = z.infer<typeof updateEmploymentStatu
 export type UpdateEmploymentStatusResponse = EmployeeEmploymentDTO;
 
 export type GetAllEmployeeEmploymentRequest = z.infer<typeof getAllEmployeeEmploymentSchema>;
+export type GetAllEmployeeEmploymentQuery = z.infer<typeof getAllEmployeeEmploymentSchema>['query'];
 export type GetAllEmployeeEmploymentResponse = EmployeeEmploymentWithEmployerDTO[];
 
 export type GetEmployeeEmploymentRequest = z.infer<typeof getEmployeeEmploymentSchema>;
 export type GetEmployeeEmploymentResponse = EmployeeEmploymentWithEmployerDTO;
 
+export type GetEmployeePendingEmploymentsRequest = z.infer<
+  typeof getEmployeePendingEmploymentsSchema
+>;
+export type GetEmployeePendingEmploymentsQuery = z.infer<
+  typeof getEmployeePendingEmploymentsSchema
+>['query'];
 export type GetEmployeePendingEmploymentResponse = EmployeeEmploymentWithEmployerDTO[];
 
 export type SearchAddressRequest = z.infer<typeof searchAddressSchema>;

@@ -14,6 +14,16 @@ export const getEmployerRosterSchema = z.object({
   query: z.object({
     status: z.enum(['active', 'inactive', 'terminated', 'resigned']).optional(),
     search: z.string().optional(),
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
   }),
 });
 
@@ -47,7 +57,35 @@ export const updateEmploymentStatusSchema = z.object({
   }),
 });
 
-export const getAllEmployeeEmploymentSchema = z.object({});
+export const getAllEmployeeEmploymentSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
+export const getEmployeePendingEmploymentsSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
 
 export const getEmployeeEmploymentSchema = z.object({
   params: z.object({
