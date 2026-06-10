@@ -195,6 +195,7 @@ export default function RootLayout() {
           try {
             if (
               data?.type === NotificationTypes.publicShiftSwap ||
+              data?.type === NotificationTypes.shiftApproved ||
               data?.type === NotificationTypes.shiftSwapRequest ||
               (data as any)?.shiftId // <-- Fallback in case backend misses 'type' in the payload
             ) {

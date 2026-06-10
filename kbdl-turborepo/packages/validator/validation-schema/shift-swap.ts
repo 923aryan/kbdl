@@ -66,6 +66,12 @@ export const acceptShiftSchema = z.object({
   }),
 });
 
+export const applyForPublicShiftSchema = z.object({
+  body: z.object({
+    shift_id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
 export const updateShiftSchema = z.object({
   body: z
     .object({
@@ -117,9 +123,15 @@ export const cancelShiftSchema = z.object({
   }),
 });
 
+export const withdrawShiftApplicationSchema = z.object({
+  body: z.object({
+    shift_application_id: z.string().uuid('Invalid shift ID format'),
+  }),
+});
+
 export const rejectShiftSchema = z.object({
   body: z.object({
-    shift_id: z.string().uuid('Invalid shift ID format'),
+    shift_application_id: z.string().uuid('Invalid shift application ID format'),
   }),
 });
 
@@ -178,6 +190,21 @@ export const getBestShiftMatchesSchema = z.object({
   }),
 });
 
+export const getEmployerShiftsSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
 export const rateShiftSchema = z.object({
   body: z.object({
     shift_id: z.string().uuid('Invalid shift ID format'),
@@ -187,15 +214,29 @@ export const rateShiftSchema = z.object({
       .int('Score must be an integer')
       .min(1, 'Minimum score is 1')
       .max(5, 'Maximum score is 5'),
+    review: z.string().max(1000, 'Review is too long').optional(),
     flagged_issue: z.boolean().default(false),
   }),
 });
 
-export const getPendingShiftsSchema = z.object({});
+export const getPendingShiftsSchema = z.object({
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
 
 export const approveShiftSchema = z.object({
   params: z.object({
-    id: z.string().uuid('Invalid shift ID format'),
+    shift_application_id: z.string().uuid('Invalid shift ID format'),
   }),
 });
 

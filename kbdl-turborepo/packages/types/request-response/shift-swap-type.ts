@@ -1,4 +1,12 @@
-import { Employer, Prisma, Rating, safeEmployerSelect, Shift, User } from '@repo/db/server';
+import {
+  Employer,
+  Prisma,
+  Rating,
+  safeEmployerSelect,
+  Shift,
+  ShiftApplication,
+  User,
+} from '@repo/db/server';
 import { safeUserSelect } from '@repo/db/shared';
 
 import {
@@ -8,6 +16,7 @@ import {
   cancelShiftSchema,
   createShiftSchema,
   getBestShiftMatchesSchema,
+  getEmployerShiftsSchema,
   getExtraShiftsSchema,
   getLatestShiftsSchema,
   getPendingShiftsSchema,
@@ -17,6 +26,7 @@ import {
   rejectShiftSchema,
   reportShiftNoShowSchema,
   updateShiftSchema,
+  withdrawShiftApplicationSchema,
 } from '@repo/validator/shared';
 import z from 'zod';
 
@@ -29,6 +39,10 @@ export type AcceptShiftRequest = z.infer<typeof acceptShiftSchema>;
 export type AcceptShiftPayload = z.infer<typeof acceptShiftSchema>['body'];
 export type AcceptShiftResponse = Shift;
 
+export type ApplyForPublicShiftRequest = z.infer<typeof acceptShiftSchema>;
+export type ApplyForPublicShiftPayload = z.infer<typeof acceptShiftSchema>['body'];
+export type ApplyForPublicShiftResponse = ShiftApplication;
+
 // B. View & Manage
 export type UpdateShiftRequest = z.infer<typeof updateShiftSchema>;
 export type UpdateShiftPayload = z.infer<typeof updateShiftSchema>['body'];
@@ -38,14 +52,27 @@ export type CancelShiftRequest = z.infer<typeof cancelShiftSchema>;
 export type CancelShiftPayload = z.infer<typeof cancelShiftSchema>['body'];
 export type CancelShiftResponse = Shift;
 
+export type WithdrawShiftApplicationRequest = z.infer<typeof withdrawShiftApplicationSchema>;
+export type WithdrawShiftApplicationPayload = z.infer<
+  typeof withdrawShiftApplicationSchema
+>['body'];
+export type WithdrawShiftApplicationResponse = ShiftApplication;
+
 export type GetEmployeeShiftsResponse = (Shift & {
-  employer: Pick<Employer, 'company_name' | 'company_address'> & {
-    company_location: [number, number];
-  };
-  original_employee: Pick<User, 'name' | 'phone_no'>;
+  employer: Prisma.EmployerGetPayload<{
+    select: typeof safeEmployerSelect;
+  }>;
+
+  original_employee: Prisma.UserGetPayload<{
+    select: typeof safeUserSelect;
+  }>;
+
+  shiftApplication: ShiftApplication | null;
 })[];
 export type GetScheduledShiftsResponse = GetEmployeeShiftsResponse;
 export type GetEmployerShiftsResponse = Shift[];
+export type GetEmployerShiftsRequest = z.infer<typeof getEmployerShiftsSchema>;
+export type GetEmployerShiftsQuery = z.infer<typeof getEmployerShiftsSchema>['query'];
 
 export type GetCreatedShiftsForEmployeeResponse = (Shift & {
   employer: Pick<Employer, 'company_name' | 'company_address'> | null;
@@ -53,10 +80,34 @@ export type GetCreatedShiftsForEmployeeResponse = (Shift & {
 })[];
 
 export type GetPendingShiftsRequest = z.infer<typeof getPendingShiftsSchema>;
-export type GetPendingShiftsResponse = (Shift & {
-  original_employee: Pick<User, 'name' | 'phone_no'>;
-  replacement_employee: Pick<User, 'name' | 'phone_no'> | null;
-})[];
+export type GetPendingShiftsQuery = z.infer<typeof getPendingShiftsSchema>['query'];
+type PendingShiftApplication = Prisma.ShiftApplicationGetPayload<{
+  include: {
+    user: {
+      select: {
+        name: true;
+        phone_no: true;
+      };
+    };
+
+    shift: {
+      include: {
+        original_employee: {
+          select: {
+            name: true;
+            phone_no: true;
+          };
+        };
+
+        employer: {
+          select: typeof safeEmployerSelect;
+        };
+      };
+    };
+  };
+}>;
+
+export type GetPendingShiftsResponse = PendingShiftApplication[];
 
 // C. Extra Shifts
 export type GetExtraShiftsRequest = z.infer<typeof getExtraShiftsSchema>;
@@ -101,22 +152,41 @@ export type ShiftWithNotification = Shift & {
   employer: Prisma.EmployerGetPayload<{
     select: typeof safeEmployerSelect;
   }>;
+
+  shiftApplication?: ShiftApplication | null;
 };
 
 export type GetOpenShiftsForEmployeeResponse = ShiftWithNotification[];
 
 export type ApproveShiftRequest = z.infer<typeof approveShiftSchema>;
+export type ApproveShiftPayload = z.infer<typeof approveShiftSchema>['params'];
 export type ApproveShiftResponse = Shift;
+
 export type RejectShiftRequest = z.infer<typeof rejectShiftSchema>;
-export type RejectShiftResponse = Shift;
+export type RejectShiftResponse = ShiftApplication;
 
 export type GetShiftDetailsRequest = z.infer<typeof getShiftDetailsSchema>;
 export type GetShiftDetailsResponse = Shift & {
-  original_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }>;
-  replacement_employee: Prisma.UserGetPayload<{ select: typeof safeUserSelect }> | null;
-  employer: Prisma.EmployerGetPayload<{ select: typeof safeEmployerSelect }>;
-};
+  original_employee: Prisma.UserGetPayload<{
+    select: typeof safeUserSelect;
+  }>;
 
+  replacement_employee: Prisma.UserGetPayload<{
+    select: typeof safeUserSelect;
+  }> | null;
+
+  employer: Prisma.EmployerGetPayload<{
+    select: typeof safeEmployerSelect;
+  }>;
+
+  shiftApplications: Array<
+    ShiftApplication & {
+      user: Prisma.UserGetPayload<{
+        select: typeof safeUserSelect;
+      }>;
+    }
+  >;
+};
 export type ApproveShiftCompletionRequest = z.infer<typeof approveShiftCompletionSchema>;
 export type ApproveShiftCompletionResponse = Shift;
 

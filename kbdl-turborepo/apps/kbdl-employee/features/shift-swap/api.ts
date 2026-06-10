@@ -2,6 +2,8 @@ import { api } from '@/lib/api/api-client';
 import type {
   AcceptShiftPayload,
   AcceptShiftResponse,
+  ApplyForPublicShiftPayload,
+  ApplyForPublicShiftResponse,
   CancelShiftPayload,
   CancelShiftResponse,
   CreateShiftPayload,
@@ -14,6 +16,8 @@ import type {
   GetShiftDetailsResponse,
   UpdateShiftPayload,
   UpdateShiftResponse,
+  WithdrawShiftApplicationPayload,
+  WithdrawShiftApplicationResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
 } from '@repo/types';
@@ -41,11 +45,21 @@ export const useGetShiftDetails = (shiftId: string) => {
   });
 };
 
-// A. Accept Shift Swap
+// A. Accept Shift Swap(only if this user has been requested this shfits specifically)
 export const useAcceptShiftSwap = () => {
   return useMutation({
     mutationFn: async (payload: AcceptShiftPayload) => {
       const response = await api.post<AcceptShiftResponse>('/shift-swap/accept', payload);
+      return response;
+    },
+  });
+};
+
+// B. Apply for public shifts
+export const useApplyForPublicShift = () => {
+  return useMutation({
+    mutationFn: async (payload: ApplyForPublicShiftPayload) => {
+      const response = await api.post<ApplyForPublicShiftResponse>('/shift-swap/apply', payload);
       return response;
     },
   });
@@ -140,6 +154,11 @@ export const useGetLatestShifts = (query?: string) => {
 
       return response.data;
     },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 };
 export const useGetBestMatchesShifts = (query?: string) => {
@@ -151,6 +170,22 @@ export const useGetBestMatchesShifts = (query?: string) => {
         `/shift-swap/best-matches?${query}`,
       );
 
+      return response.data;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+};
+export const useWithdrawShiftApplication = () => {
+  return useMutation({
+    mutationFn: async (payload: WithdrawShiftApplicationPayload) => {
+      const response = await api.post<WithdrawShiftApplicationResponse>(
+        '/shift-swap/withdraw',
+        payload,
+      );
       return response.data;
     },
   });

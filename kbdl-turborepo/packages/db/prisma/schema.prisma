@@ -55,18 +55,16 @@ model User {
   pushTokens              PushToken[]
   notifications           Notification[]
   notificationPreferences NotificationPreference?
+  shiftApplications       ShiftApplication[]
 
   @@map("users")
 }
 
 enum ShiftStatus {
-  pending
   open
-  matched
   approved
   completed
   cancelled
-  rejected
 
   @@map("shift_status")
 }
@@ -100,15 +98,55 @@ model Shift {
   updated_at DateTime @updatedAt @db.Timestamptz()
 
   // Relations
-  original_employee    User     @relation("OriginalEmployeeShift", fields: [original_employee_id], references: [id])
-  replacement_employee User?    @relation("ReplacementEmployeeShift", fields: [replacement_employee_id], references: [id])
-  employer             Employer @relation(fields: [employer_id], references: [id])
+  original_employee    User               @relation("OriginalEmployeeShift", fields: [original_employee_id], references: [id])
+  replacement_employee User?              @relation("ReplacementEmployeeShift", fields: [replacement_employee_id], references: [id])
+  employer             Employer           @relation(fields: [employer_id], references: [id])
   ratings              Rating[]
+  shiftApplications    ShiftApplication[]
 
   @@index([original_employee_id])
   @@index([replacement_employee_id])
   @@index([employer_id])
   @@map("shifts")
+}
+
+enum ShiftApplicationStatus {
+  pending
+  accepted
+  rejected
+  withdrawn
+
+  @@map("shift_application_status")
+}
+
+enum ShiftApplicationType {
+  invited
+  applied
+
+  @@map("shift_application_type")
+}
+
+model ShiftApplication {
+  id String @id @default(uuid()) @db.Uuid
+
+  shift_id String @db.Uuid
+  user_id  String @db.Uuid
+
+  type ShiftApplicationType
+
+  status ShiftApplicationStatus @default(pending)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  //Relations:
+  shift Shift @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id])
+
+  @@unique([shift_id, user_id])
+  @@index([shift_id])
+  @@index([user_id])
+  @@map("shift_applications")
 }
 
 model Employer {
@@ -233,6 +271,7 @@ model Rating {
   job_id           String? @db.Uuid
 
   score         Int
+  review        String? @db.Text
   flagged_issue Boolean @default(false)
 
   created_at DateTime @default(now()) @db.Timestamptz()
@@ -245,6 +284,8 @@ model Rating {
   shift         Shift?    @relation(fields: [shift_id], references: [id])
   job           Job?      @relation(fields: [job_id], references: [id])
 
+  @@unique([shift_id, user_id, employer_id])
+  @@unique([shift_id, user_id, user_employer_id])
   @@index([user_id])
   @@index([employer_id])
   @@index([shift_id])

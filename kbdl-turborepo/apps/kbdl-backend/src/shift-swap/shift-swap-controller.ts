@@ -1,4 +1,3 @@
-import { ShiftStatus } from '@repo/db';
 import {
   AcceptShiftRequest,
   ApproveShiftCompletionRequest,
@@ -7,22 +6,27 @@ import {
   CreateShiftRequest,
   GetBestShiftMatchesRequest,
   GetEmployeeShiftsResponse,
+  GetEmployerShiftsRequest,
   GetExtraShiftsRequest,
   GetLatestShiftsRequest,
   GetPendingShiftsRequest,
   getReferredEmployeeRequest,
   GetShiftDetailsRequest,
   RateShiftRequest,
+  RejectShiftRequest,
   ReportShiftNoShowRequest,
   UpdateShiftRequest,
+  WithdrawShiftApplicationRequest,
 } from '@repo/types';
 import {
   acceptShiftSchema,
+  applyForPublicShiftSchema,
   approveShiftCompletionSchema,
   approveShiftSchema,
   cancelShiftSchema,
   createShiftSchema,
   getBestShiftMatchesSchema,
+  getEmployerShiftsSchema,
   getExtraShiftsSchema,
   getLatestShiftsSchema,
   getPendingShiftsSchema,
@@ -32,6 +36,7 @@ import {
   rejectShiftSchema,
   reportShiftNoShowSchema,
   updateShiftSchema,
+  withdrawShiftApplicationSchema,
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
 import { ROLES } from '../utils/constants';
@@ -39,6 +44,7 @@ import { sendSuccess } from '../utils/send-success';
 import { validate } from '../utils/validate';
 import {
   acceptShiftService,
+  applyForPublicShiftsService,
   approveShiftCompletionService,
   approveShiftRequestService,
   cancelShiftService,
@@ -55,19 +61,17 @@ import {
   getScheduledShiftsService,
   getShiftDetailsService,
   rateShiftService,
-  rejectShiftService,
+  rejectShiftApplicationService,
   reportShiftNoShowService,
   updateShiftService,
+  withdrawShiftApplicationService,
 } from './shift-swap-service';
 
 // A. Create Shift Swap (Handles employee-to-employee, public, and employer creation)
 const createShiftSwap = async (req: Request, res: Response) => {
   const input: CreateShiftRequest = validate(createShiftSchema, req);
-
   const userType = req.role === ROLES.EMPLOYER ? ROLES.EMPLOYER : ROLES.USER;
-
   const userId = userType === ROLES.USER ? req.payload.user.id : req.payload.employer.id;
-
   const shift = await createShiftService(userId, userType, input.body);
   sendSuccess(res, 'Shift swap created successfully', shift, 201);
 };
@@ -77,14 +81,31 @@ const acceptShiftSwap = async (req: Request, res: Response) => {
   const input: AcceptShiftRequest = validate(acceptShiftSchema, req);
   const workerId = req.payload.user.id;
   const shift = await acceptShiftService(workerId, input.body);
+  sendSuccess(res, 'Shift request accepted', shift, 200);
+};
+
+// A1. Apply For Public Shifts
+const applyForPublicShifts = async (req: Request, res: Response) => {
+  const input: AcceptShiftRequest = validate(applyForPublicShiftSchema, req);
+  const workerId = req.payload.user.id;
+  const shift = await applyForPublicShiftsService(workerId, input.body);
   sendSuccess(
     res,
-    shift.status === ShiftStatus.pending
-      ? 'Shift requested successfully, check regularly for confirmation'
-      : 'Shift request accepted',
+    'Shift applied successfully, once accepted we will send you the notificaiton.',
     shift,
     200,
   );
+};
+
+// A2. Withdraw Shift Application
+const withdrawShiftApplication = async (req: Request, res: Response) => {
+  const input: WithdrawShiftApplicationRequest = validate(withdrawShiftApplicationSchema, req);
+  const workerId = req.payload.user.id;
+  const application = await withdrawShiftApplicationService(
+    workerId,
+    input.body.shift_application_id,
+  );
+  sendSuccess(res, 'Shift application withdrawn successfully', application, 200);
 };
 
 // B1. See Accepted Shifts (Worker)
@@ -110,9 +131,10 @@ const getScheduledShifts = async (req: Request, res: Response) => {
 
 // B2. See Created Shifts (Employer)
 const getEmployerShifts = async (req: Request, res: Response) => {
-  const employerId = req.payload.employer.id;
-  const shifts = await getEmployerShiftsService(employerId);
-  sendSuccess(res, 'Created shifts retrieved', shifts, 200);
+  const input: GetEmployerShiftsRequest = validate(getEmployerShiftsSchema, req);
+  const employerId = (req.payload as any).employer.id;
+  const { shifts, meta } = await getEmployerShiftsService(employerId, input.query);
+  sendSuccess(res, 'Created shifts retrieved', shifts, 200, meta);
 };
 
 // B3. Cancel Shift (Both User Types)
@@ -182,14 +204,17 @@ const getBestShiftMatches = async (req: Request, res: Response) => {
 const getPendingShiftsForEmployer = async (req: Request, res: Response) => {
   const input: GetPendingShiftsRequest = validate(getPendingShiftsSchema, req);
   const employerId = (req.payload as any).employer.id;
-  const shifts = await getPendingShiftsForEmployerService(employerId);
-  sendSuccess(res, 'Pending shifts retrieved successfully', shifts, 200);
+  const { pendingApplications, meta } = await getPendingShiftsForEmployerService(
+    employerId,
+    input.query,
+  );
+  sendSuccess(res, 'Pending shifts retrieved successfully', pendingApplications, 200, meta);
 };
 
 const approveShiftRequest = async (req: Request, res: Response) => {
   const input: ApproveShiftRequest = validate(approveShiftSchema, req);
   const employerId = (req.payload as any).employer.id;
-  const shift = await approveShiftRequestService(employerId, input.params.id);
+  const shift = await approveShiftRequestService(employerId, input.params);
   sendSuccess(res, 'Shift request approved successfully', shift, 200);
 };
 
@@ -217,13 +242,14 @@ const reportShiftNoShow = async (req: Request, res: Response) => {
 
 // B3. Cancel Shift (Both User Types)
 const rejectShift = async (req: Request, res: Response) => {
-  const input: CancelShiftRequest = validate(rejectShiftSchema, req);
+  const input: RejectShiftRequest = validate(rejectShiftSchema, req);
   const employerId = (req.payload as any).employer.id;
-  const shift = await rejectShiftService(employerId, input.body.shift_id);
+  const shift = await rejectShiftApplicationService(employerId, input.body.shift_application_id);
   sendSuccess(res, 'Shift rejected successfully', shift, 200);
 };
 export {
   acceptShiftSwap,
+  applyForPublicShifts,
   approveShiftCompletion,
   approveShiftRequest,
   cancelShift,
@@ -243,4 +269,5 @@ export {
   rejectShift,
   reportShiftNoShow,
   updateShift,
+  withdrawShiftApplication,
 };
