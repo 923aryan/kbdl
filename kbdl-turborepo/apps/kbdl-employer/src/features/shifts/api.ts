@@ -1,4 +1,10 @@
-import { CreateShiftPayload, CreateShiftResponse, Shift } from '@repo/types';
+import {
+  CancelShiftResponse,
+  CreateShiftPayload,
+  CreateShiftResponse,
+  GetEmployerShiftsResponse,
+  UpdateShiftResponse,
+} from '@repo/types';
 import { api } from '../../lib/api-client';
 
 /**
@@ -12,8 +18,8 @@ export const createShift = async (payload: CreateShiftPayload): Promise<CreateSh
 /**
  * Get all shifts created by the employer
  */
-export const getEmployerShifts = async (): Promise<Shift[]> => {
-  const response = await api.get<Shift[]>('/shift-swap/employer');
+export const getEmployerShifts = async (): Promise<GetEmployerShiftsResponse> => {
+  const response = await api.get<GetEmployerShiftsResponse>('/shift-swap/employer');
   return response.data;
 };
 
@@ -23,15 +29,15 @@ export const getEmployerShifts = async (): Promise<Shift[]> => {
 export const updateShift = async (payload: {
   shift_id: string;
   [key: string]: unknown;
-}): Promise<Shift> => {
-  const response = await api.patch<Shift>('/shift-swap', payload);
+}): Promise<UpdateShiftResponse> => {
+  const response = await api.patch<UpdateShiftResponse>('/shift-swap', payload);
   return response.data;
 };
 
 /**
  * Cancel a shift
  */
-export const cancelShift = async (payload: { shift_id: string }): Promise<Shift> => {
-  const response = await api.post<Shift>('/shift-swap/cancel', payload);
+export const cancelShift = async (payload: { shift_id: string }): Promise<CancelShiftResponse> => {
+  const response = await api.post<CancelShiftResponse>('/shift-swap/cancel', payload);
   return response.data;
 };

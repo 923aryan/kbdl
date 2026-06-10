@@ -358,6 +358,24 @@ export const approveShiftRequestService = async (
       },
     });
   });
+
+  await prisma.notification.updateMany({
+    where: {
+      user_id: {
+        not: shiftApplication.user_id,
+      },
+      type: NotificationTypes.publicShiftSwap,
+      data: {
+        path: ['shiftId'],
+        equals: shift.id,
+      },
+    },
+
+    data: {
+      isRead: true,
+    },
+  });
+
   await createNotificationService({
     userId: shiftApplication.user_id,
     type: NotificationTypes.shiftApproved,
@@ -368,7 +386,7 @@ export const approveShiftRequestService = async (
       shiftId: shift.id,
       employerId: shift.employer_id,
       originalEmployeeId: shift.original_employee_id,
-      replacementEmployeeId: shift.replacement_employee_id,
+      replacementEmployeeId: shiftApplication.user_id,
     },
   });
 
@@ -458,6 +476,16 @@ export const getEmployerShiftsService = async (
         },
         replacement_employee: {
           select: { name: true, phone_no: true, skills: true },
+        },
+        shiftApplications: {
+          include: {
+            user: {
+              select: { name: true, phone_no: true, skills: true },
+            },
+          },
+          orderBy: {
+            updated_at: 'desc',
+          },
         },
       },
       orderBy: {
@@ -1727,6 +1755,9 @@ export const rejectShiftApplicationService = async (
     throw new AppError(400, 'INVALID_SHIFT_STATE', 'This shift can no longer be reviewed.');
   }
 
+  const isEmployeeCreatedPrivateInvite =
+    shift.created_by === ROLES.USER && shiftApplication.type === ShiftApplicationType.invited;
+
   const updatedApplication = await prisma.$transaction(async (tx) => {
     const application = await tx.shiftApplication.update({
       where: {
@@ -1744,7 +1775,9 @@ export const rejectShiftApplicationService = async (
       },
 
       data: {
-        replacement_employee_id: null,
+        replacement_employee_id: isEmployeeCreatedPrivateInvite
+          ? shift.replacement_employee_id
+          : null,
         request_accepted: false,
         organization_approved: false,
         status: ShiftStatus.open,

@@ -1,13 +1,13 @@
 'use client';
 
-import { CreateShiftPayload, CreateShiftResponse, Shift } from '@repo/types';
+import { CreateShiftPayload, GetEmployerShiftsResponse } from '@repo/types';
 import { useMutation, useQuery, useQueryClient, UseQueryResult } from '@tanstack/react-query';
 import { cancelShift, createShift, getEmployerShifts, updateShift } from '../api';
 
 /**
  * Hook to fetch all shifts created by the employer
  */
-export const useGetEmployerShifts = (): UseQueryResult<Shift[], Error> => {
+export const useGetEmployerShifts = (): UseQueryResult<GetEmployerShiftsResponse, Error> => {
   return useQuery({
     queryKey: ['employer-shifts'],
     queryFn: async () => {

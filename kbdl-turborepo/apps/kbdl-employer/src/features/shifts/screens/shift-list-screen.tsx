@@ -20,6 +20,32 @@ type RatingSummary = {
   created_at?: string | Date;
 };
 
+export type ShiftApplicationSummary = {
+  id: string;
+  shift_id: string;
+  user_id: string;
+  type?: string;
+  status?: string;
+  user?: EmployeeSummary;
+  shift?: {
+    created_by?: string;
+    replacement_employee_id?: string | null;
+    request_accepted?: boolean;
+  };
+};
+
+const hasRejectedPrivateInvite = (shift: { shiftApplications?: unknown[] }) =>
+  Array.isArray(shift.shiftApplications) &&
+  shift.shiftApplications.some((application) => {
+    if (!application || typeof application !== 'object') return false;
+
+    const typedApplication = application as { status?: string; type?: string };
+    return (
+      typedApplication.status?.toLowerCase() === 'rejected' &&
+      typedApplication.type?.toLowerCase() === 'invited'
+    );
+  });
+
 export type EmployerShift = {
   id: string;
   shift_pay: unknown;
@@ -31,6 +57,7 @@ export type EmployerShift = {
   created_by?: string;
   organization_approved?: boolean;
   no_show_reported?: boolean;
+  request_accepted?: boolean;
   original_employee_id?: string;
   replacement_employee_id?: string | null;
   original_employee?: EmployeeSummary;
@@ -38,6 +65,8 @@ export type EmployerShift = {
   employer?: {
     company_name?: string | null;
   };
+  pendingApplications?: ShiftApplicationSummary[];
+  shiftApplications?: ShiftApplicationSummary[];
   applications?: unknown[];
   requests?: unknown[];
   applicant_count?: number;
@@ -65,6 +94,8 @@ export const getApprovalStatus = (shift: {
   replacement_employee_id?: string | null;
   replacement_employee?: EmployeeSummary | null;
   applicant_count?: number;
+  pendingApplications?: unknown[];
+  shiftApplications?: unknown[];
   applications?: unknown[];
   requests?: unknown[];
 }) => {
@@ -75,25 +106,24 @@ export const getApprovalStatus = (shift: {
     return 'absent';
   }
 
-  if (shift.created_by === 'user' && !shift.organization_approved && shift.status === 'cancelled') {
-    return 'rejected';
-  }
-
   if (shift.created_by === 'user' && !shift.organization_approved) {
-    if (!shift.replacement_employee_id && !shift.replacement_employee && applicantCount === 0) {
-      return 'open';
+    if (shift.status === 'cancelled') {
+      return 'cancelled';
     }
 
-    return 'pending';
+    if (hasRejectedPrivateInvite(shift)) {
+      return 'rejected';
+    }
+
+    if (hasDirectAssignee) {
+      return shift.request_accepted ? 'pending' : 'open';
+    }
+
+    return applicantCount > 0 ? 'pending' : 'open';
   }
 
-  if (
-    shift.created_by !== 'user' &&
-    hasDirectAssignee &&
-    !shift.request_accepted &&
-    shift.status === 'open'
-  ) {
-    return 'approved';
+  if (shift.status === 'open') {
+    return applicantCount > 0 && !shift.organization_approved ? 'pending' : 'open';
   }
 
   if (shift.status === 'matched') {
@@ -143,10 +173,19 @@ const getEmployeeName = (employee?: EmployeeSummary | null, fallback = 'Open Shi
 
 const getApplicantCount = (shift: {
   applicant_count?: number;
+  pendingApplications?: unknown[];
+  shiftApplications?: unknown[];
   applications?: unknown[];
   requests?: unknown[];
 }) => {
   if (typeof shift.applicant_count === 'number') return shift.applicant_count;
+  if (Array.isArray(shift.pendingApplications)) return shift.pendingApplications.length;
+  if (Array.isArray(shift.shiftApplications)) {
+    return shift.shiftApplications.filter((application) => {
+      if (!application || typeof application !== 'object') return true;
+      return (application as { status?: string }).status !== 'rejected';
+    }).length;
+  }
   if (Array.isArray(shift.applications)) return shift.applications.length;
   if (Array.isArray(shift.requests)) return shift.requests.length;
   return 0;
@@ -261,9 +300,9 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
               <th className="px-5 py-3">Shift Details</th>
               <th className="px-5 py-3">Created By</th>
               <th className="px-5 py-3">Worker/Assignee</th>
-              <th className="px-5 py-3">Shift Date & Time</th>
-              <th className="px-5 py-3">Shift Date & Time</th>
-              <th className="px-5 py-3">Pay/Shift</th>
+              <th className="px-5 py-3">Shift Date</th>
+              <th className="px-5 py-3">Shift Time</th>
+              <th className="px-5 py-3">Pay</th>
               <th className="px-5 py-3">Status</th>
               <th className="px-5 py-3 text-center">Action</th>
             </tr>

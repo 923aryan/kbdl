@@ -13,7 +13,11 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
-import { getApprovalStatus, type EmployerShift } from './shift-list-screen';
+import {
+  getApprovalStatus,
+  type EmployerShift,
+  type ShiftApplicationSummary,
+} from './shift-list-screen';
 import {
   useApproveShift,
   useCompleteShift,
@@ -51,8 +55,10 @@ const formatTime = (value: string) =>
     hour12: true,
   });
 
-const getEmployeeName = (employee?: { name?: string | null; phone_no?: string | null } | null) =>
-  employee?.name || employee?.phone_no || 'Not assigned';
+const getEmployeeName = (
+  employee?: { name?: string | null; phone_no?: string | null } | null,
+  fallback = 'Not assigned',
+) => employee?.name || employee?.phone_no || fallback;
 
 const completionTimeStorageKey = (shiftId: string) => `kbdl-shift-completion-times:${shiftId}`;
 
@@ -110,9 +116,69 @@ const formatAverageRating = (value?: number | string | null) => {
 
 const getApplicantCount = (shift: EmployerShift) => {
   if (typeof shift.applicant_count === 'number') return shift.applicant_count;
+  if (Array.isArray(shift.pendingApplications)) return shift.pendingApplications.length;
+  if (Array.isArray(shift.shiftApplications)) {
+    return shift.shiftApplications.filter((application) => application.status !== 'rejected')
+      .length;
+  }
   if (Array.isArray(shift.applications)) return shift.applications.length;
   if (Array.isArray(shift.requests)) return shift.requests.length;
   return shift.replacement_employee ? 1 : 0;
+};
+
+const isWorkerCreatedPrivateShift = (shift: EmployerShift) =>
+  shift.created_by === 'user' && Boolean(shift.replacement_employee_id || shift.replacement_employee);
+
+const getPendingApplications = (shift: EmployerShift): ShiftApplicationSummary[] => {
+  if (isWorkerCreatedPrivateShift(shift) && !shift.request_accepted) {
+    return [];
+  }
+
+  if (Array.isArray(shift.pendingApplications) && shift.pendingApplications.length > 0) {
+    return shift.pendingApplications;
+  }
+
+  if (Array.isArray(shift.shiftApplications)) {
+    return shift.shiftApplications.filter((application) => application.status === 'pending');
+  }
+
+  if (shift.replacement_employee_id || shift.replacement_employee) {
+    return [
+      {
+        id: '',
+        shift_id: shift.id,
+        user_id: shift.replacement_employee_id || '',
+        status: 'pending',
+        user: shift.replacement_employee || undefined,
+      },
+    ];
+  }
+
+  return [];
+};
+
+const getCancellationMessage = (shift: EmployerShift) => {
+  if (shift.status !== 'cancelled') {
+    return 'This shift is no longer active. You can review the shift details only.';
+  }
+
+  if (isWorkerCreatedPrivateShift(shift)) {
+    const assignedWorker = getEmployeeName(shift.replacement_employee, 'assigned worker');
+    const creator = getEmployeeName(shift.original_employee, 'shift creator');
+
+    if (shift.request_accepted) {
+      return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
+    }
+
+    return `This private shift was cancelled before employer approval. The request involved ${creator} and ${assignedWorker}.`;
+  }
+
+  if (shift.created_by === 'user') {
+    const creator = getEmployeeName(shift.original_employee, 'worker');
+    return `This shift was cancelled by ${creator}.`;
+  }
+
+  return 'This shift is no longer active. You can review the shift details only.';
 };
 
 const getLatestRating = (shift: EmployerShift) =>
@@ -129,6 +195,9 @@ const getStatusBadgeClass = (status: string) => {
   switch (status) {
     case 'pending':
       return 'border-amber-300 bg-amber-50 text-amber-600';
+
+    case 'open':
+      return 'border-blue-300 bg-blue-50 text-blue-600';
 
     case 'approved':
       return 'border-blue-300 bg-blue-50 text-blue-600';
@@ -297,6 +366,7 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
   const companyName = shift.employer?.company_name || employer?.company_name || 'Employer';
   const assigneeName = getEmployeeName(shift.replacement_employee);
   const applicantCount = getApplicantCount(shift);
+  const pendingApplications = getPendingApplications(shift);
   const latestRating = getLatestRating(shift);
   const completedRating = latestRating?.score ?? rating;
   const applicantDetails = {
@@ -318,8 +388,13 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
     rateShift.isPending ||
     reportNoShow.isPending;
 
-  const approveSelectedShift = () => {
-    approveShift.mutate(shift.id, {
+  const approveSelectedShift = (shiftApplicationId: string) => {
+    if (!shiftApplicationId) {
+      toast.error('Pending request id is missing. Please refresh the shift list.');
+      return;
+    }
+
+    approveShift.mutate(shiftApplicationId, {
       onSuccess: () => {
         toast.success('Shift approved');
         onClose();
@@ -329,8 +404,13 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
     });
   };
 
-  const rejectSelectedShift = () => {
-    rejectShift.mutate(shift.id, {
+  const rejectSelectedShift = (shiftApplicationId: string) => {
+    if (!shiftApplicationId) {
+      toast.error('Pending request id is missing. Please refresh the shift list.');
+      return;
+    }
+
+    rejectShift.mutate(shiftApplicationId, {
       onSuccess: () => {
         toast.success('Shift request rejected');
         onClose();
@@ -411,47 +491,78 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
                   <span className="text-center">Decision</span>
                 </div>
 
-                <div className="grid grid-cols-[1.4fr_1fr_0.7fr_1.5fr] items-center gap-3 border-t border-gray-200 px-4 pr-8 py-3">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
-                      <UserRound className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-gray-900">{assigneeName}</p>
-                      <p className="truncate text-xs text-gray-500">
-                        {applicantDetails.phone_no || shift.replacement_employee?.phone_no || '-'}
-                      </p>
-                    </div>
-                  </div>
+                {pendingApplications.length > 0 ? (
+                  pendingApplications.map((application) => {
+                    const isSelectedReplacement =
+                      application.user_id === shift.replacement_employee_id;
+                    const userDetails = {
+                      ...application.user,
+                      ...(isSelectedReplacement ? applicantDetails : {}),
+                    };
+                    const applicantName = getEmployeeName(userDetails, assigneeName);
+                    const phoneNumber =
+                      userDetails.phone_no || application.user?.phone_no || shift.replacement_employee?.phone_no;
+                    const experience = isSelectedReplacement
+                      ? applicantExperience
+                      : formatExperience(application.user?.experience);
+                    const averageRating = isSelectedReplacement
+                      ? applicantRating
+                      : formatAverageRating(application.user?.rating_avg);
 
-                  <p className="text-sm font-medium text-gray-900">{applicantExperience}</p>
-                  <p className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                    {applicantRating !== '-' && (
-                      <Star className="h-4 w-4 fill-lime-400 text-lime-400" />
-                    )}
-                    {applicantRating}
-                  </p>
+                    return (
+                      <div
+                        key={application.id || application.user_id || shift.id}
+                        className="grid grid-cols-[1.4fr_1fr_0.7fr_1.5fr] items-center gap-3 border-t border-gray-200 px-4 pr-8 py-3"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+                            <UserRound className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-gray-900">
+                              {applicantName}
+                            </p>
+                            <p className="truncate text-xs text-gray-500">{phoneNumber || '-'}</p>
+                          </div>
+                        </div>
 
-                  <div className="flex justify-end gap-2 pr-2">
-                    <button
-                      type="button"
-                      disabled={isMutating}
-                      onClick={rejectSelectedShift}
-                      className="h-9  flex items-center justify-center flex-1 px-4 py-2.5 rounded-md border border-blue-600 text-sm font-medium text-gray-900 disabled:opacity-60"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isMutating}
-                      onClick={approveSelectedShift}
-                      className="flex h-9 flex-1  px-4 py-2.5 items-center justify-center gap-2 rounded-md bg-blue-600 text-sm font-medium text-white disabled:opacity-60"
-                    >
-                      {approveShift.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Approve
-                    </button>
+                        <p className="text-sm font-medium text-gray-900">{experience}</p>
+                        <p className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                          {averageRating !== '-' && (
+                            <Star className="h-4 w-4 fill-lime-400 text-lime-400" />
+                          )}
+                          {averageRating}
+                        </p>
+
+                        <div className="flex justify-end gap-2 pr-2">
+                          <button
+                            type="button"
+                            disabled={isMutating}
+                            onClick={() => rejectSelectedShift(application.id)}
+                            className="flex h-9 flex-1 items-center justify-center rounded-md border border-blue-600 px-4 py-2.5 text-sm font-medium text-gray-900 disabled:opacity-60"
+                          >
+                            Reject
+                          </button>
+                          <button
+                            type="button"
+                            disabled={isMutating}
+                            onClick={() => approveSelectedShift(application.id)}
+                            className="flex h-9 flex-1 items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+                          >
+                            {approveShift.isPending && (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )}
+                            Approve
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="border-t border-gray-200 px-4 py-8 text-center text-sm text-gray-500">
+                    No pending requests found.
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -607,8 +718,10 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
                 </h3>
                 <p className="mt-2 text-sm text-gray-500">
                   {status === 'open'
-                    ? 'No worker has been approved yet. Applicants will appear here after workers apply.'
-                    : 'This shift is no longer active. You can review the shift details only.'}
+                    ? isWorkerCreatedPrivateShift(shift)
+                      ? 'Waiting for the assigned worker to accept this private shift request.'
+                      : 'No worker has been approved yet. Applicants will appear here after workers apply.'
+                    : getCancellationMessage(shift)}
                 </p>
               </div>
             </div>
