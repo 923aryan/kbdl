@@ -1480,14 +1480,14 @@ export const getLatestShiftsService = async (
       AND e.company_location IS NOT NULL
       AND s.shift_start > NOW()
 
-      -- Within 10 KM radius
+      -- Within 10000 KM radius
       AND ST_DWithin(
         e.company_location,
         ST_SetSRID(
           ST_MakePoint($1, $2),
           4326
         )::geography,
-        10000
+        10000000
       )
 
       -- Hide shifts already interacted with
