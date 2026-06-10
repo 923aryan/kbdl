@@ -400,7 +400,12 @@ export const getEmployeeShiftsService = async (
             some: {
               user_id: employeeId,
               status: {
-                in: [ShiftApplicationStatus.pending, ShiftApplicationStatus.accepted],
+                in: [
+                  ShiftApplicationStatus.pending,
+                  ShiftApplicationStatus.accepted,
+                  ShiftApplicationStatus.rejected,
+                  ShiftApplicationStatus.withdrawn,
+                ],
               },
             },
           },
@@ -1457,7 +1462,7 @@ export const getLatestShiftsService = async (
               ST_MakePoint($1, $2),
               4326
             )::geography
-          ) / 1000
+          ) / 10000000
         )::numeric,
         1
       ) AS distance_in_km
