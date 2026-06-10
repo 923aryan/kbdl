@@ -257,3 +257,9 @@ export const reportShiftNoShowSchema = z.object({
     id: z.string().uuid('Invalid shift ID format'),
   }),
 });
+
+export const syncSavedShiftsSchema = z.object({
+  body: z.object({
+    shift_ids: z.array(z.string().uuid('Invalid shift ID format')),
+  }),
+});

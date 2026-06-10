@@ -26,6 +26,7 @@ interface ShiftSwapStore {
   removeShift: (shiftId: string) => void;
   clearShifts: () => void;
   toggleSavedShift: (shift: any) => void;
+  updateSavedShifts: (shifts: any[]) => void;
 }
 
 export const useShiftSwapStore = create<ShiftSwapStore>()(
@@ -74,6 +75,8 @@ export const useShiftSwapStore = create<ShiftSwapStore>()(
             savedShifts: [shift, ...state.savedShifts],
           };
         }),
+
+      updateSavedShifts: (shifts) => set({ savedShifts: shifts }),
     }),
     {
       name: 'shift-swap-storage',

@@ -256,6 +256,19 @@ export const withdrawShiftApplicationService = async (
         });
       }
     }
+    await prisma.notification.updateMany({
+      where: {
+        type: NotificationTypes.shiftSwapRequest,
+        user_id: workerId,
+        data: {
+          path: ['shiftId'],
+          equals: shift.id,
+        },
+      },
+      data: {
+        isRead: true,
+      },
+    });
 
     return withdrawnApplication;
   });
@@ -967,6 +980,44 @@ export const applyForPublicShiftsService = async (
       status: ShiftApplicationStatus.pending,
     },
   });
+};
+
+export const syncSavedShiftsService = async (
+  userId: string,
+  shiftIds: string[],
+): Promise<GetEmployeeShiftsResponse> => {
+  if (!shiftIds || shiftIds.length === 0) {
+    return [];
+  }
+
+  const shifts = await prisma.shift.findMany({
+    where: {
+      id: {
+        in: shiftIds,
+      },
+    },
+    include: {
+      employer: {
+        select: safeEmployerSelect,
+      },
+      original_employee: {
+        select: safeUserSelect,
+      },
+      shiftApplications: {
+        where: {
+          user_id: userId,
+        },
+        take: 1,
+      },
+    },
+  });
+
+  const transformedShifts = shifts.map(({ shiftApplications, ...shift }) => ({
+    ...shift,
+    shiftApplication: shiftApplications[0] ?? null,
+  }));
+
+  return transformedShifts as GetEmployeeShiftsResponse;
 };
 
 // C. Get Extra Shifts (Public matching)

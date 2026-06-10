@@ -15,6 +15,7 @@ import {
   RateShiftRequest,
   RejectShiftRequest,
   ReportShiftNoShowRequest,
+  SyncSavedShiftsRequest,
   UpdateShiftRequest,
   WithdrawShiftApplicationRequest,
 } from '@repo/types';
@@ -35,6 +36,7 @@ import {
   rateShiftSchema,
   rejectShiftSchema,
   reportShiftNoShowSchema,
+  syncSavedShiftsSchema,
   updateShiftSchema,
   withdrawShiftApplicationSchema,
 } from '@repo/validator/shared';
@@ -63,6 +65,7 @@ import {
   rateShiftService,
   rejectShiftApplicationService,
   reportShiftNoShowService,
+  syncSavedShiftsService,
   updateShiftService,
   withdrawShiftApplicationService,
 } from './shift-swap-service';
@@ -247,6 +250,14 @@ const rejectShift = async (req: Request, res: Response) => {
   const shift = await rejectShiftApplicationService(employerId, input.body.shift_application_id);
   sendSuccess(res, 'Shift rejected successfully', shift, 200);
 };
+
+const syncSavedShifts = async (req: Request, res: Response) => {
+  const input: SyncSavedShiftsRequest = validate(syncSavedShiftsSchema, req);
+  const userId = req.payload.user.id;
+  const shifts = await syncSavedShiftsService(userId, input.body.shift_ids);
+  sendSuccess(res, 'Saved shifts synced successfully', shifts, 200);
+};
+
 export {
   acceptShiftSwap,
   applyForPublicShifts,
@@ -268,6 +279,7 @@ export {
   rateShift,
   rejectShift,
   reportShiftNoShow,
+  syncSavedShifts,
   updateShift,
   withdrawShiftApplication,
 };

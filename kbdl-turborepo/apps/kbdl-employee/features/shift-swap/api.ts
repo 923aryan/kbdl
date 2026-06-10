@@ -13,13 +13,15 @@ import type {
   GetEmployeeShiftsResponse,
   GetExtraShiftsResponse,
   GetLatestShiftsResponse,
+  getReferredEmployeePayload,
+  getReferredEmployeeResponse,
   GetShiftDetailsResponse,
+  SyncSavedShiftsPayload,
+  SyncSavedShiftsResponse,
   UpdateShiftPayload,
   UpdateShiftResponse,
   WithdrawShiftApplicationPayload,
   WithdrawShiftApplicationResponse,
-  getReferredEmployeePayload,
-  getReferredEmployeeResponse,
 } from '@repo/types';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { OpenShift } from './types/shift-swap-types';
@@ -29,6 +31,15 @@ export const useCreateShiftSwap = () => {
   return useMutation({
     mutationFn: async (payload: CreateShiftPayload) => {
       const response = await api.post<CreateShiftResponse>('/shift-swap', payload);
+      return response.data;
+    },
+  });
+};
+
+export const useSyncSavedShifts = () => {
+  return useMutation({
+    mutationFn: async (payload: SyncSavedShiftsPayload) => {
+      const response = await api.post<SyncSavedShiftsResponse>('/shift-swap/sync-saved', payload);
       return response.data;
     },
   });

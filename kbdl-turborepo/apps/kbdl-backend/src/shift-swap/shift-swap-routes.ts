@@ -22,6 +22,7 @@ import {
   rateShift,
   rejectShift,
   reportShiftNoShow,
+  syncSavedShifts,
   updateShift,
   withdrawShiftApplication,
 } from './shift-swap-controller';
@@ -32,6 +33,7 @@ shiftSwapRouter.post('/', authenticate([ROLES.EMPLOYER, ROLES.USER]), createShif
 shiftSwapRouter.post('/accept', authenticate([ROLES.USER]), acceptShiftSwap);
 shiftSwapRouter.post('/apply', authenticate([ROLES.USER]), applyForPublicShifts);
 shiftSwapRouter.post('/withdraw', authenticate([ROLES.USER]), withdrawShiftApplication);
+shiftSwapRouter.post('/sync-saved', authenticate([ROLES.USER]), syncSavedShifts);
 
 // --- View Shifts ---
 shiftSwapRouter.get('/employee', authenticate([ROLES.USER]), getEmployeeShifts);

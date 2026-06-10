@@ -111,8 +111,25 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
   const paySuffix = payType === 'HOURLY' ? '/hr' : '/shift';
 
   // Helper to get Status Tag styling and text
-  const getStatusConfig = (shiftStatus: ShiftStatus | string) => {
-    switch (shiftStatus) {
+  const getStatusConfig = () => {
+    // If there is an application, prioritize its status
+    if (shiftApplication) {
+      switch (shiftApplication.status) {
+        case ShiftApplicationStatus.pending:
+          return { text: 'Pending', bg: '#FEF3C7', color: '#D97706' };
+        case ShiftApplicationStatus.accepted:
+          return { text: 'Accepted', bg: '#DCFCE7', color: '#059669' };
+        case ShiftApplicationStatus.rejected:
+          return { text: 'Rejected', bg: '#FFE5E5', color: '#EF4444' };
+        case ShiftApplicationStatus.withdrawn:
+          return { text: 'Withdrawn', bg: '#F3F4F6', color: '#4B5563' };
+        default:
+          return { text: String(shiftApplication.status), bg: theme.surface, color: theme.text };
+      }
+    }
+
+    // Otherwise, fall back to the shift's base status
+    switch (status) {
       case ShiftStatus.open:
         return { text: 'Open', bg: '#E5EFFF', color: '#0658C2' };
       case ShiftStatus.approved:
@@ -122,7 +139,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
       case ShiftStatus.cancelled:
         return { text: 'Cancelled', bg: '#FFE5E5', color: '#EF4444' };
       default:
-        return { text: String(shiftStatus), bg: theme.surface, color: theme.text };
+        return { text: String(status), bg: theme.surface, color: theme.text };
     }
   };
 
@@ -222,7 +239,7 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
     );
   };
 
-  const statusConfig = getStatusConfig(status);
+  const statusConfig = getStatusConfig();
 
   const getPrimaryAction = () => {
     if (shiftApplication) {
@@ -242,9 +259,6 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
       }
       if (shiftApplication.status === ShiftApplicationStatus.accepted) {
         return { label: 'Accepted', onPress: undefined, disabled: true };
-      }
-      if (shiftApplication.status === ShiftApplicationStatus.rejected) {
-        return { label: 'Rejected', onPress: undefined, disabled: true };
       }
     } else {
       // When there is no application, show Apply if the shift is open

@@ -25,6 +25,7 @@ import {
   rateShiftSchema,
   rejectShiftSchema,
   reportShiftNoShowSchema,
+  syncSavedShiftsSchema,
   updateShiftSchema,
   withdrawShiftApplicationSchema,
 } from '@repo/validator/shared';
@@ -192,3 +193,7 @@ export type ApproveShiftCompletionResponse = Shift;
 
 export type ReportShiftNoShowRequest = z.infer<typeof reportShiftNoShowSchema>;
 export type ReportShiftNoShowResponse = Shift;
+
+export type SyncSavedShiftsRequest = z.infer<typeof syncSavedShiftsSchema>;
+export type SyncSavedShiftsPayload = z.infer<typeof syncSavedShiftsSchema>['body'];
+export type SyncSavedShiftsResponse = GetEmployeeShiftsResponse;

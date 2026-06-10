@@ -1,7 +1,8 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,6 +10,7 @@ import Loader from '@/components/ui/loader';
 import OnboardRequestCard from '@/components/ui/onboard-request-card';
 import ShiftCard from '@/components/ui/shift-swap-card';
 import { Colors } from '@/constants/theme';
+import { getNotifications, markNotificationRead } from '@/features/notifications/api';
 import { useGetPendingEmployments } from '@/features/operations/hooks/use-operation-hook';
 import { useGetOpenShifts } from '@/features/shift-swap/api';
 import { useShiftSwapStore } from '@/features/shift-swap/hooks/use-shift-swap';
@@ -17,6 +19,7 @@ export default function Notifications() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const theme = Colors.light;
+  const queryClient = useQueryClient();
 
   const { data, isLoading: isLoadingShifts } = useGetOpenShifts();
   const { data: pendingEmployments, isLoading: isLoadingEmployments } = useGetPendingEmployments();
@@ -36,10 +39,55 @@ export default function Notifications() {
 
   useEffect(() => {
     if (data) {
-      console.log('shifts : ', data);
       setShifts(data);
     }
   }, [data, setShifts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (data) {
+        const processNotifications = async () => {
+          try {
+            const response = await getNotifications();
+            console.log('response of was ', response);
+            if (!response.data) return;
+
+            const invitedShiftNotificationIds = data
+              .filter((shift) => shift.shiftApplication?.type === 'invited')
+              .map((shift) => shift.notificationId)
+              .filter((id): id is string => Boolean(id));
+
+            const idsToMark = response.data
+              .filter((n) => {
+                if (n.isRead) return false;
+                if (n.type === 'onboard_request') return false;
+                if (n.type === 'shift_swap_request') return false; // invited requests
+                if (invitedShiftNotificationIds.includes(n.id)) return false;
+                return true; // Any other leftover notifications will get marked as read
+              })
+              .map((n) => n.id);
+            console.log('final marks id ', idsToMark);
+            if (idsToMark.length > 0) {
+              await markNotificationRead(idsToMark);
+            }
+          } catch (error) {
+            console.error('Failed to process notifications:', error);
+          }
+        };
+
+        processNotifications();
+      }
+    }, [data]),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // Invalidate when leaving the screen so Home screen and next visits get fresh data
+        queryClient.invalidateQueries({ queryKey: ['employee-open-shifts'] });
+      };
+    }, [queryClient]),
+  );
 
   // Bounce animation effect to indicate scrollability
   useEffect(() => {
@@ -187,7 +235,7 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 15, fontWeight: '600' },
   activeTabText: { color: '#FFFFFF' },
   contentContainer: { paddingHorizontal: 20, paddingBottom: 110, paddingTop: 10 },
-  listContainer: { paddingTop: 4, marginBottom: 20 },
+  listContainer: { paddingTop: 4, marginBottom: 20, gap: 16 },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
   emptyText: { fontSize: 16, marginTop: 12, textAlign: 'center' },
 });

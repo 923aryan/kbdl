@@ -28,7 +28,7 @@ const markNotificationRead = async (req: Request, res: Response) => {
   const userId = req.payload.user.id;
   const input: MarkNotificationReadRequest = validate(markNotificationReadSchema, req);
 
-  const notification = await markNotificationAsReadService(input.params.notificationId, userId);
+  const notification = await markNotificationAsReadService(input.body.notificationIds, userId);
   sendSuccess(res, 'Notification marked as read', notification, 200);
 };
 

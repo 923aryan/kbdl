@@ -9,7 +9,7 @@ export const savePushTokenSchema = z.object({
 });
 
 export const markNotificationReadSchema = z.object({
-  params: z.object({
-    notificationId: z.string().uuid('Invalid notification ID format'),
+  body: z.object({
+    notificationIds: z.array(z.string().uuid('Invalid notification ID format')),
   }),
 });
