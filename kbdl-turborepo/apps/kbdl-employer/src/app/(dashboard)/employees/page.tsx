@@ -1,5 +1,5 @@
-import React from 'react';
+import { EmployeeDashboardScreen } from '@/features/employees';
 
-export default function page() {
-  return <div>employe</div>;
+export default function EmployeesPage() {
+  return <EmployeeDashboardScreen />;
 }
