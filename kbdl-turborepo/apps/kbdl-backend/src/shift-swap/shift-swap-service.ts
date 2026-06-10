@@ -1462,7 +1462,7 @@ export const getLatestShiftsService = async (
               ST_MakePoint($1, $2),
               4326
             )::geography
-          ) / 10000000
+          ) / 1000
         )::numeric,
         1
       ) AS distance_in_km
