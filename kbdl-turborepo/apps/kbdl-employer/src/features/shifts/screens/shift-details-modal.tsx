@@ -157,24 +157,86 @@ const getPendingApplications = (shift: EmployerShift): ShiftApplicationSummary[]
   return [];
 };
 
+// const getCancellationMessage = (shift: EmployerShift) => {  
+//   if (shift.status !== 'cancelled') {
+//     return 'This shift is no longer active. You can review the shift details only.';
+//   }
+
+//   if (isWorkerCreatedPrivateShift(shift)) {
+//     const assignedWorker = getEmployeeName(shift.replacement_employee, 'assigned worker');
+//     const creator = getEmployeeName(shift.original_employee, 'shift creator');
+
+//     if (shift.request_accepted) {
+//       return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
+//     }
+
+//     return `This private shift was cancelled before employer approval. The request involved ${creator} and ${assignedWorker}.`;
+//   }
+
+//   if (shift.created_by === 'user') {
+//     const creator = getEmployeeName(shift.original_employee, 'worker');
+//     return `This shift was cancelled by ${creator}.`;
+//   }
+
+//   return 'This shift is no longer active. You can review the shift details only.';
+// };
 const getCancellationMessage = (shift: EmployerShift) => {
+  // console.log('=== CANCEL DEBUG ===');
+  // console.log('status', shift.status);
+  // console.log('created_by', shift.created_by);
+  // console.log('request_accepted', shift.request_accepted);
+  // console.log('replacement_employee_id', shift.replacement_employee_id);
+  // console.log('shift', shift);
+
   if (shift.status !== 'cancelled') {
     return 'This shift is no longer active. You can review the shift details only.';
   }
 
+  // Worker-created private shift
   if (isWorkerCreatedPrivateShift(shift)) {
-    const assignedWorker = getEmployeeName(shift.replacement_employee, 'assigned worker');
-    const creator = getEmployeeName(shift.original_employee, 'shift creator');
+    const assignedWorker = getEmployeeName(
+      shift.replacement_employee,
+      'assigned worker',
+    );
+
+    const creator = getEmployeeName(
+      shift.original_employee,
+      'shift creator',
+    );
 
     if (shift.request_accepted) {
       return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
     }
 
-    return `This private shift was cancelled before employer approval. The request involved ${creator} and ${assignedWorker}.`;
+    return `This private shift was cancelled before employer approval.`;
   }
 
+  // Employer-created private shift
+  if (
+    shift.created_by === 'employer' &&
+    shift.replacement_employee_id
+  ) {
+    const assignedWorker = getEmployeeName(
+      shift.replacement_employee,
+      'assigned worker',
+    );
+
+    // Worker had accepted and then employer cancelled
+    if (shift.request_accepted) {
+      return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
+    }
+
+    // Worker withdrew the accepted request
+    return `${assignedWorker} rejected the  shift request`;
+  }
+
+  // Worker cancelled their own shift
   if (shift.created_by === 'user') {
-    const creator = getEmployeeName(shift.original_employee, 'worker');
+    const creator = getEmployeeName(
+      shift.original_employee,
+      'worker',
+    );
+
     return `This shift was cancelled by ${creator}.`;
   }
 
