@@ -1,5 +1,9 @@
 name: Deploy Employer
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]
