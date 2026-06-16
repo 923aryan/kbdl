@@ -71,10 +71,12 @@ export type GetEmployeeShiftsResponse = (Shift & {
   shiftApplication: ShiftApplication | null;
 })[];
 export type GetScheduledShiftsResponse = GetEmployeeShiftsResponse;
-export type GetEmployerShiftsResponse = Shift[];
 export type GetEmployerShiftsRequest = z.infer<typeof getEmployerShiftsSchema>;
 export type GetEmployerShiftsQuery = z.infer<typeof getEmployerShiftsSchema>['query'];
-
+export type GetEmployerShiftsResponse = (Shift & {
+  original_employee: Pick<User, 'name' | 'phone_no' | 'skills'> | null;
+  replacement_employee: Pick<User, 'name' | 'phone_no' | 'skills'> | null;
+})[];
 export type GetCreatedShiftsForEmployeeResponse = (Shift & {
   employer: Pick<Employer, 'company_name' | 'company_address'> | null;
   replacement_employee: Pick<User, 'name' | 'phone_no'> | null;
@@ -109,6 +111,16 @@ type PendingShiftApplication = Prisma.ShiftApplicationGetPayload<{
 }>;
 
 export type GetPendingShiftsResponse = PendingShiftApplication[];
+
+export type GetEmployerShiftAnalyticsResponse = {
+  totalShifts: number;
+  openShifts: number;
+  approvedShifts: number;
+  completedShifts: number;
+  cancelledShifts: number;
+  totalApplications: number;
+  pendingApplications: number;
+};
 
 // C. Extra Shifts
 export type GetExtraShiftsRequest = z.infer<typeof getExtraShiftsSchema>;
@@ -167,6 +179,7 @@ export type RejectShiftRequest = z.infer<typeof rejectShiftSchema>;
 export type RejectShiftResponse = ShiftApplication;
 
 export type GetShiftDetailsRequest = z.infer<typeof getShiftDetailsSchema>;
+export type GetShiftDetailsQuery = z.infer<typeof getShiftDetailsSchema>['query'];
 export type GetShiftDetailsResponse = Shift & {
   original_employee: Prisma.UserGetPayload<{
     select: typeof safeUserSelect;

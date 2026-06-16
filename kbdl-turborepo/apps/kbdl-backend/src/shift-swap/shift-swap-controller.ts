@@ -54,6 +54,7 @@ import {
   getBestShiftMatchesService,
   getCreatedShiftsForEmployeeService,
   getEmployeeShiftsService,
+  getEmployerShiftAnalyticsService,
   getEmployerShiftsService,
   getExtraShiftsService,
   getLatestShiftsService,
@@ -204,6 +205,12 @@ const getBestShiftMatches = async (req: Request, res: Response) => {
   sendSuccess(res, 'Best shift matches retrieved', shifts, 200);
 };
 
+const getEmployerShiftAnalytics = async (req: Request, res: Response) => {
+  const employerId = (req.payload as any).employer.id;
+  const analytics = await getEmployerShiftAnalyticsService(employerId);
+  sendSuccess(res, 'Shift analytics retrieved successfully', analytics, 200);
+};
+
 const getPendingShiftsForEmployer = async (req: Request, res: Response) => {
   const input: GetPendingShiftsRequest = validate(getPendingShiftsSchema, req);
   const employerId = (req.payload as any).employer.id;
@@ -225,8 +232,13 @@ const getShiftDetails = async (req: Request, res: Response) => {
   const input: GetShiftDetailsRequest = validate(getShiftDetailsSchema, req);
   const userType = req.role === ROLES.EMPLOYER ? ROLES.EMPLOYER : ROLES.USER;
   const userId = userType === ROLES.USER ? req.payload.user.id : req.payload.employer.id;
-  const shift = await getShiftDetailsService(userId, userType, input.params.id);
-  sendSuccess(res, 'Shift details retrieved successfully', shift, 200);
+  const { shift, meta } = await getShiftDetailsService(
+    userId,
+    userType,
+    input.params.id,
+    input.query,
+  );
+  sendSuccess(res, 'Shift details retrieved successfully', shift, 200, meta);
 };
 
 const approveShiftCompletion = async (req: Request, res: Response) => {
@@ -269,6 +281,7 @@ export {
   getCreatedShiftsForEmployee,
   getEmployeeOpenShifts,
   getEmployeeShifts,
+  getEmployerShiftAnalytics,
   getEmployerShifts,
   getExtraShifts,
   getLatestShifts,

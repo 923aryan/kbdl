@@ -11,6 +11,8 @@ export const ShiftStatus = {
   approved: 'approved',
   completed: 'completed',
   cancelled: 'cancelled',
+  rejected: 'rejected',
+  absent: 'absent',
 } as const;
 
 export type ShiftStatus = (typeof ShiftStatus)[keyof typeof ShiftStatus];
@@ -55,3 +57,54 @@ export const NotificationTypes = {
 } as const;
 
 export type NotificationTypes = (typeof NotificationTypes)[keyof typeof NotificationTypes];
+
+export const SalaryType = {
+  hourly: 'hourly',
+  daily: 'daily',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export type SalaryType = (typeof SalaryType)[keyof typeof SalaryType];
+
+export const JobStatus = {
+  draft: 'draft',
+  open: 'open',
+  paused: 'paused',
+  closed: 'closed',
+  expired: 'expired',
+} as const;
+
+export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
+
+export const EmploymentType = {
+  full_time: 'full_time',
+  part_time: 'part_time',
+  contract: 'contract',
+  temporary: 'temporary',
+  internship: 'internship',
+  freelance: 'freelance',
+} as const;
+
+export type EmploymentType = (typeof EmploymentType)[keyof typeof EmploymentType];
+
+export const JobWorkType = {
+  onsite: 'onsite',
+  remote: 'remote',
+  hybrid: 'hybrid',
+} as const;
+
+export type JobWorkType = (typeof JobWorkType)[keyof typeof JobWorkType];
+
+export const JobApplicationStatus = {
+  applied: 'applied',
+  under_review: 'under_review',
+  shortlisted: 'shortlisted',
+  interview_scheduled: 'interview_scheduled',
+  selected: 'selected',
+  hired: 'hired',
+  rejected: 'rejected',
+  withdrawn: 'withdrawn',
+} as const;
+
+export type JobApplicationStatus = (typeof JobApplicationStatus)[keyof typeof JobApplicationStatus];

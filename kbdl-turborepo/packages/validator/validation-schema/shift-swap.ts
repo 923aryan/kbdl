@@ -21,6 +21,11 @@ const isNotBeforeToday = (val: string) => {
   return inputDate.getTime() >= today.getTime();
 };
 
+const optionalBooleanQuery = z
+  .enum(['true', 'false'])
+  .optional()
+  .transform((val) => (val ? val === 'true' : undefined));
+
 export const createShiftSchema = z.object({
   body: z
     .object({
@@ -192,6 +197,20 @@ export const getBestShiftMatchesSchema = z.object({
 
 export const getEmployerShiftsSchema = z.object({
   query: z.object({
+    status: z.enum(['open', 'approved', 'completed', 'cancelled', 'absent', 'rejected']).optional(),
+    payType: z.enum(['HOURLY', 'FIXED']).optional(),
+    request_accepted: optionalBooleanQuery,
+    skill_required: z.string().optional(),
+    organization_approved: optionalBooleanQuery,
+    no_show_reported: optionalBooleanQuery,
+    shift_date_from: z.iso.datetime().optional(),
+    shift_date_to: z.iso.datetime().optional(),
+    shift_start_from: z.iso.datetime().optional(),
+    shift_start_to: z.iso.datetime().optional(),
+    shift_end_from: z.iso.datetime().optional(),
+    shift_end_to: z.iso.datetime().optional(),
+    shift_pay_min: z.coerce.number().optional(),
+    shift_pay_max: z.coerce.number().optional(),
     limit: z
       .string()
       .regex(/^\d+$/, 'Limit must be a number')
@@ -231,6 +250,7 @@ export const getPendingShiftsSchema = z.object({
       .regex(/^\d+$/, 'Page must be a number')
       .optional()
       .transform((val) => (val ? parseInt(val, 10) : 1)),
+    shift_id: z.string().uuid('Invalid shift ID format').optional(),
   }),
 });
 
@@ -244,6 +264,18 @@ export const getShiftDetailsSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid shift ID format'),
   }),
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
 });
 
 export const approveShiftCompletionSchema = z.object({
@@ -255,6 +287,18 @@ export const approveShiftCompletionSchema = z.object({
 export const reportShiftNoShowSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid shift ID format'),
+  }),
+  query: z.object({
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
   }),
 });
 

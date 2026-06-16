@@ -65,6 +65,8 @@ enum ShiftStatus {
   approved
   completed
   cancelled
+  absent
+  rejected
 
   @@map("shift_status")
 }
@@ -188,76 +190,137 @@ enum SalaryType {
 }
 
 enum JobStatus {
+  draft
   open
-  closed
   paused
+  closed
+  expired
 
   @@map("job_status")
 }
 
+enum EmploymentType {
+  full_time
+  part_time
+  contract
+  temporary
+  internship
+  freelance
+
+  @@map("employment_type")
+}
+
+enum JobWorkType {
+  onsite
+  remote
+  hybrid
+
+  @@map("job_work_type")
+}
+
 model Job {
-  id             String     @id @default(uuid()) @db.Uuid
-  employer_id    String?    @db.Uuid
-  user_id        String?    @db.Uuid
-  title          String     @db.VarChar
-  skill_required String     @db.VarChar
-  salary_amount  Decimal    @db.Decimal(10, 2)
-  salary_type    SalaryType
+  id String @id @default(uuid()) @db.Uuid
 
-  job_start_time  DateTime @db.Timestamptz()
-  job_end_time    DateTime @db.Timestamptz()
-  job_poster_type UserType
-  address         String?  @db.Text
+  // Who posted the job
+  employer_id String? @db.Uuid
+  user_id     String? @db.Uuid
 
-  // PostGIS geography type
-  location Unsupported("geography(Point, 4326)")?
+  // Basic Info
+  title       String @db.VarChar(255)
+  description String @db.Text
 
+  employment_type EmploymentType
+  work_type       JobWorkType
+
+  // Salary
+  salary_min    Decimal?   @db.Decimal(10, 2)
+  salary_max    Decimal?   @db.Decimal(10, 2)
+  salary_type   SalaryType
+  is_negotiable Boolean    @default(false)
+
+  // Schedule
+  job_start_time DateTime? @db.Timestamptz()
+  job_end_time   DateTime? @db.Timestamptz()
+
+  // Location
+  address String? @db.Text
+
+  // PostGIS
+  location Unsupported("geography(Point,4326)")?
+
+  // Hiring
   seats_available Int?
-  seats_filled    Int?
 
-  status     JobStatus
+  // Status
+  status     JobStatus @default(open)
   expires_at DateTime? @db.Timestamptz()
 
   created_at DateTime @default(now()) @db.Timestamptz()
   updated_at DateTime @updatedAt @db.Timestamptz()
 
-  // Relation
-  employer        Employer?        @relation(fields: [employer_id], references: [id])
-  user            User?            @relation(fields: [user_id], references: [id])
-  jobApplications JobApplication[]
-  ratings         Rating[]
+  // Relations
+  employer Employer? @relation(fields: [employer_id], references: [id])
+  user     User?     @relation(fields: [user_id], references: [id])
+
+  applications JobApplication[]
+  ratings      Rating[]
 
   @@index([employer_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([expires_at])
+  @@index([job_start_time])
   @@map("jobs")
 }
 
 enum JobApplicationStatus {
   applied
+  under_review
   shortlisted
-  rejected
+  interview_scheduled
+  selected
   hired
+  rejected
+  withdrawn
 
   @@map("job_application_status")
 }
 
 model JobApplication {
-  id      String @id @default(uuid()) @db.Uuid
+  id String @id @default(uuid()) @db.Uuid
+
   job_id  String @db.Uuid
   user_id String @db.Uuid
 
-  status     JobApplicationStatus
-  applied_at DateTime             @db.Timestamptz()
+  status JobApplicationStatus @default(applied)
+
+  // Candidate message
+  cover_letter String? @db.Text
+
+  // Recruiter notes
+  employer_notes String? @db.Text
+
+  // Timeline
+  applied_at     DateTime  @default(now()) @db.Timestamptz()
+  reviewed_at    DateTime? @db.Timestamptz()
+  shortlisted_at DateTime? @db.Timestamptz()
+  interview_at   DateTime? @db.Timestamptz()
+  hired_at       DateTime? @db.Timestamptz()
+  rejected_at    DateTime? @db.Timestamptz()
+  withdrawn_at   DateTime? @db.Timestamptz()
 
   created_at DateTime @default(now()) @db.Timestamptz()
   updated_at DateTime @updatedAt @db.Timestamptz()
 
   // Relations
-  job  Job  @relation(fields: [job_id], references: [id])
+  job  Job  @relation(fields: [job_id], references: [id], onDelete: Cascade)
   user User @relation(fields: [user_id], references: [id])
 
   @@unique([job_id, user_id])
   @@index([job_id])
   @@index([user_id])
+  @@index([status])
+  @@index([job_id, status])
   @@map("job_applications")
 }
 
