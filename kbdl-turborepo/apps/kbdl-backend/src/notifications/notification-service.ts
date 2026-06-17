@@ -62,30 +62,20 @@ export const savePushTokenService = async (
 
 export const getUserNotificationsService = async (userId: string): Promise<Notification[]> => {
   return prisma.notification.findMany({
-    where: { user_id: userId },
+    where: { user_id: userId, isRead: false },
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
 };
 
 export const markNotificationAsReadService = async (
-  notificationId: string,
+  notificationIds: string[],
   userId: string,
-): Promise<Notification> => {
-  const notification = await prisma.notification.findFirst({
+): Promise<void> => {
+  await prisma.notification.updateMany({
     where: {
-      id: notificationId,
+      id: { in: notificationIds },
       user_id: userId,
-    },
-  });
-
-  if (!notification) {
-    throw new Error('Notification not found');
-  }
-
-  return prisma.notification.update({
-    where: {
-      id: notificationId,
     },
     data: {
       isRead: true,

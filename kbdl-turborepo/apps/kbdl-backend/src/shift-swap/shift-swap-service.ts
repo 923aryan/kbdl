@@ -9,6 +9,8 @@ import {
   GetBestShiftMatchesResponse,
   GetCreatedShiftsForEmployeeResponse,
   GetEmployeeShiftsResponse,
+  GetEmployerShiftAnalyticsResponse,
+  GetEmployerShiftsQuery,
   GetExtraShiftsQuery,
   GetExtraShiftsResponse,
   GetLatestShiftsQuery,
@@ -18,6 +20,7 @@ import {
   GetPendingShiftsResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
+  GetShiftDetailsQuery,
   GetShiftDetailsResponse,
   RateShiftPayload,
   RejectShiftResponse,
@@ -191,7 +194,7 @@ export const createShiftService = async (
   return newShift;
 };
 
-// A2. Withdraw Shift Application
+// A2. Withdraw Shift Application / reject private shift by employee
 export const withdrawShiftApplicationService = async (
   workerId: string,
   shift_application_id: string,
@@ -232,7 +235,7 @@ export const withdrawShiftApplicationService = async (
       // 1. Accepted and invited: cancel the shift (also safely handles pending and invited)
       await tx.shift.update({
         where: { id: shift_application_id },
-        data: { status: ShiftStatus.cancelled },
+        data: { status: ShiftStatus.rejected },
       });
     } else if (application.type === ShiftApplicationType.applied) {
       // 2. Pending and applied: just withdraw from shift application (handled above)
@@ -256,6 +259,19 @@ export const withdrawShiftApplicationService = async (
         });
       }
     }
+    await prisma.notification.updateMany({
+      where: {
+        type: NotificationTypes.shiftSwapRequest,
+        user_id: workerId,
+        data: {
+          path: ['shiftId'],
+          equals: shift.id,
+        },
+      },
+      data: {
+        isRead: true,
+      },
+    });
 
     return withdrawnApplication;
   });
@@ -418,7 +434,12 @@ export const getEmployeeShiftsService = async (
             some: {
               user_id: employeeId,
               status: {
-                in: [ShiftApplicationStatus.pending, ShiftApplicationStatus.accepted],
+                in: [
+                  ShiftApplicationStatus.pending,
+                  ShiftApplicationStatus.accepted,
+                  ShiftApplicationStatus.rejected,
+                  ShiftApplicationStatus.withdrawn,
+                ],
               },
             },
           },
@@ -460,16 +481,72 @@ export const getEmployeeShiftsService = async (
 // B2. See Created Shifts (Employer)
 export const getEmployerShiftsService = async (
   employerId: string,
-  query: { limit?: number; page?: number },
+  query: GetEmployerShiftsQuery,
 ): Promise<{ shifts: Shift[]; meta: Record<string, number> }> => {
-  const { limit = 10, page = 1 } = query;
+  const {
+    limit = 10,
+    page = 1,
+    status,
+    payType,
+    request_accepted,
+    skill_required,
+    organization_approved,
+    no_show_reported,
+    shift_date_from,
+    shift_date_to,
+    shift_start_from,
+    shift_start_to,
+    shift_end_from,
+    shift_end_to,
+    shift_pay_min,
+    shift_pay_max,
+  } = query;
   const skip = (page - 1) * limit;
+
+  const whereClause: any = {
+    employer_id: employerId,
+  };
+
+  if (status) whereClause.status = status;
+  if (payType) whereClause.payType = payType;
+  if (request_accepted !== undefined) whereClause.request_accepted = request_accepted;
+  if (skill_required)
+    whereClause.skill_required = { contains: skill_required, mode: 'insensitive' };
+  if (organization_approved !== undefined)
+    whereClause.organization_approved = organization_approved;
+  if (no_show_reported !== undefined) whereClause.no_show_reported = no_show_reported;
+
+  if (shift_date_from || shift_date_to) {
+    whereClause.shift_date = {
+      ...(shift_date_from && { gte: new Date(shift_date_from) }),
+      ...(shift_date_to && { lte: new Date(shift_date_to) }),
+    };
+  }
+
+  if (shift_start_from || shift_start_to) {
+    whereClause.shift_start = {
+      ...(shift_start_from && { gte: new Date(shift_start_from) }),
+      ...(shift_start_to && { lte: new Date(shift_start_to) }),
+    };
+  }
+
+  if (shift_end_from || shift_end_to) {
+    whereClause.shift_end = {
+      ...(shift_end_from && { gte: new Date(shift_end_from) }),
+      ...(shift_end_to && { lte: new Date(shift_end_to) }),
+    };
+  }
+
+  if (shift_pay_min !== undefined || shift_pay_max !== undefined) {
+    whereClause.shift_pay = {
+      ...(shift_pay_min !== undefined && { gte: shift_pay_min }),
+      ...(shift_pay_max !== undefined && { lte: shift_pay_max }),
+    };
+  }
 
   const [shifts, total] = await Promise.all([
     prisma.shift.findMany({
-      where: {
-        employer_id: employerId,
-      },
+      where: whereClause,
       include: {
         original_employee: {
           select: { name: true, phone_no: true, skills: true },
@@ -495,9 +572,7 @@ export const getEmployerShiftsService = async (
       skip,
     }),
     prisma.shift.count({
-      where: {
-        employer_id: employerId,
-      },
+      where: whereClause,
     }),
   ]);
 
@@ -990,6 +1065,44 @@ export const applyForPublicShiftsService = async (
       status: ShiftApplicationStatus.pending,
     },
   });
+};
+
+export const syncSavedShiftsService = async (
+  userId: string,
+  shiftIds: string[],
+): Promise<GetEmployeeShiftsResponse> => {
+  if (!shiftIds || shiftIds.length === 0) {
+    return [];
+  }
+
+  const shifts = await prisma.shift.findMany({
+    where: {
+      id: {
+        in: shiftIds,
+      },
+    },
+    include: {
+      employer: {
+        select: safeEmployerSelect,
+      },
+      original_employee: {
+        select: safeUserSelect,
+      },
+      shiftApplications: {
+        where: {
+          user_id: userId,
+        },
+        take: 1,
+      },
+    },
+  });
+
+  const transformedShifts = shifts.map(({ shiftApplications, ...shift }) => ({
+    ...shift,
+    shiftApplication: shiftApplications[0] ?? null,
+  }));
+
+  return transformedShifts as GetEmployeeShiftsResponse;
 };
 
 // C. Get Extra Shifts (Public matching)
@@ -1503,14 +1616,14 @@ export const getLatestShiftsService = async (
       AND e.company_location IS NOT NULL
       AND s.shift_start > NOW()
 
-      -- Within 10 KM radius
+      -- Within 10000 KM radius
       AND ST_DWithin(
         e.company_location,
         ST_SetSRID(
           ST_MakePoint($1, $2),
           4326
         )::geography,
-        10000
+        10000000
       )
 
       -- Hide shifts already interacted with
@@ -1660,16 +1773,51 @@ export const getBestShiftMatchesService = async (
   return shifts as GetBestShiftMatchesResponse;
 };
 
+export const getEmployerShiftAnalyticsService = async (
+  employerId: string,
+): Promise<GetEmployerShiftAnalyticsResponse> => {
+  const [
+    totalShifts,
+    openShifts,
+    approvedShifts,
+    completedShifts,
+    cancelledShifts,
+    totalApplications,
+    pendingApplications,
+  ] = await Promise.all([
+    prisma.shift.count({ where: { employer_id: employerId } }),
+    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.open } }),
+    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.approved } }),
+    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.completed } }),
+    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.cancelled } }),
+    prisma.shiftApplication.count({ where: { shift: { employer_id: employerId } } }),
+    prisma.shiftApplication.count({
+      where: { shift: { employer_id: employerId }, status: ShiftApplicationStatus.pending },
+    }),
+  ]);
+
+  return {
+    totalShifts,
+    openShifts,
+    approvedShifts,
+    completedShifts,
+    cancelledShifts,
+    totalApplications,
+    pendingApplications,
+  };
+};
+
 export const getPendingShiftsForEmployerService = async (
   employerId: string,
   query: GetPendingShiftsQuery,
 ): Promise<{ pendingApplications: GetPendingShiftsResponse; meta: Record<string, number> }> => {
-  const { limit = 10, page = 1 } = query;
+  const { limit = 10, page = 1, shift_id } = query;
   const skip = (page - 1) * limit;
 
   const whereClause = {
     status: ShiftApplicationStatus.pending,
     shift: {
+      ...(shift_id && { id: shift_id }),
       employer_id: employerId,
       status: ShiftStatus.open,
       organization_approved: false,
@@ -1780,7 +1928,10 @@ export const rejectShiftApplicationService = async (
           : null,
         request_accepted: false,
         organization_approved: false,
-        status: ShiftStatus.open,
+        status:
+          shiftApplication.type === ShiftApplicationType.invited
+            ? ShiftStatus.cancelled
+            : ShiftStatus.open,
       },
     });
 
@@ -1794,38 +1945,46 @@ export const getShiftDetailsService = async (
   userId: string,
   userType: 'user' | 'employer',
   shiftId: string,
-): Promise<GetShiftDetailsResponse> => {
-  const shift = await prisma.shift.findUnique({
-    where: {
-      id: shiftId,
-    },
+  query: GetShiftDetailsQuery,
+): Promise<{ shift: GetShiftDetailsResponse; meta: Record<string, number> }> => {
+  const { limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
 
-    include: {
-      original_employee: {
-        select: safeUserSelect,
+  const [shift, totalApplications] = await Promise.all([
+    prisma.shift.findUnique({
+      where: {
+        id: shiftId,
       },
-
-      replacement_employee: {
-        select: safeUserSelect,
-      },
-
-      employer: {
-        select: safeEmployerSelect,
-      },
-
-      shiftApplications: {
-        include: {
-          user: {
-            select: safeUserSelect,
+      include: {
+        original_employee: {
+          select: safeUserSelect,
+        },
+        replacement_employee: {
+          select: safeUserSelect,
+        },
+        employer: {
+          select: safeEmployerSelect,
+        },
+        shiftApplications: {
+          include: {
+            user: {
+              select: safeUserSelect,
+            },
           },
-        },
-
-        orderBy: {
-          created_at: 'desc',
+          orderBy: {
+            created_at: 'desc',
+          },
+          take: limit,
+          skip,
         },
       },
-    },
-  });
+    }),
+    prisma.shiftApplication.count({
+      where: {
+        shift_id: shiftId,
+      },
+    }),
+  ]);
 
   if (!shift) {
     throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
@@ -1846,19 +2005,31 @@ export const getShiftDetailsService = async (
 
     const isSelectedReplacement = shift.replacement_employee_id === userId;
 
-    const isApplicant = shift.shiftApplications.some(
-      (application) => application.user_id === userId,
-    );
-
     const isPublicOpenShift =
       shift.replacement_employee_id === null && shift.status === ShiftStatus.open;
+
+    let isApplicant = false;
+    if (!isOriginalEmployee && !isSelectedReplacement && !isPublicOpenShift) {
+      const userApplicationCount = await prisma.shiftApplication.count({
+        where: { shift_id: shiftId, user_id: userId },
+      });
+      isApplicant = userApplicationCount > 0;
+    }
 
     if (!isOriginalEmployee && !isSelectedReplacement && !isApplicant && !isPublicOpenShift) {
       throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
     }
   }
 
-  return shift;
+  return {
+    shift,
+    meta: {
+      total: totalApplications,
+      page,
+      limit,
+      totalPages: Math.ceil(totalApplications / limit),
+    },
+  };
 };
 
 export const approveShiftCompletionService = async (
@@ -1880,9 +2051,6 @@ export const approveShiftCompletionService = async (
       'INVALID_SHIFT_STATE',
       'Only approved shifts can be marked as completed.',
     );
-  }
-  if (shift.shift_end.getTime() > Date.now()) {
-    throw new AppError(400, 'SHIFT_NOT_FINISHED', 'Cannot complete a shift before it has ended.');
   }
   return prisma.shift.update({
     where: { id: shiftId },

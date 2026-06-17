@@ -153,30 +153,36 @@ const employerTokenRefresh = async (req: Request, res: Response) => {
 };
 
 export const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
+  const isProduction = env.NODE_ENV === 'production';
+
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'none',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
+
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'none',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 15 * 24 * 60 * 60 * 1000,
   });
 };
 
-const clearAuthCookies = (res: Response) => {
+export const clearAuthCookies = (res: Response) => {
+  const isProduction = env.NODE_ENV === 'production';
+
   res.clearCookie('accessToken', {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'none',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
   });
+
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: 'none',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
   });
 };
 

@@ -7,7 +7,7 @@ export type SavePushTokenPayload = z.infer<typeof savePushTokenSchema>['body'];
 export type SavePushTokenResponse = PushToken;
 
 export type MarkNotificationReadRequest = z.infer<typeof markNotificationReadSchema>;
-export type MarkNotificationReadPayload = z.infer<typeof markNotificationReadSchema>['params'];
+export type MarkNotificationReadPayload = z.infer<typeof markNotificationReadSchema>['body'];
 export type MarkNotificationReadResponse = Notification;
 
 export type GetNotificationsResponse = Notification[];

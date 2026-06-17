@@ -1,14 +1,18 @@
 name: Deploy Landing
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'kbdl-turborepo/apps/kbdl-landing/**'
-      - 'kbdl-turborepo/packages/ui/**'
-      - 'kbdl-turborepo/packages/validator/**'
-      - 'kbdl-turborepo/pnpm-lock.yaml'
-      - 'kbdl-turborepo/turbo.json'
+      - "kbdl-turborepo/apps/kbdl-landing/**"
+      - "kbdl-turborepo/packages/ui/**"
+      - "kbdl-turborepo/packages/validator/**"
+      - "kbdl-turborepo/pnpm-lock.yaml"
+      - "kbdl-turborepo/turbo.json"
 
 jobs:
   deploy:

@@ -8,6 +8,6 @@ const notificationRouter: Router = Router();
 // --- Notification Routes ---
 notificationRouter.post('/push-token', authenticate([ROLES.USER]), savePushToken);
 notificationRouter.get('/', authenticate([ROLES.USER]), getNotifications);
-notificationRouter.patch('/:notificationId/read', authenticate([ROLES.USER]), markNotificationRead);
+notificationRouter.patch('/read', authenticate([ROLES.USER]), markNotificationRead);
 
 export default notificationRouter;
