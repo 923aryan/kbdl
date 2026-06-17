@@ -19,7 +19,7 @@ const menuItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/shifts', label: 'Shifts', icon: Clock },
   { path: '/employees', label: 'Employees', icon: Users },
-  { path: '/dashboard/jobs', label: 'Jobs', icon: Briefcase },
+  { path: '/jobs', label: 'Jobs', icon: Briefcase },
   { path: '/dashboard/billing', label: 'Billing', icon: CreditCard },
 ];
 
