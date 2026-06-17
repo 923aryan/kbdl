@@ -12,6 +12,7 @@ import authRouter from './auth/auth-routes';
 import { initializeQueues } from './config/queues/queue-bootstrap';
 import redis from './config/redis';
 import { initializeSocketServer } from './config/socket/socket-server';
+import jobRouter from './jobs/job-routes';
 import leadRouter from './leads/leads-routes';
 import notificationRouter from './notifications/notification-routes';
 import operationsRouter from './operations/operation-routes';
@@ -73,6 +74,7 @@ app.use('/api/v1/leads', leadRouter);
 app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/profile', profileRouter);
 app.use('/api/v1/operations', operationsRouter);
+app.use('/api/v1/jobs', jobRouter);
 app.get('/health', (_req: Request, res: Response) => {
   sendSuccess<null>(res, 'Server is running', null, 200);
 });

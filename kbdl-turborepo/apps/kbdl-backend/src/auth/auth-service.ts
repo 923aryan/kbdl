@@ -637,10 +637,10 @@ export const sendEmployerOtpService = async (payload: { email: string }): Promis
     throw new AppError(404, 'NON_EXISTENT_EMPLOYER', 'Employer not found. Please register first.');
   }
 
-  const otp = generateOtp();
+  // const otp = generateOtp();
 
   // TODO: remove in production
-  // const otp = '123456';
+  const otp = '123456';
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
