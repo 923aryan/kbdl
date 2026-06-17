@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type Status = 'Active' | 'Inactive' | 'On Boarding' | 'On Leave' | 'Probation' | 'Absent';
+export type Status = 'Active' | 'Inactive' | 'On Boarding' | 'Onboard' | 'On Leave' | 'Probation' | 'Absent';
 export type ViewMode = 'list' | 'details' | 'add';
 export type DetailTab =
   | 'Personal Info'
@@ -24,6 +24,20 @@ export type Employee = {
   location: string;
   department: string;
   salary: string;
+  onboardDetails?: {
+    personal: string[][];
+    contact: string[][];
+    emergency: string[][];
+    identity: string[][];
+    other: string[][];
+    job: string[][];
+    work: string[][];
+    payroll: string[][];
+    bank: string[][];
+    payment: string[][];
+    documents: string[][];
+    notes?: string;
+  };
 };
 
 const seedEmployees: Employee[] = [
@@ -195,7 +209,7 @@ export const designations = [
   'Supervisor',
 ];
 
-export const statuses: Status[] = ['Active', 'Inactive', 'On Boarding', 'On Leave', 'Probation', 'Absent'];
+export const statuses: Status[] = ['Active', 'Inactive', 'On Boarding', 'Onboard', 'On Leave', 'Probation', 'Absent'];
 
 export const dropdownOptions = {
   gender: ['Male', 'Female', 'Other'],
@@ -218,6 +232,7 @@ interface EmployeeState {
   search: string;
   selectedDesignations: string[];
   selectedStatuses: Status[];
+  employeeVersion: number;
   paymentMethod: PaymentMethod;
   uploadOpen: boolean;
   openDropdown: string | null;
@@ -230,6 +245,7 @@ interface EmployeeState {
   setPaymentMethod: (method: PaymentMethod) => void;
   setUploadOpen: (open: boolean) => void;
   setOpenDropdown: (dropdown: string | null) => void;
+  addOnboardEmployee: (employee: Employee) => void;
 }
 
 export const useEmployeeStore = create<EmployeeState>((set) => ({
@@ -239,6 +255,7 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
   search: '',
   selectedDesignations: [],
   selectedStatuses: [],
+  employeeVersion: 0,
   paymentMethod: 'cash',
   uploadOpen: false,
   openDropdown: null,
@@ -251,4 +268,8 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
   setUploadOpen: (uploadOpen) => set({ uploadOpen }),
   setOpenDropdown: (openDropdown) => set({ openDropdown }),
+  addOnboardEmployee: (employee) => {
+    employees.unshift(employee);
+    set((state) => ({ selectedEmployee: employee, mode: 'list', employeeVersion: state.employeeVersion + 1 }));
+  },
 }));

@@ -5,12 +5,16 @@ export const useFilteredEmployees = ({
   search,
   selectedDesignations,
   selectedStatuses,
+  refreshKey = 0,
 }: {
   search: string;
   selectedDesignations: string[];
   selectedStatuses: Status[];
+  refreshKey?: number;
 }) => {
   return useMemo(() => {
+    void refreshKey;
+
     return [...employees]
       .filter((employee) => {
         const query = search.trim().toLowerCase();
@@ -28,5 +32,5 @@ export const useFilteredEmployees = ({
         return matchesSearch && matchesDesignation && matchesStatus;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [search, selectedDesignations, selectedStatuses]);
+  }, [search, selectedDesignations, selectedStatuses, refreshKey]);
 };

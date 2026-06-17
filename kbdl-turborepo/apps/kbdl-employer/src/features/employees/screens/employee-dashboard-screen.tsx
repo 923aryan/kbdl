@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import {
-  ArrowLeft,
   Bell,
   Briefcase,
   Building2,
@@ -38,6 +37,7 @@ import {
 } from 'lucide-react';
 
 import { useFilteredEmployees } from '../hooks/use-employee-hook';
+import { api } from '@/lib/api-client';
 import {
   designations,
   dropdownOptions,
@@ -62,9 +62,234 @@ const statusStyle: Record<Status, string> = {
   Active: 'border-[#4CAF50] bg-[#E5FFEB] text-[#4CAF50]',
   Inactive: 'border-[#525252] bg-[#E5E5E5] text-[#525252]',
   'On Boarding': 'border-[#0658C2] bg-[#DBEAFF] text-[#0658C2]',
+  Onboard: 'border-[#0658C2] bg-[#DBEAFF] text-[#0658C2]',
   'On Leave': 'border-[#FFA000] bg-[#FFF4E3] text-[#FFA000]',
   Probation: 'border-[#8B5CF6] bg-[#EDE9FE] text-[#8B5CF6]',
   Absent: 'border-[#F54A4A] bg-[#FEE9E5] text-[#F54A4A]',
+};
+
+type OnboardFormState = {
+  fullName: string;
+  mobileNumber: string;
+  email: string;
+  employeeNumber: string;
+  karigariId: string;
+  dateOfBirth: string;
+  gender: string;
+  address: string;
+  bloodGroup: string;
+  emergencyContactName: string;
+  emergencyContactRelation: string;
+  emergencyContactNumber: string;
+  designation: string;
+  department: string;
+  branchLocation: string;
+  reportingSupervisor: string;
+  employeeType: string;
+  joiningDate: string;
+  shiftAssignment: string;
+  workLocation: string;
+  skillTrade: string;
+  experienceYears: string;
+  certificationLicenses: string;
+  safetyTrainingCompleted: string;
+  upiId: string;
+  upiName: string;
+  wageAmount: string;
+  upiPaymentFrequency: string;
+  accountHolderName: string;
+  accountNumber: string;
+  bankName: string;
+  ifscCode: string;
+  aadhaarNumber: string;
+  panNumber: string;
+  drivingLicenseNumber: string;
+  identityDocuments: string;
+  basicSalary: string;
+  salaryType: string;
+  salaryPaymentFrequency: string;
+  overtimeEligible: string;
+  pfApplicable: string;
+  esiApplicable: string;
+  additionalDocuments: string;
+  notes: string;
+};
+
+const emptyOnboardForm: OnboardFormState = {
+  fullName: '',
+  mobileNumber: '',
+  email: '',
+  employeeNumber: '',
+  karigariId: '',
+  dateOfBirth: '',
+  gender: '',
+  address: '',
+  bloodGroup: '',
+  emergencyContactName: '',
+  emergencyContactRelation: '',
+  emergencyContactNumber: '',
+  designation: '',
+  department: '',
+  branchLocation: '',
+  reportingSupervisor: '',
+  employeeType: '',
+  joiningDate: '',
+  shiftAssignment: '',
+  workLocation: '',
+  skillTrade: '',
+  experienceYears: '',
+  certificationLicenses: '',
+  safetyTrainingCompleted: 'Yes',
+  upiId: '',
+  upiName: '',
+  wageAmount: '',
+  upiPaymentFrequency: '',
+  accountHolderName: '',
+  accountNumber: '',
+  bankName: '',
+  ifscCode: '',
+  aadhaarNumber: '',
+  panNumber: '',
+  drivingLicenseNumber: '',
+  identityDocuments: '',
+  basicSalary: '',
+  salaryType: '',
+  salaryPaymentFrequency: '',
+  overtimeEligible: 'Yes',
+  pfApplicable: 'Yes',
+  esiApplicable: 'Yes',
+  additionalDocuments: '',
+  notes: '',
+};
+
+const displayOrDash = (value?: string) => value?.trim() || '-';
+
+const normalizePhoneNumber = (value: string) => {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, '');
+
+  if (trimmed.startsWith('+91') && /^\+91\d{10}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (digits.length === 10) {
+    return `+91${digits}`;
+  }
+
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return `+${digits}`;
+  }
+
+  return trimmed;
+};
+
+const formatSalary = (amount: string, type: string) => {
+  if (!amount.trim()) {
+    return '-';
+  }
+
+  return type.trim() ? `${amount.trim()} / ${type.trim()}` : amount.trim();
+};
+
+const createOnboardDetails = (form: OnboardFormState, paymentMethod: PaymentMethod): Employee['onboardDetails'] => ({
+  personal: [
+    ['Full Name', form.fullName],
+    ['Date of Birth', form.dateOfBirth],
+    ['Gender', form.gender],
+    ['Blood Group', form.bloodGroup],
+  ],
+  contact: [
+    ['Mobile Number', form.mobileNumber],
+    ['Email', form.email],
+    ['Present Address', form.address],
+    ['Permanent Address', form.address],
+  ],
+  emergency: [
+    ['Contact Name', form.emergencyContactName],
+    ['Relation', form.emergencyContactRelation],
+    ['Mobile Number', form.emergencyContactNumber],
+  ],
+  identity: [
+    ['Aadhaar Number', form.aadhaarNumber],
+    ['PAN Number', form.panNumber],
+    ['Driving License', form.drivingLicenseNumber],
+    ['Karigari ID', form.karigariId],
+  ],
+  other: [
+    ['Employee Type', form.employeeType],
+    ['Safety Training Completed', form.safetyTrainingCompleted],
+  ],
+  job: [
+    ['Department', form.department],
+    ['Job Title', form.designation],
+    ['Job Role', form.skillTrade],
+    ['Job Type', form.employeeType],
+    ['Work Location', form.branchLocation],
+    ['Date of Joining', form.joiningDate],
+    ['Employee Status', ''],
+  ],
+  work: [
+    ['Shift', form.shiftAssignment],
+    ['Work Location / Site', form.workLocation],
+    ['Experience (Years)', form.experienceYears],
+    ['Certification / Licenses', form.certificationLicenses],
+  ],
+  payroll: [
+    ['Reporting Manager', form.reportingSupervisor],
+    ['Payment Mode', paymentMethod === 'bank' ? 'Bank Transfer' : paymentMethod === 'upi' ? 'UPI Transfer' : 'Cash Payment'],
+    ['Basic Salary / Wage', form.basicSalary],
+    ['Salary / Wage Type', form.salaryType],
+    ['Payment Frequency', form.salaryPaymentFrequency || form.upiPaymentFrequency],
+    ['CTC', formatSalary(form.basicSalary || form.wageAmount, form.salaryType || form.upiPaymentFrequency)],
+  ],
+  bank: [
+    ['Bank Name', form.bankName],
+    ['Account Number', form.accountNumber],
+    ['IFSC Code', form.ifscCode],
+    ['Account Holder Name', form.accountHolderName],
+    ['UPI ID', form.upiId],
+    ['Name on UPI', form.upiName],
+  ],
+  payment: [
+    ['Payment Mode', paymentMethod === 'bank' ? 'Bank Transfer' : paymentMethod === 'upi' ? 'UPI Transfer' : 'Cash Payment'],
+    ['Basic Salary / Wage', form.basicSalary || form.wageAmount],
+    ['Payment Frequency', form.salaryPaymentFrequency || form.upiPaymentFrequency],
+    ['Overtime Eligible', form.overtimeEligible],
+    ['PF Applicable', form.pfApplicable],
+    ['ESI Applicable', form.esiApplicable],
+  ],
+  documents: [
+    ['Aadhaar Card', form.aadhaarNumber, form.identityDocuments, '-', form.identityDocuments ? 'Uploaded' : 'Pending Upload'],
+    ['PAN Card', form.panNumber, form.identityDocuments, '-', form.identityDocuments ? 'Uploaded' : 'Pending Upload'],
+    ['Driving License', form.drivingLicenseNumber, form.identityDocuments, '-', form.drivingLicenseNumber && form.identityDocuments ? 'Uploaded' : 'Pending Upload'],
+    ['Additional Documents', '-', form.additionalDocuments, '-', form.additionalDocuments ? 'Uploaded' : 'Pending Upload'],
+  ],
+  notes: form.notes,
+});
+
+const hasRequiredDocuments = (form: OnboardFormState) =>
+  Boolean(form.aadhaarNumber.trim() && form.panNumber.trim() && form.identityDocuments.trim() && form.additionalDocuments.trim());
+
+const createEmployeeFromForm = (form: OnboardFormState, paymentMethod: PaymentMethod, action: 'draft' | 'submit'): Employee => {
+  const employeeNo = form.employeeNumber.trim();
+  const generatedId = `EMP${Date.now().toString().slice(-6)}`;
+  const status: Status = action === 'submit' && hasRequiredDocuments(form) ? 'Probation' : 'Onboard';
+
+  return {
+    id: employeeNo || generatedId,
+    uid: form.karigariId.trim() || '-',
+    name: displayOrDash(form.fullName),
+    email: displayOrDash(form.email),
+    phone: displayOrDash(normalizePhoneNumber(form.mobileNumber)),
+    designation: displayOrDash(form.designation),
+    status,
+    rating: 0,
+    joined: displayOrDash(form.joiningDate),
+    location: displayOrDash(form.branchLocation || form.workLocation),
+    department: displayOrDash(form.department),
+    salary: formatSalary(form.basicSalary || form.wageAmount, form.salaryType || form.upiPaymentFrequency),
+    onboardDetails: createOnboardDetails(form, paymentMethod),
+  };
 };
 
 export const EmployeeDashboardScreen = () => {
@@ -75,6 +300,7 @@ export const EmployeeDashboardScreen = () => {
     search,
     selectedDesignations,
     selectedStatuses,
+    employeeVersion,
     paymentMethod,
     uploadOpen,
     setMode,
@@ -85,12 +311,14 @@ export const EmployeeDashboardScreen = () => {
     setSelectedStatuses,
     setPaymentMethod,
     setUploadOpen,
+    addOnboardEmployee,
   } = useEmployeeStore();
 
   const filteredEmployees = useFilteredEmployees({
     search,
     selectedDesignations,
     selectedStatuses,
+    refreshKey: employeeVersion,
   });
 
   const openDetails = (employee: Employee, tab: DetailTab = 'Personal Info') => {
@@ -131,6 +359,7 @@ export const EmployeeDashboardScreen = () => {
           <AddEmployee
             paymentMethod={paymentMethod}
             onPaymentMethod={setPaymentMethod}
+            onAddEmployee={addOnboardEmployee}
             onBack={() => setMode('list')}
           />
         )}
@@ -468,10 +697,10 @@ function EmployeeDetails({
         ))}
       </div>
       <div className="mt-5">
-        {activeTab === 'Personal Info' && <PersonalInfo />}
-        {activeTab === 'Job & Work Info' && <JobWorkInfo />}
-        {activeTab === 'Documents' && <DocumentsTab onUpload={onUpload} />}
-        {activeTab === 'Bank & Payments' && <BankPayments />}
+        {activeTab === 'Personal Info' && <PersonalInfo employee={employee} />}
+        {activeTab === 'Job & Work Info' && <JobWorkInfo employee={employee} />}
+        {activeTab === 'Documents' && <DocumentsTab employee={employee} onUpload={onUpload} />}
+        {activeTab === 'Bank & Payments' && <BankPayments employee={employee} />}
         {activeTab === 'Attendance' && <Attendance />}
         {activeTab === 'Leave' && <LeaveTab />}
       </div>
@@ -480,7 +709,7 @@ function EmployeeDetails({
 }
 
 function EmployeeHero({ employee }: { employee: Employee }) {
-  const [editing, setEditing] = useState(false);
+  const editing = false;
   const [draft, setDraft] = useState({
     name: employee.name,
     designation: employee.designation,
@@ -511,7 +740,7 @@ function EmployeeHero({ employee }: { employee: Employee }) {
               ) : (
                 <h2 className="text-2xl font-bold uppercase">{draft.name}</h2>
               )}
-              <StatusBadge status="Active" />
+              <StatusBadge status={employee.status} />
               <span className="inline-flex items-center gap-1 text-sm">
                 <Star className="h-4 w-4 fill-orange-400 text-orange-400" />
                 {employee.rating}
@@ -537,18 +766,15 @@ function EmployeeHero({ employee }: { employee: Employee }) {
                   <IconLine icon={Mail} text={draft.email} />
                 </>
               )}
-              <IconLine
-                icon={MapPin}
-                text="H. No. 220, Village Bir, Teh Joginder Nager, Distt Mandi (HP) - 175032"
-              />
+              <IconLine icon={MapPin} text={displayOrDash(employee.onboardDetails?.contact.find(([label]) => label === 'Present Address')?.[1])} />
             </div>
           </div>
         </div>
         <div className="grid gap-5 border-[#D3D3D3] grid-cols-2 xl:border-l xl:pl-8">
-          <HeroMetric icon={Calendar} label="Date of Joining" value="06 June 2026" />
+          <HeroMetric icon={Calendar} label="Date of Joining" value={displayOrDash(employee.joined)} />
           <HeroMetric icon={MapPin} label="Work Location" value={draft.location} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, location: value }))} />
-          <HeroMetric icon={Users} label="Reporting Manager" value="Abhinav Barwal" />
-          <HeroMetric icon={Briefcase} label="Job Type" value="Full Time" />
+          <HeroMetric icon={Users} label="Reporting Manager" value={displayOrDash(employee.onboardDetails?.payroll.find(([label]) => label === 'Reporting Manager')?.[1])} />
+          <HeroMetric icon={Briefcase} label="Job Type" value={displayOrDash(employee.onboardDetails?.job.find(([label]) => label === 'Job Type')?.[1])} />
           <HeroMetric icon={Building2} label="Department" value={draft.department} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, department: value }))} />
           <HeroMetric icon={CreditCard} label="Salary" value={draft.salary} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, salary: value }))} />
         </div>
@@ -563,10 +789,13 @@ function EmployeeHero({ employee }: { employee: Employee }) {
   );
 }
 
-function PersonalInfo() {
+function PersonalInfo({ employee }: { employee: Employee }) {
+  const details = employee.onboardDetails;
+
   return (
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
       <InfoCard title="Personal Information" icon={IdCard} rows={[
+        ...(details?.personal ?? [
         ['Full Name', 'Aman Barwal'],
         ['Date of Birth', '09 April 2002'],
         ['Gender', 'Male'],
@@ -577,9 +806,10 @@ function PersonalInfo() {
         ['Religion', 'Hindu'],
         ['Language Known', 'Hindi, Basic English'],
         ['Blood Group', 'AB+'],
+        ]),
       ]} />
       <div className="space-y-4">
-        <InfoCard title="Contact Information" icon={Phone} rows={[
+        <InfoCard title="Contact Information" icon={Phone} rows={details?.contact ?? [
           ['Mobile Number', '+91 8894853644'],
           ['Alternate Number', '+91 7865784536'],
           ['Email', 'abhi7321@gmail.com'],
@@ -588,7 +818,7 @@ function PersonalInfo() {
         ]} />
                 </div>
         <div className="space-y-4">
-        <InfoCard title="Emergency Contact" icon={Phone} rows={[
+        <InfoCard title="Emergency Contact" icon={Phone} rows={details?.emergency ?? [
           ['Contact Name', 'Suresh Yadav'],
           ['Relation', 'Father'],
           ['Mobile Number', '+91 8894853644'],
@@ -596,7 +826,7 @@ function PersonalInfo() {
 
       </div>
       <div className="space-y-4">
-        <InfoCard title="Identity Details" icon={IdCard} rows={[
+        <InfoCard title="Identity Details" icon={IdCard} rows={details?.identity ?? [
           ['Aadhaar Number', 'xxxx-xxxx-1234'],
           ['PAN Number', 'ABCDE1234F'],
           ['Voter ID', 'HP/07/2020/12345'],
@@ -607,7 +837,7 @@ function PersonalInfo() {
         ]} />
       </div>
       <div className="space-y-4">
-        <InfoCard title="Other Information" icon={Briefcase} rows={[
+        <InfoCard title="Other Information" icon={Briefcase} rows={details?.other ?? [
           ['Employee Type', 'Worker'],
           ['Probation Period', '3 Months'],
           ['Notice Period', '15 Days'],
@@ -619,10 +849,16 @@ function PersonalInfo() {
   );
 }
 
-function JobWorkInfo() {
+function JobWorkInfo({ employee }: { employee: Employee }) {
+  const details = employee.onboardDetails;
+  const jobRows = details?.job.map(([label, value]): string[] => [
+    label || '',
+    label === 'Employee Status' ? employee.status : value || '',
+  ]);
+
   return (
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-      <InfoCard title="Job Information" icon={Briefcase} rows={[
+      <InfoCard title="Job Information" icon={Briefcase} rows={jobRows ?? [
         ['Department', 'Maintenance'],
         ['Job Title', 'Electrician'],
         ['Job Role', 'Electrician'],
@@ -632,7 +868,7 @@ function JobWorkInfo() {
         ['Confirmation Date', '02 Sep 2026'],
         ['Employee Status', 'Active'],
       ]} />
-      <InfoCard title="Work Details" icon={Wrench} rows={[
+      <InfoCard title="Work Details" icon={Wrench} rows={details?.work ?? [
         ['Shift', 'General Shift'],
         ['Working Time', '06:00 AM - 05:00PM'],
         ['Break Time', '01:00 PM - 02:00PM'],
@@ -641,7 +877,7 @@ function JobWorkInfo() {
         ['Overtime Type', 'Paid'],
         ['Travel Required', 'No'],
       ]} />
-      <InfoCard title="Reporting & Payroll" icon={Users} rows={[
+      <InfoCard title="Reporting & Payroll" icon={Users} rows={details?.payroll ?? [
         ['Reporting Manager', 'Abhinav Barwal'],
         ['Payroll Group', 'Monthly Paid Worker'],
         ['Pay Schedule', 'Monthly'],
@@ -653,8 +889,8 @@ function JobWorkInfo() {
   );
 }
 
-function DocumentsTab({ onUpload }: { onUpload: () => void }) {
-  const [documents, setDocuments] = useState([
+function DocumentsTab({ employee, onUpload }: { employee: Employee; onUpload: () => void }) {
+  const [documents, setDocuments] = useState(employee.onboardDetails?.documents ?? [
     ['Aadhaar Card', 'XXXX-XXXX-5476', '30 May 2025', '-', 'Uploaded'],
     ['PAN Card', 'DFGTH6745A', '30 May 2025', '-', 'Uploaded'],
     ['Driving License', 'HP29 5676XXXX', '30 May 2025', '09 June 2032', 'Uploaded'],
@@ -768,7 +1004,8 @@ function DocumentsTab({ onUpload }: { onUpload: () => void }) {
   );
 }
 
-function BankPayments() {
+function BankPayments({ employee }: { employee: Employee }) {
+  const details = employee.onboardDetails;
   const history = Array.from({ length: 10 }, (_, index) => ({
     id: index,
     month: 'May 2026',
@@ -782,7 +1019,7 @@ function BankPayments() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-2">
-        <InfoCard title="Bank Details" icon={Landmark} rows={[
+        <InfoCard title="Bank Details" icon={Landmark} rows={details?.bank ?? [
           ['Bank Name', 'State Bank of India'],
           ['Account Number', '100085678394'],
           ['IFSC Code', 'ADHF000678'],
@@ -790,7 +1027,7 @@ function BankPayments() {
           ['Account Holder Name', 'Abhinav Barwal'],
           ['Account Type', 'Savings'],
         ]} />
-        <InfoCard title="Salary & Payment Details" icon={WalletCards} rows={[
+        <InfoCard title="Salary & Payment Details" icon={WalletCards} rows={details?.payment ?? [
           ['Payroll Group', 'Monthly Paid Worker'],
           ['Payroll Schedule', 'Monthly'],
           ['Payment Mode', 'Bank Transfer'],
@@ -1109,48 +1346,106 @@ function buildCalendarDays(date: Date) {
 function AddEmployee({
   paymentMethod,
   onPaymentMethod,
+  onAddEmployee,
   onBack,
 }: {
   paymentMethod: PaymentMethod;
   onPaymentMethod: (method: PaymentMethod) => void;
+  onAddEmployee: (employee: Employee) => void;
   onBack: () => void;
 }) {
+  const [form, setForm] = useState<OnboardFormState>(emptyOnboardForm);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState('');
+  const setValue = (key: keyof OnboardFormState, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    setMessage('');
+  };
+
+  const saveEmployee = async (action: 'draft' | 'submit') => {
+    setSubmitting(true);
+    setMessage('');
+
+    try {
+      const phone_no = normalizePhoneNumber(form.mobileNumber);
+      const payload = {
+        ...(phone_no && phone_no !== '-' ? { phone_no } : {}),
+        ...(form.karigariId.trim() ? { karigari_id: form.karigariId.trim() } : {}),
+        ...(form.employeeNumber.trim() ? { employee_no: form.employeeNumber.trim() } : {}),
+      };
+
+      if (payload.phone_no || payload.karigari_id) {
+        await api.post('/operations/employer/onboard', payload);
+      }
+
+      onAddEmployee(createEmployeeFromForm(form, paymentMethod, action));
+    } catch (error) {
+      const fallbackMessage = 'Unable to onboard employee. Please check worker phone number or Karigari ID.';
+      setMessage(error instanceof Error ? error.message : fallbackMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  const identitySalaryPanels = (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <FormPanel title="Identity Documents" icon={IdCard} columns="single">
+        <Field label="Aadhaar Number" required placeholder="Enter Aadhaar Number" value={form.aadhaarNumber} onChange={(value) => setValue('aadhaarNumber', value)} />
+        <Field label="PAN Number" required placeholder="Enter PAN Number" value={form.panNumber} onChange={(value) => setValue('panNumber', value)} />
+        <Field label="Driving License Number (if applicable)" placeholder="Enter Driving License Number" value={form.drivingLicenseNumber} onChange={(value) => setValue('drivingLicenseNumber', value)} />
+        <UploadBox label="Upload Documents" required onFileSelect={(file) => setValue('identityDocuments', file.name)} fileName={form.identityDocuments} />
+      </FormPanel>
+      <FormPanel title="Salary Details" icon={WalletCards} columns="single">
+        <Field label="Basic Salary / Wage" required placeholder="Enter amount" value={form.basicSalary} onChange={(value) => setValue('basicSalary', value)} />
+        <SelectField label="Salary / Wage Type" required placeholder="Select Type" options={dropdownOptions.salaryType} value={form.salaryType} onChange={(value) => setValue('salaryType', value)} />
+        <SelectField label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} value={form.salaryPaymentFrequency} onChange={(value) => setValue('salaryPaymentFrequency', value)} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <RadioGroup label="Overtime Eligible" required options={['Yes', 'No']} value={form.overtimeEligible} onChange={(value) => setValue('overtimeEligible', value)} />
+          <RadioGroup label="PF Applicable" required options={['Yes', 'No']} value={form.pfApplicable} onChange={(value) => setValue('pfApplicable', value)} />
+          <RadioGroup label="ESI Applicable" required options={['Yes', 'No']} value={form.esiApplicable} onChange={(value) => setValue('esiApplicable', value)} />
+        </div>
+      </FormPanel>
+    </div>
+  );
+
   return (
     <section className="rounded-[24px] border border-[#D3D3D3] bg-white p-5 shadow-sm sm:p-7">
       <PageTitle title="ADD NEW EMPLOYEE" crumb="Employee > Add New Employee" onBack={onBack} />
       <div className="mt-6 space-y-4">
         <FormPanel title="Personal Information" icon={IdCard}>
-          <Field label="Full Name" required placeholder="Enter full name" />
-          <Field label="Mobile Number" required placeholder="Enter mobile number" />
-          <Field label="Date of Birth" required placeholder="DD / MM / YYYY" icon={Calendar} />
-          <SelectField label="Gender" required placeholder="Select Gender" options={dropdownOptions.gender} />
-          <Field label="Address" required placeholder="Enter complete address" />
-          <SelectField label="Blood Group" required placeholder="Select Blood Group" options={dropdownOptions.blood} />
-          <Field label="Emergency Contact Name" required placeholder="Enter emergency contact name" />
-          <Field label="Emergency Contact Relation" required placeholder="Enter emergency contact relation" />
-          <Field label="Emergency Contact Number" required placeholder="Enter emergency contact number" />
+          <Field label="Full Name" required placeholder="Enter full name" value={form.fullName} onChange={(value) => setValue('fullName', value)} />
+          <Field label="Mobile Number" required placeholder="Enter mobile number" value={form.mobileNumber} onChange={(value) => setValue('mobileNumber', value)} />
+          <Field label="Email" placeholder="Enter email" value={form.email} onChange={(value) => setValue('email', value)} />
+          <Field label="Date of Birth" required placeholder="15 June 2026" icon={Calendar} value={form.dateOfBirth} onChange={(value) => setValue('dateOfBirth', value)} />
+          <SelectField label="Gender" required placeholder="Select Gender" options={dropdownOptions.gender} value={form.gender} onChange={(value) => setValue('gender', value)} />
+          <Field label="Address" required placeholder="Enter complete address" value={form.address} onChange={(value) => setValue('address', value)} />
+          <SelectField label="Blood Group" required placeholder="Select Blood Group" options={dropdownOptions.blood} value={form.bloodGroup} onChange={(value) => setValue('bloodGroup', value)} />
+          <Field label="Emergency Contact Name" required placeholder="Enter emergency contact name" value={form.emergencyContactName} onChange={(value) => setValue('emergencyContactName', value)} />
+          <Field label="Emergency Contact Relation" required placeholder="Enter emergency contact relation" value={form.emergencyContactRelation} onChange={(value) => setValue('emergencyContactRelation', value)} />
+          <Field label="Emergency Contact Number" required placeholder="Enter emergency contact number" value={form.emergencyContactNumber} onChange={(value) => setValue('emergencyContactNumber', value)} />
         </FormPanel>
 
         <FormPanel title="Job Information" icon={Briefcase}>
-          <SelectField label="Designation" required placeholder="Select Designation" options={designations} />
-          <SelectField label="Department" required placeholder="Select Department" options={dropdownOptions.department} />
-          <SelectField label="Branch / Location" required placeholder="Select Branch" options={dropdownOptions.branch} />
-          <SelectField label="Reporting Supervisor" required placeholder="Select Supervisor" options={dropdownOptions.supervisor} />
-          <SelectField label="Employee Type" required placeholder="Select Employee Type" options={dropdownOptions.type} />
-          <Field label="Joining Date" required placeholder="DD / MM / YYYY" icon={Calendar} />
-          <SelectField label="Shift Assignment" required placeholder="Select Shift" options={dropdownOptions.shift} />
-          <Field label="Work Location / Site" placeholder="Enter work location or site" />
+          <Field label="Employee Number" placeholder="Enter employee number" value={form.employeeNumber} onChange={(value) => setValue('employeeNumber', value)} />
+          <Field label="Karigari ID" placeholder="Enter Karigari ID" value={form.karigariId} onChange={(value) => setValue('karigariId', value)} />
+          <SelectField label="Designation" required placeholder="Select Designation" options={designations} value={form.designation} onChange={(value) => setValue('designation', value)} />
+          <SelectField label="Department" required placeholder="Select Department" options={dropdownOptions.department} value={form.department} onChange={(value) => setValue('department', value)} />
+          <SelectField label="Branch / Location" required placeholder="Select Branch" options={dropdownOptions.branch} value={form.branchLocation} onChange={(value) => setValue('branchLocation', value)} />
+          <SelectField label="Reporting Supervisor" required placeholder="Select Supervisor" options={dropdownOptions.supervisor} value={form.reportingSupervisor} onChange={(value) => setValue('reportingSupervisor', value)} />
+          <SelectField label="Employee Type" required placeholder="Select Employee Type" options={dropdownOptions.type} value={form.employeeType} onChange={(value) => setValue('employeeType', value)} />
+          <Field label="Joining Date" required placeholder="15 June 2026" icon={Calendar} value={form.joiningDate} onChange={(value) => setValue('joiningDate', value)} />
+          <SelectField label="Shift Assignment" required placeholder="Select Shift" options={dropdownOptions.shift} value={form.shiftAssignment} onChange={(value) => setValue('shiftAssignment', value)} />
+          <Field label="Work Location / Site" placeholder="Enter work location or site" value={form.workLocation} onChange={(value) => setValue('workLocation', value)} />
         </FormPanel>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <FormPanel title="Work Details" icon={Wrench} columns="single">
             <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField label="Skill / Trade" required placeholder="Select Skill / Trade" options={dropdownOptions.skill} />
-              <Field label="Experience (Years)" required placeholder="Enter experience in years" />
+            <SelectField label="Skill / Trade" required placeholder="Select Skill / Trade" options={dropdownOptions.skill} value={form.skillTrade} onChange={(value) => setValue('skillTrade', value)} />
+              <Field label="Experience (Years)" required placeholder="Enter experience in years" value={form.experienceYears} onChange={(value) => setValue('experienceYears', value)} />
             </div>
              <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Certification / Licenses" placeholder="Enter Certifications (if any)" />
-              <RadioGroup label="Safety Training Completed" required options={['Yes', 'No']} value="Yes" />
+              <Field label="Certification / Licenses" placeholder="Enter Certifications (if any)" value={form.certificationLicenses} onChange={(value) => setValue('certificationLicenses', value)} />
+              <RadioGroup label="Safety Training Completed" required options={['Yes', 'No']} value={form.safetyTrainingCompleted} onChange={(value) => setValue('safetyTrainingCompleted', value)} />
              </div>
           </FormPanel>
           <FormPanel title="Payment Method" icon={CreditCard} columns="single">
@@ -1164,58 +1459,47 @@ function AddEmployee({
 
         {paymentMethod === 'upi' && (
           <FormPanel title="UPI Transfer" icon={WalletCards}>
-            <Field label="UPI ID" required placeholder="Enter UPI ID" />
-            <Field label="Name on UPI" required placeholder="Enter name on UPI" />
-            <Field label="Wage Amount" required placeholder="Enter wage amount" />
-            <SelectField label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} />
+            <Field label="UPI ID" required placeholder="Enter UPI ID" value={form.upiId} onChange={(value) => setValue('upiId', value)} />
+            <Field label="Name on UPI" required placeholder="Enter name on UPI" value={form.upiName} onChange={(value) => setValue('upiName', value)} />
+            <Field label="Wage Amount" required placeholder="Enter wage amount" value={form.wageAmount} onChange={(value) => setValue('wageAmount', value)} />
+            <SelectField label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} value={form.upiPaymentFrequency} onChange={(value) => setValue('upiPaymentFrequency', value)} />
           </FormPanel>
         )}
 
         {paymentMethod === 'bank' && (
           <>
             <FormPanel title="Bank Details" icon={Landmark}>
-              <Field label="Account Holder Name" required placeholder="Enter Account Holder Name" />
-              <Field label="Account Number" required placeholder="Enter Account Number" />
-              <SelectField label="Bank Name" required placeholder="Select Shift" options={dropdownOptions.bank} />
-              <Field label="IFSC Code" required placeholder="Enter IFSC Code" />
+              <Field label="Account Holder Name" required placeholder="Enter Account Holder Name" value={form.accountHolderName} onChange={(value) => setValue('accountHolderName', value)} />
+              <Field label="Account Number" required placeholder="Enter Account Number" value={form.accountNumber} onChange={(value) => setValue('accountNumber', value)} />
+              <SelectField label="Bank Name" required placeholder="Select Bank" options={dropdownOptions.bank} value={form.bankName} onChange={(value) => setValue('bankName', value)} />
+              <Field label="IFSC Code" required placeholder="Enter IFSC Code" value={form.ifscCode} onChange={(value) => setValue('ifscCode', value)} />
             </FormPanel>
-            <div className="grid gap-4 xl:grid-cols-2">
-              <FormPanel title="Identity Documents" icon={IdCard} columns="single">
-                <Field label="Aadhaar Number" required placeholder="Enter Aadhaar Number" />
-                <Field label="PAN Number" required placeholder="Enter PAN Number" />
-                <Field label="Driving License Number (if applicable)" placeholder="Enter Driving License Number" />
-                <UploadBox label="Upload Documents" required />
-              </FormPanel>
-              <FormPanel title="Salery Details" icon={WalletCards} columns="single">
-                <Field label="Basic Salary / Wage" required placeholder="Enter amount" />
-                <SelectField label="Salary / Wage Type" required placeholder="Select Type" options={dropdownOptions.salaryType} />
-                <SelectField label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} />
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <RadioGroup label="Overtime Eligible" required options={['Yes', 'No']} value="Yes" />
-                  <RadioGroup label="PF Applicable" required options={['Yes', 'No']} value="Yes" />
-                  <RadioGroup label="ESI Applicable" required options={['Yes', 'No']} value="Yes" />
-                </div>
-              </FormPanel>
-            </div>
+            {identitySalaryPanels}
           </>
         )}
 
+        {paymentMethod !== 'bank' && identitySalaryPanels}
+
         <FormPanel title="Additional Documents & Notes" icon={FileText}>
-          <UploadBox label="Additional Documents" />
+          <UploadBox label="Additional Documents" onFileSelect={(file) => setValue('additionalDocuments', file.name)} fileName={form.additionalDocuments} />
           <label className="block">
             <span className="mb-2 block text-sm font-semibold">Notes (Optional)</span>
             <textarea
+              value={form.notes}
+              onChange={(event) => setValue('notes', event.target.value)}
               className="h-[150px] w-full resize-none rounded-lg border border-[#D3D3D3] px-4 py-3 text-sm outline-none focus:border-[#0658C2]"
               placeholder="Enter any additional notes"
             />
           </label>
         </FormPanel>
 
+        {message && <p className="rounded-lg bg-[#FEE9E5] px-4 py-3 text-sm font-semibold text-[#F54A4A]">{message}</p>}
+
         <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:justify-end">
-          <button className="h-12 rounded-xl border border-[#0658C2] px-8 text-base font-semibold text-[#0658C2]">
+          <button type="button" disabled={submitting} onClick={() => saveEmployee('draft')} className="h-12 rounded-xl border border-[#0658C2] px-8 text-base font-semibold text-[#0658C2] disabled:opacity-60">
             Save as Draft
           </button>
-          <button className="h-12 rounded-xl bg-[#0658C2] px-8 text-base font-semibold text-white">
+          <button type="button" disabled={submitting} onClick={() => saveEmployee('submit')} className="h-12 rounded-xl bg-[#0658C2] px-8 text-base font-semibold text-white disabled:opacity-60">
             Submit Profile
           </button>
         </div>
@@ -1304,11 +1588,15 @@ function Field({
   placeholder,
   required,
   icon: Icon,
+  value,
+  onChange,
 }: {
   label: string;
   placeholder: string;
   required?: boolean;
   icon?: typeof User;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="block">
@@ -1317,6 +1605,8 @@ function Field({
       </span>
       <span className="relative block">
         <input
+          value={value}
+          onChange={(event) => onChange?.(event.target.value)}
           className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 pr-11 text-sm outline-none focus:border-[#0658C2]"
           placeholder={placeholder}
         />
@@ -1331,16 +1621,21 @@ function SelectField({
   placeholder,
   required,
   options,
+  value,
+  onChange,
 }: {
   label: string;
   placeholder: string;
   required?: boolean;
   options: string[];
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   const { openDropdown, setOpenDropdown } = useEmployeeStore();
   const dropdownId = `select-${label}`;
   const open = openDropdown === dropdownId;
-  const [value, setValue] = useState('');
+  const [localValue, setLocalValue] = useState('');
+  const selectedValue = value ?? localValue;
 
   return (
     <label className="relative block">
@@ -1352,7 +1647,7 @@ function SelectField({
         onClick={() => setOpenDropdown(open ? null : dropdownId)}
         className="flex h-11 w-full items-center justify-between rounded-lg border border-gray-100 px-4 text-left text-sm text-[#676767] focus:border-[#0658C2] cursor-pointer"
       >
-        {value || placeholder}
+        {selectedValue || placeholder}
         <ChevronDown className="h-5 w-5 text-black" />
       </button>
       {open && (
@@ -1362,16 +1657,17 @@ function SelectField({
               key={option}
               type="button"
               onClick={() => {
-                setValue(option);
+                setLocalValue(option);
+                onChange?.(option);
                 setOpenDropdown(null);
               }}
               className={`group flex w-full items-center mb-1 justify-between rounded-md cursor-pointer border border-gray-100 px-[16px] py-[9px] text-[14px]text-left hover:bg-[#DBEAFF] hover:border-transparent text-sm ${
-                value === option ? 'bg-[#DBEAFF] text-[#0658C2]' : 'hover:bg-[#DBEAFF]'
+                selectedValue === option ? 'bg-[#DBEAFF] text-[#0658C2]' : 'hover:bg-[#DBEAFF]'
               }`}
             >
               {option}
-              <span className={`h-4 w-4 rounded border text-[#0658C2] group-hover:bg-white group-hover:border-transparent ${value === option ? 'border-transparent bg-white' : 'border-[#D3D3D3]'}`}>
-                {value === option && (
+              <span className={`h-4 w-4 rounded border text-[#0658C2] group-hover:bg-white group-hover:border-transparent ${selectedValue === option ? 'border-transparent bg-white' : 'border-[#D3D3D3]'}`}>
+                {selectedValue === option && (
                   <span className="relative block h-4 w-4 rounded">
                     <span className="absolute inset-0 bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] top-[-6px] left-[2px] bg-center bg-no-repeat" />
                   </span>
@@ -1390,11 +1686,13 @@ function RadioGroup({
   options,
   value,
   required,
+  onChange,
 }: {
   label: string;
   options: string[];
   value: string;
   required?: boolean;
+  onChange?: (value: string) => void;
 }) {
   const [selected, setSelected] = useState(value);
 
@@ -1405,7 +1703,10 @@ function RadioGroup({
       </p>
       <div className="flex flex-wrap gap-6">
         {options.map((option) => (
-          <button key={option} type="button" onClick={() => setSelected(option)} className="inline-flex items-center gap-2 cursor-pointer">
+          <button key={option} type="button" onClick={() => {
+            setSelected(option);
+            onChange?.(option);
+          }} className="inline-flex items-center gap-2 cursor-pointer">
           <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${selected === option ? "border-[#0658C2] ring-4 ring-blue-100" : "border-gray-300"}`}>
             {selected === option && (
               <span className="h-2 w-2 rounded-full bg-blue-600" />
@@ -1435,82 +1736,18 @@ function PaymentOption({ label, active, onClick }: { label: string; active: bool
     </button>
   );
 }
-
-// function UploadBox({ label, required }: { label: string; required?: boolean }) {
-//   return (
-//     <label className="block">
-//       <span className="mb-2 block text-sm font-semibold">
-//         {label} {required && <span className="text-[#F54A4A]">*</span>}
-//       </span>
-//       <div className="flex h-[150px] flex-col items-center justify-center rounded-lg border border-dashed border-[#D3D3D3] bg-[#F9FAFF] text-center">
-//         <UploadCloud className="mb-2 h-7 w-7 text-[#0658C2]" />
-//         <p className="text-sm text-[#676767]">Click to upload or drag and drop</p>
-//         <p className="text-xs text-[#676767]">PDF, JPG, PNG (Max, 5MB each)</p>
-//       </div>
-//     </label>
-//   );
-// }
-
-// function UploadModal({ onClose }: { onClose: () => void }) {
-//   return (
-//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 backdrop-blur-sm">
-//       <div className="w-full max-w-[680px] rounded-xl bg-white p-6 shadow-2xl">
-//         <div className="flex items-center justify-between">
-//           <SectionHeading icon={FileText} title="Upload Document" />
-//           <button onClick={onClose} aria-label="Close">
-//             <X className="h-6 w-6" />
-//           </button>
-//         </div>
-//         <div className="mt-8 flex h-[155px] flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-[#FAFAFA] text-center">
-//           <UploadCloud className="mb-2 h-7 w-7 text-[#0658C2]" />
-//           <p className="text-sm text-[#676767]">Click to upload or drag and drop</p>
-//           <p className="text-xs text-[#676767]">PDF, JPG, PNG (Max, 5MB each)</p>
-//         </div>
-//         <div className="mt-5 flex items-center gap-4 rounded-xl border border-[#D3D3D3] p-3 shadow-sm">
-//           <div className="h-10 w-16 rounded bg-orange-50 ring-1 ring-orange-200" />
-//           <div className="flex-1">
-//             <p className="text-sm font-semibold">Aadhaar_Card_Ramesh_Yadav.jpg</p>
-//             <p className="text-xs text-[#676767]">1.24 MB</p>
-//           </div>
-//           <Check className="h-5 w-5 rounded-full bg-[#E5FFEB] p-1 text-[#4CAF50]" />
-//           <Trash2 className="h-5 w-5 text-[#0658C2]" />
-//         </div>
-//         <h3 className="mt-6 text-base font-semibold">Document Preview</h3>
-//         <div className="mx-auto mt-5 h-[220px] max-w-[350px] rounded bg-white p-5 text-center shadow-sm ring-1 ring-gray-100">
-//           <div className="mx-auto mb-3 h-10 w-28 rounded bg-[#E5FFEB]" />
-//           <div className="grid grid-cols-[80px_1fr] gap-4 text-left text-xs">
-//             <div className="h-24 rounded bg-gray-200" />
-//             <div>
-//               <p className="font-semibold">Ramesh Yadav</p>
-//               <p>01/01/1990</p>
-//               <p>Male</p>
-//               <div className="mt-3 h-20 w-20 bg-[linear-gradient(45deg,#111_25%,transparent_25%),linear-gradient(-45deg,#111_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#111_75%),linear-gradient(-45deg,transparent_75%,#111_75%)] bg-[length:10px_10px] bg-[position:0_0,0_5px,5px_-5px,-5px_0px]" />
-//             </div>
-//           </div>
-//           <p className="mt-4 border-t border-red-300 pt-2 font-semibold">1234 5678 9012</p>
-//         </div>
-//         <div className="mt-6 flex justify-end gap-4">
-//           <button onClick={onClose} className="h-14 rounded-xl border border-[#0658C2] px-8 font-semibold text-[#0658C2]">
-//             Cancel
-//           </button>
-//           <button onClick={onClose} className="h-14 rounded-xl bg-blue-600 px-8 font-semibold text-white">
-//             Upload Document
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 type UploadBoxProps = {
   label?: string;
   required?: boolean;
   onFileSelect?: (file: File) => void;
+  fileName?: string;
 };
 
 function UploadBox({
   label,
   required,
   onFileSelect,
+  fileName,
 }: UploadBoxProps) {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -1541,7 +1778,7 @@ function UploadBox({
         </p>
 
         <p className="text-xs text-[#676767]">
-          PDF, JPG, PNG (Max 5MB)
+          {fileName || 'PDF, JPG, PNG (Max 5MB)'}
         </p>
       </div>
 
