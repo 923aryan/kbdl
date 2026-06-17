@@ -15,6 +15,7 @@ import {
   RateShiftRequest,
   RejectShiftRequest,
   ReportShiftNoShowRequest,
+  SyncSavedShiftsRequest,
   UpdateShiftRequest,
   WithdrawShiftApplicationRequest,
 } from '@repo/types';
@@ -35,6 +36,7 @@ import {
   rateShiftSchema,
   rejectShiftSchema,
   reportShiftNoShowSchema,
+  syncSavedShiftsSchema,
   updateShiftSchema,
   withdrawShiftApplicationSchema,
 } from '@repo/validator/shared';
@@ -52,6 +54,7 @@ import {
   getBestShiftMatchesService,
   getCreatedShiftsForEmployeeService,
   getEmployeeShiftsService,
+  getEmployerShiftAnalyticsService,
   getEmployerShiftsService,
   getExtraShiftsService,
   getLatestShiftsService,
@@ -63,6 +66,7 @@ import {
   rateShiftService,
   rejectShiftApplicationService,
   reportShiftNoShowService,
+  syncSavedShiftsService,
   updateShiftService,
   withdrawShiftApplicationService,
 } from './shift-swap-service';
@@ -201,6 +205,12 @@ const getBestShiftMatches = async (req: Request, res: Response) => {
   sendSuccess(res, 'Best shift matches retrieved', shifts, 200);
 };
 
+const getEmployerShiftAnalytics = async (req: Request, res: Response) => {
+  const employerId = (req.payload as any).employer.id;
+  const analytics = await getEmployerShiftAnalyticsService(employerId);
+  sendSuccess(res, 'Shift analytics retrieved successfully', analytics, 200);
+};
+
 const getPendingShiftsForEmployer = async (req: Request, res: Response) => {
   const input: GetPendingShiftsRequest = validate(getPendingShiftsSchema, req);
   const employerId = (req.payload as any).employer.id;
@@ -222,8 +232,13 @@ const getShiftDetails = async (req: Request, res: Response) => {
   const input: GetShiftDetailsRequest = validate(getShiftDetailsSchema, req);
   const userType = req.role === ROLES.EMPLOYER ? ROLES.EMPLOYER : ROLES.USER;
   const userId = userType === ROLES.USER ? req.payload.user.id : req.payload.employer.id;
-  const shift = await getShiftDetailsService(userId, userType, input.params.id);
-  sendSuccess(res, 'Shift details retrieved successfully', shift, 200);
+  const { shift, meta } = await getShiftDetailsService(
+    userId,
+    userType,
+    input.params.id,
+    input.query,
+  );
+  sendSuccess(res, 'Shift details retrieved successfully', shift, 200, meta);
 };
 
 const approveShiftCompletion = async (req: Request, res: Response) => {
@@ -247,6 +262,14 @@ const rejectShift = async (req: Request, res: Response) => {
   const shift = await rejectShiftApplicationService(employerId, input.body.shift_application_id);
   sendSuccess(res, 'Shift rejected successfully', shift, 200);
 };
+
+const syncSavedShifts = async (req: Request, res: Response) => {
+  const input: SyncSavedShiftsRequest = validate(syncSavedShiftsSchema, req);
+  const userId = req.payload.user.id;
+  const shifts = await syncSavedShiftsService(userId, input.body.shift_ids);
+  sendSuccess(res, 'Saved shifts synced successfully', shifts, 200);
+};
+
 export {
   acceptShiftSwap,
   applyForPublicShifts,
@@ -258,6 +281,7 @@ export {
   getCreatedShiftsForEmployee,
   getEmployeeOpenShifts,
   getEmployeeShifts,
+  getEmployerShiftAnalytics,
   getEmployerShifts,
   getExtraShifts,
   getLatestShifts,
@@ -268,6 +292,7 @@ export {
   rateShift,
   rejectShift,
   reportShiftNoShow,
+  syncSavedShifts,
   updateShift,
   withdrawShiftApplication,
 };

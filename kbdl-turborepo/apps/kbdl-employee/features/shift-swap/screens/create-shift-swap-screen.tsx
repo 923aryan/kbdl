@@ -6,7 +6,6 @@ import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Toast from 'react-native-toast-message';
 import { z } from 'zod';
 
 // Adjust these imports to match your project structure
@@ -32,6 +31,7 @@ export default function CreateShiftScreen() {
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [employeeMobile, setEmployeeMobile] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [employeeMobileError, setEmployeeMobileError] = useState('');
 
   const { user } = useAuthStore();
   const { mutate: getReferredEmployee } = useGetReferredEmployee();
@@ -41,6 +41,7 @@ export default function CreateShiftScreen() {
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -58,6 +59,8 @@ export default function CreateShiftScreen() {
   console.log('values', watch());
 
   const shiftDateVal = watch('shift_date');
+  const shiftStartVal = watch('shift_start');
+  const shiftEndVal = watch('shift_end');
 
   const onSubmit = (data: FormData) => {
     console.log('data is ', data);
@@ -72,6 +75,10 @@ export default function CreateShiftScreen() {
       startTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
 
       endTime.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+
+      if (endTime.getTime() <= startTime.getTime()) {
+        endTime.setDate(endTime.getDate() + 1);
+      }
 
       const payload = {
         original_employee_id: user?.id || '',
@@ -110,11 +117,12 @@ export default function CreateShiftScreen() {
     };
 
     if (showAddEmployee && !employeeMobile.trim()) {
-      Toast.show({
-        type: 'error',
-        text1: 'Validation Error',
-        text2: 'Please enter employee mobile number',
-      });
+      setEmployeeMobileError('Please enter employee mobile number');
+      return;
+    }
+
+    if (showAddEmployee && !/^\+?91?\d{10}$|^\d{10}$/.test(employeeMobile.trim())) {
+      setEmployeeMobileError('Please enter a valid 10-digit mobile number');
       return;
     }
 
@@ -140,13 +148,7 @@ export default function CreateShiftScreen() {
 
           const msg = error?.message || 'Error fetching referred employee';
 
-          setErrorMessage(msg);
-
-          // Toast.show({
-          //   type: 'error',
-          //   text1: 'Error',
-          //   text2: msg,
-          // });
+          setEmployeeMobileError(msg);
         },
       },
     );
@@ -280,6 +282,22 @@ export default function CreateShiftScreen() {
                         );
                       }
                       onChange(date.toISOString());
+
+                      if (shiftEndVal) {
+                        const currentEnd = new Date(shiftEndVal);
+                        if (shiftDateVal) {
+                          const baseDate = new Date(shiftDateVal);
+                          currentEnd.setFullYear(
+                            baseDate.getFullYear(),
+                            baseDate.getMonth(),
+                            baseDate.getDate(),
+                          );
+                        }
+                        if (currentEnd.getTime() <= date.getTime()) {
+                          currentEnd.setDate(currentEnd.getDate() + 1);
+                        }
+                        setValue('shift_end', currentEnd.toISOString(), { shouldValidate: true });
+                      }
                     }}
                     icon={<Feather name="clock" size={18} color={theme.icon} />}
                     error={errors.shift_start?.message}
@@ -308,6 +326,19 @@ export default function CreateShiftScreen() {
                           baseDate.getMonth(),
                           baseDate.getDate(),
                         );
+
+                        if (shiftStartVal) {
+                          const startTime = new Date(shiftStartVal);
+                          startTime.setFullYear(
+                            baseDate.getFullYear(),
+                            baseDate.getMonth(),
+                            baseDate.getDate(),
+                          );
+
+                          if (date.getTime() <= startTime.getTime()) {
+                            date.setDate(date.getDate() + 1);
+                          }
+                        }
                       }
                       onChange(date.toISOString());
                     }}
@@ -330,7 +361,11 @@ export default function CreateShiftScreen() {
                 icon={<Feather name="smartphone" size={18} color={theme.icon} />}
                 keyboardType="phone-pad"
                 value={employeeMobile}
-                onChangeText={setEmployeeMobile}
+                onChangeText={(text) => {
+                  setEmployeeMobile(text);
+                  if (employeeMobileError) setEmployeeMobileError('');
+                }}
+                error={employeeMobileError}
               />
             </View>
           )}
@@ -345,6 +380,7 @@ export default function CreateShiftScreen() {
                 setShowAddEmployee(!showAddEmployee);
                 if (showAddEmployee) {
                   setEmployeeMobile(''); // Clear out previous input
+                  setEmployeeMobileError(''); // Clear error out
                 }
               }}
             />

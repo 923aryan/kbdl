@@ -12,6 +12,7 @@ import {
   getCreatedShiftsForEmployee,
   getEmployeeOpenShifts,
   getEmployeeShifts,
+  getEmployerShiftAnalytics,
   getEmployerShifts,
   getExtraShifts,
   getLatestShifts,
@@ -22,6 +23,7 @@ import {
   rateShift,
   rejectShift,
   reportShiftNoShow,
+  syncSavedShifts,
   updateShift,
   withdrawShiftApplication,
 } from './shift-swap-controller';
@@ -32,6 +34,7 @@ shiftSwapRouter.post('/', authenticate([ROLES.EMPLOYER, ROLES.USER]), createShif
 shiftSwapRouter.post('/accept', authenticate([ROLES.USER]), acceptShiftSwap);
 shiftSwapRouter.post('/apply', authenticate([ROLES.USER]), applyForPublicShifts);
 shiftSwapRouter.post('/withdraw', authenticate([ROLES.USER]), withdrawShiftApplication);
+shiftSwapRouter.post('/sync-saved', authenticate([ROLES.USER]), syncSavedShifts);
 
 // --- View Shifts ---
 shiftSwapRouter.get('/employee', authenticate([ROLES.USER]), getEmployeeShifts);
@@ -43,6 +46,11 @@ shiftSwapRouter.get(
   '/employer/pending',
   authenticate([ROLES.EMPLOYER]),
   getPendingShiftsForEmployer,
+);
+shiftSwapRouter.get(
+  '/employer/analytics',
+  authenticate([ROLES.EMPLOYER]),
+  getEmployerShiftAnalytics,
 );
 shiftSwapRouter.get('/extra', authenticate([ROLES.USER]), getExtraShifts);
 shiftSwapRouter.get('/latest', authenticate([ROLES.USER]), getLatestShifts);
@@ -68,15 +76,15 @@ shiftSwapRouter.post(
   getReferredEmployee,
 );
 
-// GET /api/shifts/:id
+// GET /api/shift-swap/:id
 // Returns complete shift details, including the original and replacement employee profiles
 shiftSwapRouter.get('/:id', authenticate([ROLES.EMPLOYER, ROLES.USER]), getShiftDetails);
 
-// PATCH /api/shifts/:id/approve
+// PATCH /api/shift-swap/:id/approve
 // Sets organization_approved to true and transitions status to 'completed'
 shiftSwapRouter.patch('/:id/complete', authenticate([ROLES.EMPLOYER]), approveShiftCompletion);
 
-// PATCH /api/shifts/:id/no-show
+// PATCH /api/shift-swap/:id/no-show
 // Sets no_show_reported to true, triggering alerts or penalizing the worker
 shiftSwapRouter.patch('/:id/no-show', authenticate([ROLES.EMPLOYER]), reportShiftNoShow);
 

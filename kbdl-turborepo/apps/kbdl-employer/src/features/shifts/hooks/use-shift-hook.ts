@@ -1,18 +1,29 @@
+import { api } from '@/lib/api-client';
 import type {
-  CreateShiftPayload,
-  CreateShiftResponse,
   ApproveShiftCompletionResponse,
   ApproveShiftResponse,
+  CreateShiftPayload,
+  CreateShiftResponse,
+  GetEmployerShiftAnalyticsResponse,
+  GetEmployerShiftsQuery,
   GetEmployerShiftsResponse,
+  GetPendingShiftsQuery,
+  GetPendingShiftsResponse,
   GetPublicUserProfileResponse,
-  RateShiftPayload,
-  RateShiftResponse,
-  ReportShiftNoShowResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
+  GetShiftDetailsQuery,
+  GetShiftDetailsResponse,
+  RateShiftPayload,
+  RateShiftResponse,
+  RejectShiftResponse,
+  ReportShiftNoShowResponse,
 } from '@repo/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api-client';
+
+type EmployerShiftWithPending = GetEmployerShiftsResponse[number] & {
+  pendingApplications: GetPendingShiftsResponse;
+};
 
 export const useCreateShiftSwap = () => {
   const queryClient = useQueryClient();
@@ -28,13 +39,84 @@ export const useCreateShiftSwap = () => {
   });
 };
 
-export const useGetEmployerShifts = () => {
+export const useGetShiftDetails = (shiftId: string | null, query?: GetShiftDetailsQuery) => {
   return useQuery({
-    queryKey: ['employer-shifts'],
+    queryKey: ['shift-details', shiftId, query],
+    enabled: !!shiftId,
     queryFn: async () => {
-      const response = await api.get<GetEmployerShiftsResponse>('/shift-swap/employer');
-      // console.log('SHIFT API:', response);
-      return response.data;
+      const queryString = query
+        ? '?' +
+          new URLSearchParams(
+            Object.entries(query)
+              .filter(
+                ([_, v]) => v !== undefined && v !== null && (typeof v !== 'string' || v !== ''),
+              )
+              .map(([k, v]) => [k, String(v)]),
+          ).toString()
+        : '';
+      const response = await api.get<GetShiftDetailsResponse>(
+        `/shift-swap/${shiftId}${queryString}`,
+      );
+      return response;
+    },
+  });
+};
+
+export const useGetEmployerShifts = (query?: GetEmployerShiftsQuery) => {
+  return useQuery({
+    queryKey: ['employer-shifts', query],
+    queryFn: async () => {
+      const [shiftsResponse, pendingResponse] = await Promise.all([
+        api.get<GetEmployerShiftsResponse>('/shift-swap/employer?limit=100'),
+        api.get<GetPendingShiftsResponse>('/shift-swap/employer/pending?limit=100'),
+      ]);
+
+      const pendingByShiftId = pendingResponse.data.reduce(
+        (acc, application) => {
+          const typedApplication = application as unknown as {
+            type?: string;
+            shift_id?: string;
+            shift?: {
+              id?: string;
+              created_by?: string;
+              replacement_employee_id?: string | null;
+              request_accepted?: boolean;
+            };
+          };
+          const isWorkerPrivateInvite =
+            typedApplication.type === 'invited' &&
+            typedApplication.shift?.created_by === 'user' &&
+            Boolean(typedApplication.shift?.replacement_employee_id);
+
+          if (isWorkerPrivateInvite && !typedApplication.shift?.request_accepted) {
+            return acc;
+          }
+
+          const shiftId = typedApplication.shift_id || typedApplication.shift?.id;
+          if (!shiftId) return acc;
+
+          acc[shiftId] = [...(acc[shiftId] || []), application];
+          return acc;
+        },
+        {} as Record<string, GetPendingShiftsResponse>,
+      );
+
+      return shiftsResponse.data.map((shift) => ({
+        ...shift,
+        pendingApplications: pendingByShiftId[shift.id] || [],
+      })) as EmployerShiftWithPending[];
+    },
+  });
+};
+
+export const useGetEmployerShiftAnalytics = () => {
+  return useQuery({
+    queryKey: ['employer-shift-analytics'],
+    queryFn: async () => {
+      const response = await api.get<GetEmployerShiftAnalyticsResponse>(
+        '/shift-swap/employer/analytics',
+      );
+      return response;
     },
   });
 };
@@ -54,12 +136,15 @@ export const useApproveShift = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (shiftId: string) => {
-      const response = await api.patch<ApproveShiftResponse>(`/shift-swap/${shiftId}/approve`);
+    mutationFn: async (shiftApplicationId: string) => {
+      const response = await api.patch<ApproveShiftResponse>(
+        `/shift-swap/${shiftApplicationId}/approve`,
+      );
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['employer-pending-shifts'] });
     },
   });
 };
@@ -68,11 +153,11 @@ export const useRejectShift = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (shiftId: string) => {
-      void shiftId;
-      throw new Error(
-        'Rejecting shift requests is not available in the current backend API. Please add a reject endpoint to reopen the shift.',
-      );
+    mutationFn: async (shiftApplicationId: string) => {
+      const response = await api.post<RejectShiftResponse>('/shift-swap/reject', {
+        shift_application_id: shiftApplicationId,
+      });
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
@@ -92,6 +177,7 @@ export const useCompleteShift = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['employer-pending-shifts'] });
     },
   });
 };
@@ -132,6 +218,27 @@ export const useGetReferredEmployee = () => {
         payload,
       );
       return response.data;
+    },
+  });
+};
+
+export const useGetPendingRequests = (query?: GetPendingShiftsQuery) => {
+  return useQuery({
+    queryKey: ['employer-pending-shifts', query],
+    enabled: !!query,
+    queryFn: async () => {
+      const queryString = query
+        ? '?' +
+          new URLSearchParams(
+            Object.entries(query)
+              .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+              .map(([k, v]) => [k, String(v)]),
+          ).toString()
+        : '';
+      const response = await api.get<GetPendingShiftsResponse>(
+        `/shift-swap/employer/pending${queryString}`,
+      );
+      return response;
     },
   });
 };

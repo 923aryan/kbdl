@@ -25,22 +25,13 @@ const CREATED_BY_OPTIONS: { label: string; value: ShiftCreator }[] = [
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 
-const formatDateRange = () => {
-  const formatter = new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
-  return `${formatter.format(new Date('2026-05-01'))} - ${formatter.format(new Date('2026-05-30'))}`;
-};
-
 const DateFilter = () => {
   const { filters, setFilters } = useShiftStore();
   const [isOpen, setIsOpen] = useState(false);
   const hasDateFilter = Boolean(filters.dateFrom || filters.dateTo);
   const label = hasDateFilter
     ? `${filters.dateFrom || 'Any'} - ${filters.dateTo || 'Any'}`
-    : formatDateRange();
+    : 'Date Range';
 
   return (
     <div className="relative">
