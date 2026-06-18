@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 
@@ -19,9 +20,99 @@ const menuItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/shifts', label: 'Shifts', icon: Clock },
   { path: '/employees', label: 'Employees', icon: Users },
-  { path: '/dashboard/jobs', label: 'Jobs', icon: Briefcase },
+  { 
+    path: '/jobs', 
+    label: 'Jobs', 
+    icon: Briefcase,
+    subItems: [
+      { path: '/jobs', label: 'All Jobs' },
+      { path: '/jobs/create', label: 'Create Job' }
+    ]
+  },
   { path: '/dashboard/billing', label: 'Billing', icon: CreditCard },
 ];
+
+function NavItem({ 
+  item, 
+  pathname, 
+  setSidebarOpen 
+}: { 
+  item: typeof menuItems[0]; 
+  pathname: string; 
+  setSidebarOpen: (v: boolean) => void;
+}) {
+  const Icon = item.icon;
+  const isExactActive = pathname === item.path;
+  const isChildActive = item.subItems?.some(sub => pathname === sub.path);
+  const isActive = isExactActive || isChildActive;
+  
+  const [isOpen, setIsOpen] = useState(isActive);
+
+  // Auto-open if a child becomes active
+  useEffect(() => {
+    if (isActive) setIsOpen(true);
+  }, [isActive]);
+
+  // If it doesn't have subItems, render simple Link
+  if (!item.subItems) {
+    return (
+      <Link
+        href={item.path}
+        onClick={() => setSidebarOpen(false)}
+        className={`
+          flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors
+          ${isExactActive ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : ''}
+        `}
+      >
+        <Icon className="w-5 h-5 mr-3" />
+        <span>{item.label}</span>
+      </Link>
+    );
+  }
+
+  // If it has subItems, render accordion
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors
+          ${isActive && !isOpen ? 'bg-blue-50/30 text-blue-600' : ''}
+        `}
+      >
+        <div className="flex items-center">
+          <Icon className="w-5 h-5 mr-3" />
+          <span>{item.label}</span>
+        </div>
+        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      
+      {isOpen && (
+        <div className="bg-gray-50/50 py-1 space-y-1">
+          {item.subItems.map((sub) => {
+            const isSubActive = pathname === sub.path;
+            return (
+              <Link
+                key={sub.path}
+                href={sub.path}
+                onClick={() => setSidebarOpen(false)}
+                className={`
+                  flex items-center pl-[52px] pr-6 py-2.5 text-sm transition-colors
+                  ${isSubActive 
+                    ? 'text-blue-600 font-medium border-r-4 border-blue-600 bg-blue-50' 
+                    : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                  }
+                `}
+              >
+                {sub.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -100,28 +191,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <nav className="mt-6">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.path;
-
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors
-                  ${isActive ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : ''}
-                `}
-              >
-                <Icon className="w-5 h-5 mr-3" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {menuItems.map((item) => (
+            <NavItem 
+              key={item.path} 
+              item={item} 
+              pathname={pathname} 
+              setSidebarOpen={setSidebarOpen} 
+            />
+          ))}
         </nav>
 
-        <div className="absolute bottom-0 w-full p-4 border-t border-gray-100">
+        <div className="absolute bottom-0 w-full p-4 border-t border-gray-100 bg-white">
           <button
             onClick={() => {
               // Clear auth storage and redirect to login
