@@ -441,6 +441,10 @@ export const getEmployeeShiftsService = async (
                   ShiftApplicationStatus.withdrawn,
                 ],
               },
+              NOT: {
+                status: ShiftApplicationStatus.pending,
+                type: ShiftApplicationType.invited,
+              },
             },
           },
         },

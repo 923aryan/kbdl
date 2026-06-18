@@ -2,7 +2,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Feather } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +26,7 @@ export default function CreateShiftScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
   const styles = createStyles(theme);
+  const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
 
   const [showAddEmployee, setShowAddEmployee] = useState(false);
@@ -61,6 +62,12 @@ export default function CreateShiftScreen() {
   const shiftDateVal = watch('shift_date');
   const shiftStartVal = watch('shift_start');
   const shiftEndVal = watch('shift_end');
+
+  useEffect(() => {
+    if (errorMessage) {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [errorMessage]);
 
   const onSubmit = (data: FormData) => {
     console.log('data is ', data);
@@ -157,6 +164,7 @@ export default function CreateShiftScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom', 'left', 'right']}>
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={styles.scrollContent}
         bounces={false}
         keyboardShouldPersistTaps="handled"
@@ -234,10 +242,11 @@ export default function CreateShiftScreen() {
                 keyboardType="numeric"
                 onBlur={onBlur}
                 onChangeText={(text) => {
-                  const parsed = parseFloat(text);
+                  const unformattedText = text.replace(/,/g, '');
+                  const parsed = parseFloat(unformattedText);
                   onChange(isNaN(parsed) ? '' : parsed);
                 }}
-                value={value ? String(value) : ''}
+                value={value ? Number(value).toLocaleString('en-IN') : ''}
                 error={errors.shift_pay?.message}
               />
             )}
