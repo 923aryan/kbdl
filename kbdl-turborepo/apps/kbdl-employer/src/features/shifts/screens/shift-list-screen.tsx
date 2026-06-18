@@ -36,17 +36,94 @@ export type ShiftApplicationSummary = {
   };
 };
 
+// const hasRejectedPrivateInvite = (shift: { shiftApplications?: unknown[] }) =>
+//   Array.isArray(shift.shiftApplications) &&
+//   shift.shiftApplications.some((application) => {
+//     if (!application || typeof application !== 'object') return false;
+
+//     const typedApplication = application as { status?: string; type?: string };
+//     return (
+//       typedApplication.status?.toLowerCase() === 'rejected' &&
+//       typedApplication.type?.toLowerCase() === 'invited'
+//     );
+//   });
+// Checks if the invited worker REJECTED (they said no)
 const hasRejectedPrivateInvite = (shift: { shiftApplications?: unknown[] }) =>
   Array.isArray(shift.shiftApplications) &&
-  shift.shiftApplications.some((application) => {
-    if (!application || typeof application !== 'object') return false;
-
-    const typedApplication = application as { status?: string; type?: string };
-    return (
-      typedApplication.status?.toLowerCase() === 'rejected' &&
-      typedApplication.type?.toLowerCase() === 'invited'
-    );
+  shift.shiftApplications.some((app) => {
+    if (!app || typeof app !== 'object') return false;
+    const a = app as { status?: string; type?: string };
+    return a.status?.toLowerCase() === 'rejected' && a.type?.toLowerCase() === 'invited';
   });
+
+// Checks if the invited worker WITHDREW (they cancelled after accepting)
+const hasWithdrawnPrivateInvite = (shift: { shiftApplications?: unknown[] }) =>
+  Array.isArray(shift.shiftApplications) &&
+  shift.shiftApplications.some((app) => {
+    if (!app || typeof app !== 'object') return false;
+    const a = app as { status?: string; type?: string };
+    return a.status?.toLowerCase() === 'withdrawn' && a.type?.toLowerCase() === 'invited';
+  });
+
+// Gets the name of whoever cancelled (invited worker or original worker)
+export const getCancelledByName = (shift: EmployerShift): string | null => {
+  if (shift.status !== 'cancelled' && shift.status !== 'rejected') return null;
+  if (shift.created_by !== 'user') return null;
+
+  // Case 1: invited worker withdrew/rejected — find their name from shiftApplications
+  const invitedApp = shift.shiftApplications?.find((app) => {
+    if (!app || typeof app !== 'object') return false;
+    const a = app as ShiftApplicationSummary;
+    return (
+      a.type?.toLowerCase() === 'invited' &&
+      (a.status?.toLowerCase() === 'withdrawn' || a.status?.toLowerCase() === 'rejected')
+    );
+  }) as ShiftApplicationSummary | undefined;
+
+  if (invitedApp?.user?.name || invitedApp?.user?.phone_no) {
+    return invitedApp.user?.name || invitedApp.user?.phone_no || null;
+  }
+
+  // Case 2: original worker (creator) cancelled — use original_employee
+  return (
+    shift.original_employee?.name ||
+    shift.original_employee?.phone_no ||
+    'Worker'
+  );
+};
+
+// Tells us if the cancellation happened before or after employer approval
+export const getCancelledContext = (shift: EmployerShift): 'before_approval' | 'after_approval' | null => {
+  if (shift.status !== 'cancelled' && shift.status !== 'rejected') return null;
+  if (shift.created_by !== 'user') return null;
+  return shift.organization_approved ? 'after_approval' : 'before_approval';
+};
+// export type EmployerShift = {
+//   id: string;
+//   shift_pay: unknown;
+//   shift_date: string;
+//   shift_start: string;
+//   shift_end: string;
+//   skill_required: string;
+//   status: string;
+//   created_by?: string;
+//   organization_approved?: boolean;
+//   no_show_reported?: boolean;
+//   request_accepted?: boolean;
+//   original_employee_id?: string;
+//   replacement_employee_id?: string | null;
+//   original_employee?: EmployeeSummary;
+//   replacement_employee?: EmployeeSummary | null;
+//   employer?: {
+//     company_name?: string | null;
+//   };
+//   pendingApplications?: ShiftApplicationSummary[];
+//   shiftApplications?: ShiftApplicationSummary[];
+//   applications?: unknown[];
+//   requests?: unknown[];
+//   applicant_count?: number;
+//   ratings?: RatingSummary[];
+// };
 
 export type EmployerShift = {
   id: string;
@@ -64,9 +141,7 @@ export type EmployerShift = {
   replacement_employee_id?: string | null;
   original_employee?: EmployeeSummary;
   replacement_employee?: EmployeeSummary | null;
-  employer?: {
-    company_name?: string | null;
-  };
+  employer?: { company_name?: string | null };
   pendingApplications?: ShiftApplicationSummary[];
   shiftApplications?: ShiftApplicationSummary[];
   applications?: unknown[];
@@ -75,6 +150,14 @@ export type EmployerShift = {
   ratings?: RatingSummary[];
 };
 
+const normalizeStatusForDisplay = (status?: string | null) => {
+  const normalizedStatus = status?.toLowerCase();
+
+  if (!normalizedStatus) return 'approved';
+  if (normalizedStatus === 'cancelledwa') return 'rejected';
+
+  return normalizedStatus;
+};
 const statusStyles: Record<string, string> = {
   pending: 'border-orange-300 bg-orange-50 text-orange-600',
   open: 'border-blue-300 bg-blue-50 text-blue-600',
@@ -86,6 +169,63 @@ const statusStyles: Record<string, string> = {
 };
 
 const ROWS_PER_PAGE = 10;
+
+// export const getApprovalStatus = (shift: {
+//   created_by?: string;
+//   organization_approved?: boolean;
+//   status: string;
+//   no_show_reported?: boolean;
+//   request_accepted?: boolean;
+//   replacement_employee_id?: string | null;
+//   replacement_employee?: EmployeeSummary | null;
+//   applicant_count?: number;
+//   pendingApplications?: unknown[];
+//   shiftApplications?: unknown[];
+//   applications?: unknown[];
+//   requests?: unknown[];
+// }) => {
+//   const applicantCount = getApplicantCount(shift);
+//   const hasDirectAssignee = Boolean(shift.replacement_employee_id || shift.replacement_employee);
+
+//   if (shift.no_show_reported) {
+//     return 'absent';
+//   }
+
+//   if (shift.created_by === 'user' && !shift.organization_approved) {
+//     if (shift.status === 'cancelled') {
+//       return 'cancelled';
+//     }
+
+//     if (hasRejectedPrivateInvite(shift)) {
+//       return 'rejected';
+//     }
+
+//     if (hasDirectAssignee) {
+//       return shift.request_accepted ? 'pending' : 'open';
+//     }
+
+//     return applicantCount > 0 ? 'pending' : 'open';
+//   }
+
+//   if (shift.status === 'open') {
+//     return applicantCount > 0 && !shift.organization_approved ? 'pending' : 'open';
+//   }
+
+//   if (shift.status === 'matched') {
+//     return 'pending';
+//   }
+
+//   if (
+//     shift.created_by === 'user' &&
+//     shift.status === 'pending' &&
+//     !hasDirectAssignee &&
+//     applicantCount === 0
+//   ) {
+//     return 'open';
+//   }
+
+//   return shift.status || 'approved';
+// };
 
 export const getApprovalStatus = (shift: {
   created_by?: string;
@@ -103,45 +243,73 @@ export const getApprovalStatus = (shift: {
 }) => {
   const applicantCount = getApplicantCount(shift);
   const hasDirectAssignee = Boolean(shift.replacement_employee_id || shift.replacement_employee);
+  const shiftStatus = normalizeStatusForDisplay(shift.status);
 
-  if (shift.no_show_reported) {
-    return 'absent';
-  }
+  if (shift.no_show_reported) return 'absent';
 
-  if (shift.created_by === 'user' && !shift.organization_approved) {
-    if (shift.status === 'cancelled') {
-      return 'cancelled';
+  // ── PRIVATE SHIFT CREATED BY WORKER ──────────────────────────────────────
+  if (shift.created_by === 'user' && hasDirectAssignee) {
+
+    // Find the invited application from shiftApplications
+    const invitedApp = Array.isArray(shift.shiftApplications)
+      ? (shift.shiftApplications as Array<{ type?: string; status?: string }>).find(
+          (a) => a.type?.toLowerCase() === 'invited',
+        )
+      : undefined;
+
+    const appStatus = invitedApp?.status?.toLowerCase();
+
+    // Post employer approval
+    if (shift.organization_approved) {
+      if (shiftStatus === 'approved')  return 'approved';
+      if (shiftStatus === 'completed') return 'completed';
+      if (shiftStatus === 'absent')    return 'absent';
+      // Worker withdrew after approval → shift.status = 'rejected', org_approved = true
+      if (appStatus === 'withdrawn')    return 'cancelled';
+      return shiftStatus;
     }
 
-    if (hasRejectedPrivateInvite(shift)) {
+    // Terminal states before approval
+    if (shiftStatus === 'cancelled') return 'cancelled';  // invited worker rejected
+
+    // shift.status = 'rejected' before approval
+    if (shiftStatus === 'rejected') {
+      // Invited worker withdrew before approval
+      if (appStatus === 'withdrawn') return 'cancelled';
+      // Employer rejected → shift goes back to open but backend set rejected
       return 'rejected';
     }
 
-    if (hasDirectAssignee) {
-      return shift.request_accepted ? 'pending' : 'open';
+    // shift.status = 'open'
+    if (shiftStatus === 'open') {
+      // Employer rejected → app status = 'rejected', request_accepted still true on cached shift
+      if (appStatus === 'rejected') return 'rejected';
+      // Worker accepted, waiting for employer to approve
+      if (appStatus === 'accepted' || shift.request_accepted) return 'pending';
+      // Worker hasn't responded yet
+      return 'open';
     }
 
-    return applicantCount > 0 ? 'pending' : 'open';
+    return shiftStatus;
   }
 
-  if (shift.status === 'open') {
-    return applicantCount > 0 && !shift.organization_approved ? 'pending' : 'open';
+  // ── PUBLIC SHIFT CREATED BY WORKER ───────────────────────────────────────
+  if (shift.created_by === 'user' && !hasDirectAssignee) {
+    if (shiftStatus === 'cancelled') return 'cancelled';
+    if (shiftStatus === 'open') {
+      return applicantCount > 0 ? 'pending' : 'open';
+    }
+    return shiftStatus;
   }
 
-  if (shift.status === 'matched') {
-    return 'pending';
-  }
+  // ── EMPLOYER CREATED SHIFTS ───────────────────────────────────────────────
+  if (shiftStatus === 'open')      return applicantCount > 0 && !shift.organization_approved ? 'pending' : 'open';
+  if (shiftStatus === 'cancelled' && hasDirectAssignee) return 'rejected';
+  if (shiftStatus === 'cancelled') return 'cancelled';
+  if (shiftStatus === 'rejected')  return 'rejected';
+  if (shiftStatus === 'matched')   return 'pending';
 
-  if (
-    shift.created_by === 'user' &&
-    shift.status === 'pending' &&
-    !hasDirectAssignee &&
-    applicantCount === 0
-  ) {
-    return 'open';
-  }
-
-  return shift.status || 'approved';
+  return shiftStatus;
 };
 
 const titleCase = (value: string) =>

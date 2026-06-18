@@ -129,6 +129,15 @@ const getApplicantCount = (shift: EmployerShift) => {
 const isWorkerCreatedPrivateShift = (shift: EmployerShift) =>
   shift.created_by === 'user' && Boolean(shift.replacement_employee_id || shift.replacement_employee);
 
+const getPrivateInviteApplication = (shift: EmployerShift) =>
+  Array.isArray(shift.shiftApplications)
+    ? shift.shiftApplications.find(
+        (application) =>
+          application.type?.toLowerCase() === 'invited' &&
+          (!shift.replacement_employee_id || application.user_id === shift.replacement_employee_id),
+      )
+    : undefined;
+
 const getPendingApplications = (shift: EmployerShift): ShiftApplicationSummary[] => {
   if (isWorkerCreatedPrivateShift(shift) && !shift.request_accepted) {
     return [];
@@ -157,90 +166,140 @@ const getPendingApplications = (shift: EmployerShift): ShiftApplicationSummary[]
   return [];
 };
 
-// const getCancellationMessage = (shift: EmployerShift) => {  
-//   if (shift.status !== 'cancelled') {
+// const getCancellationMessage = (shift: EmployerShift, displayStatus: string) => {
+//   if (displayStatus === 'rejected') {
+//     return 'This private shift request was rejected by the employer.';
+//   }
+
+//   if (displayStatus !== 'cancelled') {
 //     return 'This shift is no longer active. You can review the shift details only.';
 //   }
 
+//   // Worker-created private shift
 //   if (isWorkerCreatedPrivateShift(shift)) {
+//     const privateInvite = getPrivateInviteApplication(shift);
 //     const assignedWorker = getEmployeeName(shift.replacement_employee, 'assigned worker');
-//     const creator = getEmployeeName(shift.original_employee, 'shift creator');
+//     const creator = getEmployeeName(shift.original_employee, 'worker');
+//     const approvalTiming = shift.organization_approved ? 'after approval' : 'before employer approval';
 
-//     if (shift.request_accepted) {
-//       return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
+//     const privateInviteStatus = privateInvite?.status?.toLowerCase();
+//     const assignedWorkerCancelled =
+//       privateInviteStatus === 'withdrawn' ||
+//       (privateInviteStatus === 'rejected' && shift.status !== 'cancelled' && !shift.request_accepted);
+
+//     if (assignedWorkerCancelled) {
+//       return `This shift was cancelled by ${assignedWorker} ${approvalTiming}.`;
 //     }
 
-//     return `This private shift was cancelled before employer approval. The request involved ${creator} and ${assignedWorker}.`;
+//     return `This shift was cancelled by ${creator} ${approvalTiming}.`;
 //   }
 
+//   // Employer-created private shift
+//   if (shift.created_by === 'employer' && shift.replacement_employee_id) {
+//     const privateInvite = getPrivateInviteApplication(shift);
+//     const assignedWorker = getEmployeeName(shift.replacement_employee, 'assigned worker');
+
+//     if (privateInvite?.status?.toLowerCase() === 'withdrawn') {
+//       const approvalTiming = shift.organization_approved ? 'after approval' : 'before employer approval';
+//       return `This shift was cancelled by ${assignedWorker} ${approvalTiming}.`;
+//     }
+
+//     return `This private shift was cancelled by the employer.`;
+//   }
+
+//   // Worker cancelled their own shift
 //   if (shift.created_by === 'user') {
 //     const creator = getEmployeeName(shift.original_employee, 'worker');
-//     return `This shift was cancelled by ${creator}.`;
+//     const approvalTiming = shift.organization_approved ? 'after approval' : 'before employer approval';
+
+//     return `This shift was cancelled by ${creator} ${approvalTiming}.`;
 //   }
 
 //   return 'This shift is no longer active. You can review the shift details only.';
 // };
-const getCancellationMessage = (shift: EmployerShift) => {
-  // console.log('=== CANCEL DEBUG ===');
-  // console.log('status', shift.status);
-  // console.log('created_by', shift.created_by);
-  // console.log('request_accepted', shift.request_accepted);
-  // console.log('replacement_employee_id', shift.replacement_employee_id);
-  // console.log('shift', shift);
+const getCancellationMessage = (shift: EmployerShift): { title: string; detail: string } => {
+  const originalWorkerName = getEmployeeName(shift.original_employee, 'the shift creator');
+  const assignedWorkerName = getEmployeeName(shift.replacement_employee, 'the assigned worker');
+  const shiftStatus = shift.status.toLowerCase();
 
-  if (shift.status !== 'cancelled') {
-    return 'This shift is no longer active. You can review the shift details only.';
-  }
+  // ── Helper: find who withdrew from shiftApplications ─────────────────────
+  const withdrawnApp = shift.shiftApplications?.find(
+    (app) => app.status === 'withdrawn' && app.type === 'invited',
+  );
+  const withdrawnWorkerName =
+    withdrawnApp?.user?.name || withdrawnApp?.user?.phone_no || assignedWorkerName;
 
-  // Worker-created private shift
-  if (isWorkerCreatedPrivateShift(shift)) {
-    const assignedWorker = getEmployeeName(
-      shift.replacement_employee,
-      'assigned worker',
-    );
+  const rejectedApp = shift.shiftApplications?.find(
+    (app) => app.status === 'rejected' && app.type === 'invited',
+  );
+  const rejectedWorkerName =
+    rejectedApp?.user?.name || rejectedApp?.user?.phone_no || assignedWorkerName;
 
-    const creator = getEmployeeName(
-      shift.original_employee,
-      'shift creator',
-    );
+  // ── Worker-created private shift ──────────────────────────────────────────
+  if (shift.created_by === 'user') {
 
-    if (shift.request_accepted) {
-      return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
+    // shift.status is 'cancelled' or 'rejected' from backend
+    // After employer approved → worker withdrew post-approval
+    if (shift.organization_approved) {
+      return {
+        title: 'Shift Cancelled After Approval',
+        detail: `${withdrawnWorkerName} cancelled this shift after it was approved by employer.`,
+      };
     }
 
-    return `This private shift was cancelled before employer approval.`;
+    // Before employer approved — invited worker rejected the request
+    if (rejectedApp) {
+      return {
+        title: 'Shift Request Declined',
+        detail: `${rejectedWorkerName} declined the shift swap request before employer approval.`,
+      };
+    }
+
+    // Before employer approved — invited worker withdrew after accepting
+    if (withdrawnApp) {
+      return {
+        title: 'Shift Cancelled Before Approval',
+        detail: `${withdrawnWorkerName} withdrew from this shift after accepting, before employer approval.`,
+      };
+    }
+
+    // Original worker (creator) cancelled — no invited app activity
+    return {
+      title: 'Shift Cancelled by Creator',
+      detail: `${originalWorkerName} cancelled this shift swap request before employer approval.`,
+    };
   }
 
-  // Employer-created private shift
+  // ── Employer-created private shift ────────────────────────────────────────
+  // if (shift.created_by === 'employer' && shift.replacement_employee_id) {
+  //   if (shift.request_accepted) {
+  //     return {
+  //       title: 'Shift Cancelled After Acceptance',
+  //       detail: `${assignedWorkerName} withdrew from this shift after accepting the request.`,
+  //     };
+  //   }
+  //   return {
+  //     title: 'Shift Request Declined',
+  //     detail: `${assignedWorkerName} declined this shift request.`,
+  //   };
+  // }
+
+  // ── Fallback ──────────────────────────────────────────────────────────────
   if (
     shift.created_by === 'employer' &&
-    shift.replacement_employee_id
+    shift.replacement_employee_id &&
+    ['cancelled', 'cancelledwa', 'rejected'].includes(shiftStatus)
   ) {
-    const assignedWorker = getEmployeeName(
-      shift.replacement_employee,
-      'assigned worker',
-    );
-
-    // Worker had accepted and then employer cancelled
-    if (shift.request_accepted) {
-      return `This private shift was cancelled after ${assignedWorker} accepted the request.`;
-    }
-
-    // Worker withdrew the accepted request
-    return `${assignedWorker} rejected the  shift request`;
+    return {
+      title: 'Shift Request Rejected',
+      detail: 'This shift request was cancelled by the employer.',
+    };
   }
 
-  // Worker cancelled their own shift
-  if (shift.created_by === 'user') {
-    const creator = getEmployeeName(
-      shift.original_employee,
-      'worker',
-    );
-
-    return `This shift was cancelled by ${creator}.`;
-  }
-
-  return 'This shift is no longer active. You can review the shift details only.';
+  return {
+    title: 'Shift No Longer Active',
+    detail: 'This shift is no longer active. You can review the shift details only.',
+  };
 };
 
 const getLatestRating = (shift: EmployerShift) =>
@@ -771,23 +830,68 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
             </div>
           )}
 
-          {(status === 'open' || status === 'cancelled' || status === 'rejected') && (
-            <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-[0.9fr_1.4fr]">
-              <ShiftSummary shift={shift} companyName={companyName} />
-              <div className="rounded-lg border border-gray-200 p-4">
-                <h3 className="text-sm font-semibold text-gray-900">
-                  {status === 'open' ? 'Open Shift' : 'Shift Review'}
-                </h3>
-                <p className="mt-2 text-sm text-gray-500">
-                  {status === 'open'
-                    ? isWorkerCreatedPrivateShift(shift)
-                      ? 'Waiting for the assigned worker to accept this private shift request.'
-                      : 'No worker has been approved yet. Applicants will appear here after workers apply.'
-                    : getCancellationMessage(shift)}
-                </p>
+        {(status === 'open' || status === 'cancelled' || status === 'rejected') && (
+  <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-[0.9fr_1.4fr]">
+    <ShiftSummary shift={shift} companyName={companyName} />
+    <div className="rounded-lg border border-gray-200 p-4">
+      <h3 className="text-sm font-semibold text-gray-900">
+        {status === 'open' ? 'Open Shift' : 'Shift Review'}
+      </h3>
+
+      {status === 'open' ? (
+        <p className="mt-2 text-sm text-gray-500">
+          {isWorkerCreatedPrivateShift(shift)
+            ? 'Waiting for the assigned worker to accept this private shift request.'
+            : 'No worker has been approved yet. Applicants will appear here after workers apply.'}
+        </p>
+      ) : (() => {
+          const { title, detail } = getCancellationMessage(shift);
+          const isWorkerCancelled = shift.created_by === 'user';
+          return (
+            <div className="mt-3 rounded-lg border border-red-100 bg-red-50 p-4">
+              {/* Icon row */}
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-500">
+                  <X className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-red-700">{title}</p>
+                  <p className="mt-1 text-sm text-red-600">{detail}</p>
+                </div>
               </div>
+
+              {/* Who was involved */}
+              {/* <div className="mt-4 space-y-2 border-t border-red-100 pt-3 text-xs text-red-500">
+                {shift.original_employee && (
+                  <div className="flex items-center justify-between">
+                    <span>Shift Creator</span>
+                    <span className="font-medium text-red-700">
+                      {getEmployeeName(shift.original_employee)}
+                    </span>
+                  </div>
+                )}
+                {shift.replacement_employee && (
+                  <div className="flex items-center justify-between">
+                    <span>Assigned Worker</span>
+                    <span className="font-medium text-red-700">
+                      {getEmployeeName(shift.replacement_employee)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span>Approval Stage</span>
+                  <span className="font-medium text-red-700">
+                    {shift.organization_approved ? 'After employer approval' : 'Before employer approval'}
+                  </span>
+                </div>
+              </div> */}
             </div>
-          )}
+          );
+        })()
+      }
+    </div>
+  </div>
+)}
         </div>
       </div>
     </div>
