@@ -261,6 +261,7 @@ export const rateShiftSchema = z.object({
         .max(5, 'Maximum score is 5'),
       review: z.string().max(1000, 'Review is too long').optional(),
       flagged_issue: z.boolean().default(false),
+      is_absent: z.boolean().default(false),
     })
     .strict(),
 });
