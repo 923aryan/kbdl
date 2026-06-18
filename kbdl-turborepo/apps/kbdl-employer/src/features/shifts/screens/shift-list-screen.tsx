@@ -3,7 +3,9 @@
 import { Calendar, ChevronLeft, ChevronRight, Eye, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
-import { useGetEmployerShifts } from '../hooks/use-shift-hook';
+import { useGetEmployerShifts, useGetPendingRequests } from '../hooks/use-shift-hook';
+
+// ... other code will remain the same but I should provide the full replacement or I can use update for specific lines.
 import { type ShiftStatus, useShiftStore } from '../stores/use-shift-store';
 
 type EmployeeSummary = {
@@ -327,9 +329,9 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                 <tr key={shift.id} className="bg-white transition hover:bg-gray-50/80">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600">
+                      {/* <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600">
                         <Calendar className="h-4 w-4" />
-                      </span>
+                      </span> */}
                       <div>
                         <p className="font-medium text-gray-900">
                           {titleCase(shift.skill_required || 'Shift')}
@@ -348,13 +350,13 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                           
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <span
+                      {/* <span
                         className={`flex h-8 w-8 items-center justify-center rounded-full ${
                           assignee ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         <UserRound className="h-4 w-4" />
-                      </span>
+                      </span> */}
                       <div>
                         <p className="font-medium text-gray-900">
                           {assignee ? assigneeName : 'Open Shift'}
