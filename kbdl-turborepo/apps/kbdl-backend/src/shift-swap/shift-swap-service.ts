@@ -234,10 +234,10 @@ export const withdrawShiftApplicationService = async (
     if (application.type === ShiftApplicationType.invited) {
       // 1. Accepted and invited: cancel the shift (also safely handles pending and invited)
       await tx.shift.update({
-        where: { id: shift_application_id },
+        where: { id: application.shift_id },
         data: {
           status:
-            withdrawnApplication.status === ShiftApplicationStatus.accepted
+            application.status === ShiftApplicationStatus.accepted
               ? ShiftStatus.cancelled
               : ShiftStatus.rejected,
         },
@@ -247,7 +247,7 @@ export const withdrawShiftApplicationService = async (
       if (application.status === ShiftApplicationStatus.accepted) {
         // 3. Accepted and applied: update shift to open, reset fields, and re-broadcast
         await tx.shift.update({
-          where: { id: shift_application_id },
+          where: { id: application.shift_id },
           data: {
             replacement_employee_id: null,
             request_accepted: false,
