@@ -60,6 +60,18 @@ export const savePushTokenService = async (
   return pushToken;
 };
 
+export const clearPushTokenService = async (userId: string, token: string): Promise<void> => {
+  await prisma.pushToken.updateMany({
+    where: {
+      user_id: userId,
+      token,
+    },
+    data: {
+      isActive: false,
+    },
+  });
+};
+
 export const getUserNotificationsService = async (userId: string): Promise<Notification[]> => {
   return prisma.notification.findMany({
     where: { user_id: userId, isRead: false },

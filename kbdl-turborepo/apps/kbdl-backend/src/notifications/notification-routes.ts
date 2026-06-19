@@ -1,7 +1,12 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth-middleware';
 import { ROLES } from '../utils/constants';
-import { getNotifications, markNotificationRead, savePushToken } from './notification-ontroller';
+import {
+  clearPushToken,
+  getNotifications,
+  markNotificationRead,
+  savePushToken,
+} from './notification-ontroller';
 
 const notificationRouter: Router = Router();
 
@@ -9,5 +14,6 @@ const notificationRouter: Router = Router();
 notificationRouter.post('/push-token', authenticate([ROLES.USER]), savePushToken);
 notificationRouter.get('/', authenticate([ROLES.USER]), getNotifications);
 notificationRouter.patch('/read', authenticate([ROLES.USER]), markNotificationRead);
+notificationRouter.patch('/push-token', authenticate([ROLES.USER]), clearPushToken);
 
 export default notificationRouter;
