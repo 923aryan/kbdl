@@ -235,7 +235,12 @@ export const withdrawShiftApplicationService = async (
       // 1. Accepted and invited: cancel the shift (also safely handles pending and invited)
       await tx.shift.update({
         where: { id: shift_application_id },
-        data: { status: ShiftStatus.rejected },
+        data: {
+          status:
+            withdrawnApplication.status === ShiftApplicationStatus.accepted
+              ? ShiftStatus.cancelled
+              : ShiftStatus.rejected,
+        },
       });
     } else if (application.type === ShiftApplicationType.applied) {
       // 2. Pending and applied: just withdraw from shift application (handled above)
@@ -440,6 +445,10 @@ export const getEmployeeShiftsService = async (
                   ShiftApplicationStatus.rejected,
                   ShiftApplicationStatus.withdrawn,
                 ],
+              },
+              NOT: {
+                status: ShiftApplicationStatus.pending,
+                type: ShiftApplicationType.invited,
               },
             },
           },
@@ -1336,7 +1345,15 @@ export const rateShiftService = async (
       flagged_issue: payload.flagged_issue,
     },
   });
-
+  if (payload.is_absent) {
+    await prisma.shift.update({
+      where: { id: payload.shift_id },
+      data: {
+        status: ShiftStatus.absent,
+        no_show_reported: true,
+      },
+    });
+  }
   return rating;
 };
 
@@ -2042,9 +2059,19 @@ export const approveShiftCompletionService = async (
   if (!shift) {
     throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
   }
+
   if (shift.employer_id !== employerId) {
     throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
   }
+
+  if (shift.shift_end.getTime() > Date.now()) {
+    throw new AppError(
+      400,
+      'SHIFT_NOT_COMPLETED',
+      'Cannot mark shift compelete when its not over.',
+    );
+  }
+
   if (shift.status !== ShiftStatus.approved) {
     throw new AppError(
       400,
