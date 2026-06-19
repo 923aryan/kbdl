@@ -1943,7 +1943,7 @@ export const rejectShiftApplicationService = async (
         replacement_employee_id: isEmployeeCreatedPrivateInvite
           ? shift.replacement_employee_id
           : null,
-        request_accepted: false,
+        request_accepted: shiftApplication.type === ShiftApplicationType.invited ? true : false,
         organization_approved: false,
         status:
           shiftApplication.type === ShiftApplicationType.invited
