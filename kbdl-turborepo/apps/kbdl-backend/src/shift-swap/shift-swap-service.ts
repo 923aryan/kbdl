@@ -1947,7 +1947,7 @@ export const rejectShiftApplicationService = async (
         organization_approved: false,
         status:
           shiftApplication.type === ShiftApplicationType.invited
-            ? ShiftStatus.cancelled
+            ? ShiftStatus.rejected
             : ShiftStatus.open,
       },
     });
