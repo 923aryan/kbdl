@@ -156,14 +156,17 @@ export const useGetOpenShifts = () => {
     },
   });
 };
+
 export const useGetLatestShifts = (query?: string) => {
   return useQuery({
     queryKey: ['employee-latest-shifts'],
 
     queryFn: async () => {
-      const response = await api.get<GetLatestShiftsResponse>(`/shift-swap/latest?${query}`);
+      const response = await api.get<GetLatestShiftsResponse>(
+        `/shift-swap/latest${query ? `?${query}` : ''}`,
+      );
 
-      return response.data;
+      return response;
     },
     staleTime: 0,
     gcTime: 0,
@@ -172,16 +175,17 @@ export const useGetLatestShifts = (query?: string) => {
     refetchOnReconnect: true,
   });
 };
+
 export const useGetBestMatchesShifts = (query?: string) => {
   return useQuery({
     queryKey: ['employee-best-matches-shifts'],
 
     queryFn: async () => {
       const response = await api.get<GetBestShiftMatchesResponse>(
-        `/shift-swap/best-matches?${query}`,
+        `/shift-swap/best-matches${query ? `?${query}` : ''}`,
       );
 
-      return response.data;
+      return response;
     },
     staleTime: 0,
     gcTime: 0,
@@ -190,6 +194,7 @@ export const useGetBestMatchesShifts = (query?: string) => {
     refetchOnReconnect: true,
   });
 };
+
 export const useWithdrawShiftApplication = () => {
   return useMutation({
     mutationFn: async (payload: WithdrawShiftApplicationPayload) => {
