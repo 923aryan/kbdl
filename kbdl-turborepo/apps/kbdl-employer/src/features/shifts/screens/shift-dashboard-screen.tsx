@@ -102,7 +102,7 @@ const CreatedByFilter = ({ isOpen, setIsOpen }: FilterProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-11 min-w-40 items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm"
+        className="flex h-12 min-w-[210px] items-center justify-between rounded-xl border border-gray-300 px-6 text-base font-semibold cursor-pointer text-gray-900"
       >
         <span>{selected?.label || 'Created By'}</span>
         {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -155,7 +155,7 @@ const StatusFilter = ({ isOpen, setIsOpen }: FilterProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-11 min-w-40 items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm"
+        className="flex h-12 min-w-[210px] items-center justify-between rounded-xl border border-gray-300 px-6 text-base font-semibold cursor-pointer text-gray-900"
       >
         <span>
           {selectedStatuses.length ? `Selected (${selectedStatuses.length})` : 'All Status'}
@@ -254,17 +254,6 @@ export const ShiftDashboardScreen = () => {
           </div>
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search keywords..."
-                value={filters.search}
-                onChange={(event) => setFilters({ search: event.target.value })}
-                className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 lg:w-72"
-              />
-            </div>
-
             <button
               type="button"
               onClick={toggleCreateModal}
@@ -276,23 +265,37 @@ export const ShiftDashboardScreen = () => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 px-5 py-4 xl:flex-row xl:items-center xl:justify-end">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center" ref={filtersRef}>
-            <DateFilter
-              isOpen={activeFilter === 'date'}
-              setIsOpen={(val) => setActiveFilter(val ? 'date' : null)}
-            />
-            <CreatedByFilter
-              isOpen={activeFilter === 'createdBy'}
-              setIsOpen={(val) => setActiveFilter(val ? 'createdBy' : null)}
-            />
-            <StatusFilter
-              isOpen={activeFilter === 'status'}
-              setIsOpen={(val) => setActiveFilter(val ? 'status' : null)}
-            />
-          </div>
-        </div>
+     
 
+<div className="flex flex-col gap-4 px-5 py-4 lg:flex-row xl:items-center xl:justify-between">
+  {/* Search */}
+  <div className="relative  lg:max-w-[500px] max-w-full flex-1">
+    <Search className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-black" aria-hidden="true" />
+    <input
+      type="text"
+      placeholder="Search keywords..."
+      value={filters.search}
+      onChange={(event) => setFilters({ search: event.target.value })}
+      className="h-11 w-full rounded-lg border border-gray-300 px-6 pr-14 text-sm outline-none focus:border-[#0658C2]"
+    />
+  </div>
+
+  {/* Filters */}
+  <div className="flex flex-row flex-wrap gap-4 sm:flex-row" ref={filtersRef}>
+    <DateFilter
+      isOpen={activeFilter === 'date'}
+      setIsOpen={(val) => setActiveFilter(val ? 'date' : null)}
+    />
+    <CreatedByFilter
+      isOpen={activeFilter === 'createdBy'}
+      setIsOpen={(val) => setActiveFilter(val ? 'createdBy' : null)}
+    />
+    <StatusFilter
+      isOpen={activeFilter === 'status'}
+      setIsOpen={(val) => setActiveFilter(val ? 'status' : null)}
+    />
+  </div>
+</div>
         <ShiftListScreen onSelectShift={setSelectedShiftId} />
       </div>
 
