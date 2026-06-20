@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useCreateShiftSwap, useGetReferredEmployee } from '../hooks/use-shift-hook';
 import { useShiftStore } from '../stores/use-shift-store';
+import { useState } from 'react';
+import { Globe, Lock } from 'lucide-react';
 
 const referredEmployeePhoneSchema = getReferredEmployeeSchema.shape.body.shape.phone_no;
 
@@ -53,7 +55,7 @@ export const CreateShiftModal = () => {
   const { isCreateModalOpen, toggleCreateModal } = useShiftStore();
   const { mutate: createShift, isPending: isCreating } = useCreateShiftSwap();
   const { mutateAsync: getReferredEmployee, isPending: isFindingEmployee } = useGetReferredEmployee();
-
+  const [shiftType, setShiftType] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
   const {
     control,
     handleSubmit,
@@ -147,41 +149,6 @@ export const CreateShiftModal = () => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6 p-6">
-            {/* Worker Information */}
-            <div className="space-y-4">
-              {/* <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Worker Details</h3>
-              </div> */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <Controller
-                  control={control}
-                  name="original_employee_phone"
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      label="Worker Mobile Number *"
-                      placeholder="+919876543210"
-                      error={errors.original_employee_phone?.message}
-                    />
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="replacement_employee_phone"
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      label="Replacement Mobile (Optional)"
-                      placeholder="+919876543210"
-                      error={errors.replacement_employee_phone?.message}
-                    />
-                  )}
-                />
-              </div>
-            </div>
-
             {/* <div className="h-px bg-gray-100" /> */}
 
             {/* Job Details */}
@@ -228,18 +195,15 @@ export const CreateShiftModal = () => {
                     name="payType"
                     render={({ field }) => (
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium text-gray-700">
-                          Pay Type *
-                        </label>
+                        <label className="text-sm font-medium text-gray-700">Pay Type *</label>
 
                         <div className="flex h-[50px] w-full rounded-xl border border-gray-300 bg-white p-1">
                           <button
                             type="button"
                             onClick={() => field.onChange('FIXED')}
-                            className={`flex-1 rounded-lg text-base font-medium ${field.value === 'FIXED'
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-gray-500'
-                              }`}
+                            className={`flex-1 rounded-lg text-base font-medium ${
+                              field.value === 'FIXED' ? 'bg-blue-50 text-blue-600' : 'text-gray-500'
+                            }`}
                           >
                             Fixed
                           </button>
@@ -247,10 +211,11 @@ export const CreateShiftModal = () => {
                           <button
                             type="button"
                             onClick={() => field.onChange('HOURLY')}
-                            className={`flex-1 rounded-lg text-base font-medium ${field.value === 'HOURLY'
+                            className={`flex-1 rounded-lg text-base font-medium ${
+                              field.value === 'HOURLY'
                                 ? 'bg-blue-50 text-blue-600'
                                 : 'text-gray-500'
-                              }`}
+                            }`}
                           >
                             Hourly
                           </button>
@@ -326,7 +291,9 @@ export const CreateShiftModal = () => {
                         const selectedDate = toDateInputValue(shiftDateValue);
 
                         field.onChange(
-                          selectedDate && selectedTime ? buildDateTime(selectedDate, selectedTime) : '',
+                          selectedDate && selectedTime
+                            ? buildDateTime(selectedDate, selectedTime)
+                            : '',
                         );
                       }}
                       error={errors.shift_start?.message}
@@ -349,7 +316,9 @@ export const CreateShiftModal = () => {
                         const selectedDate = toDateInputValue(shiftDateValue);
 
                         field.onChange(
-                          selectedDate && selectedTime ? buildDateTime(selectedDate, selectedTime) : '',
+                          selectedDate && selectedTime
+                            ? buildDateTime(selectedDate, selectedTime)
+                            : '',
                         );
                       }}
                       error={errors.shift_end?.message}
@@ -359,22 +328,88 @@ export const CreateShiftModal = () => {
               </div>
             </div>
 
-            <div className="mt-2 flex gap-3">
-               <Button
-                type="button"
-                onClick={handleClose}
-                className="rounded-lg border border-blue-600 bg-white px-6 py-2.5 font-medium !text-black"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Creating...' : 'Create Shift Swap'}
-              </Button>
-              
+            {/* Worker Information */}
+            {shiftType === 'PRIVATE' && (
+              <div className="space-y-4">
+                {/* <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Worker Details</h3>
+              </div> */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Controller
+                    control={control}
+                    name="original_employee_phone"
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        label="Worker Mobile Number *"
+                        placeholder="+919876543210"
+                        error={errors.original_employee_phone?.message}
+                      />
+                    )}
+                  />
+
+                  <Controller
+                    control={control}
+                    name="replacement_employee_phone"
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        label="Replacement Mobile (Optional)"
+                        placeholder="+919876543210"
+                        error={errors.replacement_employee_phone?.message}
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="mt-2 flex justify-between">
+              <div className="flex h-[50px] w-full max-w-[180px] rounded-xl border border-gray-300 bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => setShiftType('PUBLIC')}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg cursor-pointer text-sm font-medium transition-all ${
+                    shiftType === 'PUBLIC'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Globe size={16} />
+                  Public
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShiftType('PRIVATE')}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-lg cursor-pointer text-sm font-medium transition-all ${
+                    shiftType === 'PRIVATE'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Lock size={16} />
+                  Private
+                </button>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  onClick={handleClose}
+                  className="rounded-lg border border-blue-600 bg-white px-6 py-2.5 font-medium !text-black"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 rounded-lg bg-blue-600 px-6 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Shift Swap'}
+                </Button>
+              </div>
             </div>
           </form>
         </div>

@@ -267,16 +267,16 @@ export const ShiftDashboardScreen = () => {
 
      
 
-<div className="flex flex-col gap-4 px-5 py-4 sm:flex-row xl:items-center xl:justify-between">
+<div className="flex flex-col gap-4 px-5 py-4 lg:flex-row xl:items-center xl:justify-between">
   {/* Search */}
-  <div className="relative max-w-full flex-1 sm:max-w-[500px]">
+  <div className="relative  lg:max-w-[500px] max-w-full flex-1">
     <Search className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-black" aria-hidden="true" />
     <input
       type="text"
       placeholder="Search keywords..."
       value={filters.search}
       onChange={(event) => setFilters({ search: event.target.value })}
-      className="h-12 w-full rounded-lg border border-gray-300 px-6 pr-14 text-sm outline-none focus:border-[#0658C2]"
+      className="h-11 w-full rounded-lg border border-gray-300 px-6 pr-14 text-sm outline-none focus:border-[#0658C2]"
     />
   </div>
 
