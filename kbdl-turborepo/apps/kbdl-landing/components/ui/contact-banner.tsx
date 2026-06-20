@@ -1,5 +1,6 @@
 import Image from 'next/image';
-import bannerImage from '../../public/contact-banner.png';
+import HeroBanners from './hero-banners';
+
 
 export default function ContactBanner() {
   return (
@@ -49,5 +50,6 @@ export default function ContactBanner() {
         </p>
       </div>
     </section>
+    // <HeroBanners />
   );
 }

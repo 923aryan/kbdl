@@ -2,8 +2,9 @@ import { Metadata } from 'next';
 import Image from 'next/image';
 import { DownloadSection } from '../../components/ui/download';
 import { siteConfig } from '../../lib/seo-constants';
-import aboutUsHero from '../../public/aboutus-hero-bg.png';
+// import aboutUsHero from '../../public/aboutus-hero-bg.png';
 import ourPromise from '../../public/who-we-are-img.jpg';
+import HeroBanners from '../../components/ui/hero-banners';
 export const metadata: Metadata = {
   title: `${siteConfig.name} | Workforce Management & Shift Swap Platform`,
 
@@ -88,42 +89,41 @@ export default function AboutUs() {
     <div className="h-full w-full bg-white ">
       {/* <StructuredData data={schema} /> */}
       {/* <HeroSection /> */}
-      <section className="relative w-full min-h-[500px] md:min-h-[600px] flex flex-col justify-center items-center overflow-hidden">
-        {/* 1. Background Image & Dark Overlay */}
+      {/* <section className="relative w-full min-h-[500px] md:min-h-[600px] flex flex-col justify-center items-center overflow-hidden">
+
         <div className="absolute inset-0 z-0">
           <Image
             src={aboutUsHero}
             alt="Construction site at sunset representing India's modern workforce"
             fill
-            priority /* CRUCIAL: Tells Next.js to preload this immediately for LCP score */
+            priority
             className="object-cover object-center"
           />
-          {/* Dark gradient overlay to ensure text readability */}
+
           <div className="absolute inset-0 bg-black/40 md:bg-linear-to-b md:from-[#110D0A]/50 md:via-[#110D0A]/70 md:to-[#110D0A]/90"></div>
         </div>
 
-        {/* 2. Text Content container */}
+
         <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl mx-auto mt-10">
-          {/* "About Us" Pill Badge */}
+
           <div className="px-5 py-1.5 mb-6 rounded-full border border-primary/40 bg-primary/20 backdrop-blur-sm">
             <span className="text-primary text-sm font-bold tracking-widest uppercase">
               About Us
             </span>
           </div>
 
-          {/* Main Heading */}
           <h1 className="text-4xl md:text-5xl lg:text-[56px] font-bold text-white leading-[1.15] mb-6">
             Building India's Modern <br className="hidden sm:block" />
             <span className="text-primary">Workforce Ecosystem</span>
           </h1>
 
-          {/* Subheading / Description */}
           <p className="text-base md:text-lg lg:text-xl text-gray-300 max-w-3xl leading-relaxed">
             Kaam Badlo is India's first on-demand Blue-Collar Workforce platform built to connect
             skilled and unskilled workers with reliable job opportunities across India.
           </p>
         </div>
-      </section>
+      </section> */}
+      <HeroBanners />
       {/* <TimelineSection /> */}
       <section className="bg-white py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8">
         <div className="max-w-350 mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
