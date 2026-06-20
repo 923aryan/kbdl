@@ -12,15 +12,39 @@ import { Colors } from '@/constants/theme';
 import { useAuthStore } from '@/features/auth/hooks/useAuth';
 import { ProtectedScreen } from '@/features/auth/screens/protected-screen';
 import { useGetBestMatchesShifts, useGetLatestShifts } from '@/features/shift-swap/api';
+import { ApiSuccess } from '@/lib/api/api-client';
 import translations from '@/translations';
-import { GetLatestShiftsResponse } from '@repo/types';
+import { GetBestShiftMatchesResponse, GetLatestShiftsResponse } from '@repo/types';
+import { InfiniteData } from '@tanstack/react-query';
 
 const { width } = Dimensions.get('window');
 
-const filterShifts = (shifts: any[], query: string) => {
+function extractData<T>(
+  data?: ApiSuccess<T[]> | InfiniteData<ApiSuccess<T[]>> | T[]
+): T[] {
+  if (!data) return [];
+  
+  if (Array.isArray(data)) {
+    return data;
+  }
+  
+  // Check if it's an InfiniteData type (has pages array)
+  if ('pages' in data && Array.isArray(data.pages)) {
+    return data.pages.flatMap((page) => page.data || []);
+  }
+  
+  // Check if it's a standard ApiSuccess type (has data array)
+  if ('data' in data && Array.isArray(data.data)) {
+    return data.data;
+  }
+  
+  return [];
+}
+
+const filterShifts = (shifts: GetLatestShiftsResponse | GetBestShiftMatchesResponse, query: string) => {
   if (!query.trim()) return shifts;
   const lowerQuery = query.toLowerCase().trim();
-  return shifts.filter((shift: GetLatestShiftsResponse[number]) => {
+  return shifts.filter((shift) => {
     const skillMatch = shift.skill_required?.toLowerCase().includes(lowerQuery);
     const companyMatch = shift.employer?.company_name?.toLowerCase().includes(lowerQuery);
     const addressMatch = shift.employer?.company_address?.toLowerCase().includes(lowerQuery);
@@ -43,15 +67,19 @@ export default function ShiftsScreen() {
   // Fetch data
   const { data: latestShiftsData, isLoading: isLatestLoading } = useGetLatestShifts();
   const { data: bestMatchesData, isLoading: isBestMatchesLoading } = useGetBestMatchesShifts();
-
+  console.log('bestMatchesData: ', bestMatchesData);
   // Safely extract the data array
-  const latestShifts = Array.isArray(latestShiftsData)
-    ? latestShiftsData
-    : (latestShiftsData as any)?.data || [];
-  const bestMatches = Array.isArray(bestMatchesData)
-    ? bestMatchesData
-    : (bestMatchesData as any)?.data || [];
+  // Safely extract the data array using the generic helper
+  const latestShifts = useMemo(
+    () => extractData(latestShiftsData),
+    [latestShiftsData]
+  );
 
+  const bestMatches = useMemo(
+    () => extractData(bestMatchesData),
+    [bestMatchesData]
+  );
+  console.log('bestMatches: ', bestMatches);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredLatestShifts = useMemo(

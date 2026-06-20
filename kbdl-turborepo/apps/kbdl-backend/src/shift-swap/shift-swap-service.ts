@@ -6,7 +6,6 @@ import {
   ApproveShiftPayload,
   CreateShiftPayload,
   GetBestShiftMatchesQuery,
-  GetBestShiftMatchesResponse,
   GetCreatedShiftsForEmployeeResponse,
   GetEmployeeShiftsResponse,
   GetEmployerShiftAnalyticsResponse,
@@ -14,7 +13,6 @@ import {
   GetExtraShiftsQuery,
   GetExtraShiftsResponse,
   GetLatestShiftsQuery,
-  GetLatestShiftsResponse,
   GetOpenShiftsForEmployeeResponse,
   GetPendingShiftsQuery,
   GetPendingShiftsResponse,
@@ -24,9 +22,10 @@ import {
   GetShiftDetailsResponse,
   RateShiftPayload,
   RejectShiftResponse,
+  ShiftWithDistance,
   ShiftWithNotification,
   UpdateShiftPayload,
-  WithdrawShiftApplicationResponse,
+  WithdrawShiftApplicationResponse
 } from '@repo/types';
 import { publicShiftQueue } from '../config/queues/public-shift-queue';
 import { createNotificationService } from '../notifications/notification-service';
@@ -1563,7 +1562,7 @@ export const getOpenShiftsForEmployeeService = async (
 export const getLatestShiftsService = async (
   query: GetLatestShiftsQuery,
   userId: string,
-): Promise<GetLatestShiftsResponse> => {
+): Promise<{ shifts: ShiftWithDistance[]; meta: Record<string, number> }> => {
   const { limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
 
@@ -1596,86 +1595,136 @@ export const getLatestShiftsService = async (
   /*
     2. Fetch latest public shifts within 10 km
   */
-  const shifts = await prisma.$queryRawUnsafe<any[]>(
-    `
-    SELECT
-      s.*,
+  const [shifts, totalResult] = await Promise.all([
+    prisma.$queryRawUnsafe<any[]>(
+      `
+      SELECT
+        s.*,
 
-      json_build_object(
-        'company_name', e.company_name,
-        'company_address', e.company_address,
-        'is_verified', e.is_verified
-      ) AS employer,
+        json_build_object(
+          'company_name', e.company_name,
+          'company_address', e.company_address,
+          'is_verified', e.is_verified
+        ) AS employer,
 
-      ROUND(
-        (
-          ST_Distance(
-            e.company_location,
-            ST_SetSRID(
-              ST_MakePoint($1, $2),
-              4326
-            )::geography
-          ) / 1000
-        )::numeric,
-        1
-      ) AS distance_in_km
+        ROUND(
+          (
+            ST_Distance(
+              e.company_location,
+              ST_SetSRID(
+                ST_MakePoint($1, $2),
+                4326
+              )::geography
+            ) / 1000
+          )::numeric,
+          1
+        ) AS distance_in_km
 
-    FROM shifts s
+      FROM shifts s
 
-    INNER JOIN employers e
-      ON s.employer_id = e.id
+      INNER JOIN employers e
+        ON s.employer_id = e.id
 
-    WHERE
-      s.status = 'open'
-      AND s.request_accepted = false
-      AND s.replacement_employee_id IS NULL
-      AND s.original_employee_id != $3
-      AND e.company_location IS NOT NULL
-      AND s.shift_start > NOW()
+      WHERE
+        s.status = 'open'
+        AND s.request_accepted = false
+        AND s.replacement_employee_id IS NULL
+        AND s.original_employee_id != $3
+        AND e.company_location IS NOT NULL
+        AND s.shift_start > NOW()
 
-      -- Within 10000 KM radius
-      AND ST_DWithin(
-        e.company_location,
-        ST_SetSRID(
-          ST_MakePoint($1, $2),
-          4326
-        )::geography,
-        10000000
-      )
+        -- Within 10000 KM radius
+        AND ST_DWithin(
+          e.company_location,
+          ST_SetSRID(
+            ST_MakePoint($1, $2),
+            4326
+          )::geography,
+          10000000
+        )
 
-      -- Hide shifts already interacted with
-      AND NOT EXISTS (
-        SELECT 1
-        FROM shift_applications sa
-        WHERE sa.shift_id = s.id
-          AND sa.user_id = $4
-          AND sa.status IN (
-            'pending',
-            'accepted',
-            'rejected'
-          )
-      )
+        -- Hide shifts already interacted with
+        AND NOT EXISTS (
+          SELECT 1
+          FROM shift_applications sa
+          WHERE sa.shift_id = s.id
+            AND sa.user_id = $4
+            AND sa.status IN (
+              'pending',
+              'accepted',
+              'rejected'
+            )
+        )
 
-    ORDER BY s.created_at DESC
+      ORDER BY s.created_at DESC
 
-    LIMIT $5
-    OFFSET $6
-    `,
-    longitude, // $1
-    latitude, // $2
-    userId, // $3
-    userId, // $4
-    limit, // $5
-    skip, // $6
-  );
+      LIMIT $5
+      OFFSET $6
+      `,
+      longitude, // $1
+      latitude, // $2
+      userId, // $3
+      userId, // $4
+      limit, // $5
+      skip, // $6
+    ),
+    prisma.$queryRawUnsafe<any[]>(
+      `
+      SELECT COUNT(*) as count
+      FROM shifts s
+      INNER JOIN employers e
+        ON s.employer_id = e.id
+      WHERE
+        s.status = 'open'
+        AND s.request_accepted = false
+        AND s.replacement_employee_id IS NULL
+        AND s.original_employee_id != $3
+        AND e.company_location IS NOT NULL
+        AND s.shift_start > NOW()
+        AND ST_DWithin(
+          e.company_location,
+          ST_SetSRID(
+            ST_MakePoint($1, $2),
+            4326
+          )::geography,
+          10000000
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM shift_applications sa
+          WHERE sa.shift_id = s.id
+            AND sa.user_id = $4
+            AND sa.status IN (
+              'pending',
+              'accepted',
+              'rejected'
+            )
+        )
+      `,
+      longitude, // $1
+      latitude, // $2
+      userId, // $3
+      userId, // $4
+    ),
+  ]);
 
-  return shifts as GetLatestShiftsResponse;
+  const total = Number(totalResult[0]?.count || 0);
+
+  return {
+    shifts: shifts,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  } ;
 };
 
 export const getBestShiftMatchesService = async (
   query: GetBestShiftMatchesQuery,
   userId: string,
-): Promise<GetBestShiftMatchesResponse> => {
+): Promise<{ shifts: ShiftWithDistance[]; meta: Record<string, number> }> => {
   const { limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
 
@@ -1706,88 +1755,148 @@ export const getBestShiftMatchesService = async (
   const userSkills = user.skills && user.skills.length > 0 ? user.skills : [];
 
   if (userSkills.length === 0) {
-    return [];
+    return {
+      shifts: [],
+      meta: {
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      },
+    };
   }
 
   const normalizedSkills = userSkills.map((skill: string) => skill.toLowerCase());
 
-  const shifts = await prisma.$queryRawUnsafe<any[]>(
-    `
-    SELECT
-      s.*,
+  const [shifts, totalResult] = await Promise.all([
+    prisma.$queryRawUnsafe<any[]>(
+      `
+      SELECT
+        s.*,
 
-      json_build_object(
-        'company_name', e.company_name,
-        'company_address', e.company_address,
-        'is_verified', e.is_verified
-      ) AS employer,
+        json_build_object(
+          'company_name', e.company_name,
+          'company_address', e.company_address,
+          'is_verified', e.is_verified
+        ) AS employer,
 
-      ROUND(
-        (
-          ST_Distance(
-            e.company_location,
-            ST_SetSRID(
-              ST_MakePoint($1, $2),
-              4326
-            )::geography
-          ) / 1000
-        )::numeric,
-        1
-      ) AS distance_in_km
+        ROUND(
+          (
+            ST_Distance(
+              e.company_location,
+              ST_SetSRID(
+                ST_MakePoint($1, $2),
+                4326
+              )::geography
+            ) / 1000
+          )::numeric,
+          1
+        ) AS distance_in_km
 
-    FROM shifts s
+      FROM shifts s
 
-    INNER JOIN employers e
-      ON s.employer_id = e.id
+      INNER JOIN employers e
+        ON s.employer_id = e.id
 
-    WHERE
-      s.status = 'open'
-      AND s.request_accepted = false
-      AND s.replacement_employee_id IS NULL
-      AND s.original_employee_id != $3
-      AND e.company_location IS NOT NULL
-      AND s.shift_start > NOW()
+      WHERE
+        s.status = 'open'
+        AND s.request_accepted = false
+        AND s.replacement_employee_id IS NULL
+        AND s.original_employee_id != $3
+        AND e.company_location IS NOT NULL
+        AND s.shift_start > NOW()
 
-      AND LOWER(s.skill_required) = ANY($6::text[])
+        AND LOWER(s.skill_required) = ANY($6::text[])
 
-      AND ST_DWithin(
-        e.company_location,
-        ST_SetSRID(
-          ST_MakePoint($1, $2),
-          4326
-        )::geography,
-        10000
-      )
+        AND ST_DWithin(
+          e.company_location,
+          ST_SetSRID(
+            ST_MakePoint($1, $2),
+            4326
+          )::geography,
+          10000
+        )
 
-      AND NOT EXISTS (
-        SELECT 1
-        FROM shift_applications sa
-        WHERE sa.shift_id = s.id
-          AND sa.user_id = $7
-          AND sa.status IN (
-            'pending',
-            'accepted',
-            'rejected'
-          )
-      )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM shift_applications sa
+          WHERE sa.shift_id = s.id
+            AND sa.user_id = $7
+            AND sa.status IN (
+              'pending',
+              'accepted',
+              'rejected'
+            )
+        )
 
-    ORDER BY
-      distance_in_km ASC,
-      s.shift_date ASC
+      ORDER BY
+        distance_in_km ASC,
+        s.shift_date ASC
 
-    LIMIT $4
-    OFFSET $5
-    `,
-    longitude, // $1
-    latitude, // $2
-    userId, // $3
-    limit, // $4
-    skip, // $5
-    normalizedSkills, // $6
-    userId, // $7
-  );
+      LIMIT $4
+      OFFSET $5
+      `,
+      longitude, // $1
+      latitude, // $2
+      userId, // $3
+      limit, // $4
+      skip, // $5
+      normalizedSkills, // $6
+      userId, // $7
+    ),
+    prisma.$queryRawUnsafe<any[]>(
+      `
+      SELECT COUNT(*) as count
+      FROM shifts s
+      INNER JOIN employers e
+        ON s.employer_id = e.id
+      WHERE
+        s.status = 'open'
+        AND s.request_accepted = false
+        AND s.replacement_employee_id IS NULL
+        AND s.original_employee_id != $3
+        AND e.company_location IS NOT NULL
+        AND s.shift_start > NOW()
+        AND LOWER(s.skill_required) = ANY($4::text[])
+        AND ST_DWithin(
+          e.company_location,
+          ST_SetSRID(
+            ST_MakePoint($1, $2),
+            4326
+          )::geography,
+          10000
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM shift_applications sa
+          WHERE sa.shift_id = s.id
+            AND sa.user_id = $5
+            AND sa.status IN (
+              'pending',
+              'accepted',
+              'rejected'
+            )
+        )
+      `,
+      longitude, // $1
+      latitude, // $2
+      userId, // $3
+      normalizedSkills, // $4
+      userId, // $5
+    ),
+  ]);
 
-  return shifts as GetBestShiftMatchesResponse;
+  const total = Number(totalResult[0]?.count || 0);
+
+  return {
+    shifts: shifts ,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  } ;
 };
 
 export const getEmployerShiftAnalyticsService = async (

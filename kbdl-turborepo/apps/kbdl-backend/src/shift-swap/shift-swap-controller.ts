@@ -194,15 +194,15 @@ const getEmployeeOpenShifts = async (req: Request, res: Response) => {
 const getLatestShifts = async (req: Request, res: Response) => {
   const input: GetLatestShiftsRequest = validate(getLatestShiftsSchema, req);
   const userId = req.payload.user.id;
-  const shifts = await getLatestShiftsService(input.query, userId);
-  sendSuccess(res, 'Latest shifts retrieved', shifts, 200);
+  const { shifts, meta } = await getLatestShiftsService(input.query, userId);
+  sendSuccess(res, 'Latest shifts retrieved', shifts, 200, meta);
 };
 
 const getBestShiftMatches = async (req: Request, res: Response) => {
   const input: GetBestShiftMatchesRequest = validate(getBestShiftMatchesSchema, req);
   const userId = req.payload.user.id;
-  const shifts = await getBestShiftMatchesService(input.query, userId);
-  sendSuccess(res, 'Best shift matches retrieved', shifts, 200);
+  const { shifts, meta } = await getBestShiftMatchesService(input.query, userId);
+  sendSuccess(res, 'Best shift matches retrieved', shifts, 200, meta);
 };
 
 const getEmployerShiftAnalytics = async (req: Request, res: Response) => {

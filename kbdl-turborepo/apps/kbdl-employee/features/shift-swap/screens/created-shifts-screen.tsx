@@ -64,6 +64,8 @@ export default function CreatedShiftsScreen() {
         return { text: 'Open', bg: '#E5EFFF', color: '#0658C2' };
       case 'matched':
         return { text: 'Upcoming', bg: '#FFF0E3', color: '#F97316' };
+      case 'rejected':
+        return { text: 'Rejected', bg: '#FFF0E3', color: '#EF4444' };
       case 'approved':
         return { text: 'Approved', bg: '#DCFCE7', color: '#059669' };
       case 'completed':
