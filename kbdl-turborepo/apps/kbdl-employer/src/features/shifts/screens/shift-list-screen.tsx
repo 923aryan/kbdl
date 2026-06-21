@@ -1,9 +1,9 @@
 'use client';
 
-import { Eye } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
 import { DataPagination } from '@/components/ui/pagination';
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
+import { Eye } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGetEmployerShifts } from '../hooks/use-shift-hook';
 
 // ... other code will remain the same but I should provide the full replacement or I can use update for specific lines.
@@ -202,14 +202,6 @@ const isCancelled =
   invitedStatus === 'withdrawn' ||
   (shiftStatus === 'rejected' && !isEmployerRejected);
 
-  console.log({
-    shiftId: shift.id,
-    shiftStatus: shift.status,
-    organizationApproved: shift.organization_approved,
-    requestAccepted: shift.request_accepted,
-    invitedStatus,
-    createdBy: shift.created_by,
-});
   if (shift.no_show_reported) return { status: 'absent' };
 
   if (isEmployerRejected) {
