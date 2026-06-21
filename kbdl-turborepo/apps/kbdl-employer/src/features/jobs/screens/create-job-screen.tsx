@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Calendar, MapPin, Briefcase, DollarSign, Eye } from 'lucide-react';
-import { createEmployerJob } from '../api';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
-import { z } from 'zod';
 import { createJobSchema } from '@repo/validator/shared';
+import { EmploymentType, JobStatus, JobWorkType, SalaryType } from '../../../lib/constants';
+import { Briefcase, Calendar, DollarSign, Eye, MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { createEmployerJob } from '../api';
 
 const jobFormSchema = createJobSchema.shape.body;
-type JobFormData = z.infer<typeof jobFormSchema>;
+type JobFormData = z.input<typeof jobFormSchema>;
 
 // ── Reusable field wrapper ────────────────────────────────────────────────────
 function Field({
@@ -105,9 +106,9 @@ export function CreateJobScreen() {
     defaultValues: {
       title: '',
       description: '',
-      employment_type: 'full_time',
-      work_type: 'remote',
-      salary_type: 'monthly',
+      employment_type: EmploymentType.full_time,
+      work_type: JobWorkType.remote,
+      salary_type: SalaryType.monthly,
       salary_min: undefined,
       salary_max: undefined,
       address: '',
@@ -119,7 +120,7 @@ export function CreateJobScreen() {
 
   const watchAll = watch();
 
-  const onSubmit = async (data: JobFormData, status: 'open' | 'draft' = 'open') => {
+  const onSubmit = async (data: JobFormData, status: typeof JobStatus.open | typeof JobStatus.draft = JobStatus.open) => {
     setError(null);
     setSubmitting(true);
     try {
@@ -152,22 +153,22 @@ export function CreateJobScreen() {
       : '';
 
   const employmentLabel: Record<string, string> = {
-    full_time: 'Full-Time',
-    part_time: 'Part-Time',
-    contract: 'Contract',
-    internship: 'Internship',
+    [EmploymentType.full_time]: 'Full-Time',
+    [EmploymentType.part_time]: 'Part-Time',
+    [EmploymentType.contract]: 'Contract',
+    [EmploymentType.internship]: 'Internship',
   };
 
   const workLabel: Record<string, string> = {
-    remote: 'Remote',
-    onsite: 'On-site',
-    hybrid: 'Hybrid',
+    [JobWorkType.remote]: 'Remote',
+    [JobWorkType.onsite]: 'On-site',
+    [JobWorkType.hybrid]: 'Hybrid',
   };
 
   const salaryLabel: Record<string, string> = {
-    monthly: 'Monthly',
-    hourly: 'Hourly',
-    weekly: 'Weekly',
+    [SalaryType.monthly]: 'Monthly',
+    [SalaryType.hourly]: 'Hourly',
+    [SalaryType.weekly]: 'Weekly',
   };
 
   return (
@@ -200,10 +201,10 @@ export function CreateJobScreen() {
                 </Field>
                 <Field label="Employment Type" required error={errors.employment_type?.message}>
                   <select {...register('employment_type')} className={selectCls}>
-                    <option value="full_time">Full-Time</option>
-                    <option value="part_time">Part-Time</option>
-                    <option value="contract">Contract</option>
-                    <option value="internship">Internship</option>
+                    <option value={EmploymentType.full_time}>Full-Time</option>
+                    <option value={EmploymentType.part_time}>Part-Time</option>
+                    <option value={EmploymentType.contract}>Contract</option>
+                    <option value={EmploymentType.internship}>Internship</option>
                   </select>
                 </Field>
               </div>
@@ -230,9 +231,9 @@ export function CreateJobScreen() {
                 </Field>
                 <Field label="Work Type" required error={errors.work_type?.message}>
                   <select {...register('work_type')} className={selectCls}>
-                    <option value="remote">Remote</option>
-                    <option value="onsite">On-site</option>
-                    <option value="hybrid">Hybrid</option>
+                    <option value={JobWorkType.remote}>Remote</option>
+                    <option value={JobWorkType.onsite}>On-site</option>
+                    <option value={JobWorkType.hybrid}>Hybrid</option>
                   </select>
                 </Field>
               </div>
@@ -280,9 +281,9 @@ export function CreateJobScreen() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <Field label="Salary Type" required error={errors.salary_type?.message}>
                   <select {...register('salary_type')} className={selectCls}>
-                    <option value="monthly">Monthly</option>
-                    <option value="hourly">Hourly</option>
-                    <option value="weekly">Weekly</option>
+                    <option value={SalaryType.monthly}>Monthly</option>
+                    <option value={SalaryType.hourly}>Hourly</option>
+                    <option value={SalaryType.weekly}>Weekly</option>
                   </select>
                 </Field>
                 <Field label="Minimum Salary" error={errors.salary_min?.message}>
@@ -390,7 +391,7 @@ export function CreateJobScreen() {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleSubmit((data) => onSubmit(data, 'open'))}
+                onClick={handleSubmit((data) => onSubmit(data, JobStatus.open))}
                 className="w-full bg-[#0a58ca] hover:bg-[#084298] text-white text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60 shadow-sm"
               >
                 {submitting ? 'Publishing...' : 'Publish Job'}
@@ -399,7 +400,7 @@ export function CreateJobScreen() {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleSubmit((data) => onSubmit(data, 'draft'))}
+                onClick={handleSubmit((data) => onSubmit(data, JobStatus.draft))}
                 className="w-full bg-[#eef2f9] hover:bg-[#e2e8f0] text-[#475569] text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60"
               >
                 Save as Draft
