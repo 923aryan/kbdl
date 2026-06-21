@@ -4,26 +4,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@repo/ui/button';
 import { Input } from '@repo/ui/input';
 import { createShiftSchema, getReferredEmployeeSchema } from '@repo/validator/shared';
-import { X } from 'lucide-react';
+import { Globe, Lock, X } from 'lucide-react';
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useCreateShiftSwap, useGetReferredEmployee } from '../hooks/use-shift-hook';
 import { useShiftStore } from '../stores/use-shift-store';
-import { useState } from 'react';
-import { Globe, Lock } from 'lucide-react';
 
 const referredEmployeePhoneSchema = getReferredEmployeeSchema.shape.body.shape.phone_no;
 
-const formSchema = createShiftSchema.shape.body
-  .omit({
-    original_employee_id: true,
-    replacement_employee_id: true,
-  })
-  .extend({
-    original_employee_phone: referredEmployeePhoneSchema,
-    replacement_employee_phone: z.union([referredEmployeePhoneSchema, z.literal('')]).optional(),
-  });
+const formSchema = createShiftSchema.shape.body;
 
 type FormData = z.input<typeof formSchema>;
 
@@ -56,6 +47,11 @@ export const CreateShiftModal = () => {
   const { mutate: createShift, isPending: isCreating } = useCreateShiftSwap();
   const { mutateAsync: getReferredEmployee, isPending: isFindingEmployee } = useGetReferredEmployee();
   const [shiftType, setShiftType] = useState<'PUBLIC' | 'PRIVATE'>('PUBLIC');
+
+  const [originalPhone, setOriginalPhone] = useState('');
+  const [replacementPhone, setReplacementPhone] = useState('');
+  const [phoneErrors, setPhoneErrors] = useState<{ original_employee_phone?: string; replacement_employee_phone?: string }>({});
+
   const {
     control,
     handleSubmit,
@@ -66,8 +62,6 @@ export const CreateShiftModal = () => {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      original_employee_phone: '',
-      replacement_employee_phone: '',
       skill_required: '',
       payType: 'FIXED',
       shift_pay: undefined,
@@ -83,6 +77,9 @@ export const CreateShiftModal = () => {
 
   const handleClose = () => {
     reset();
+    setOriginalPhone('');
+    setReplacementPhone('');
+    setPhoneErrors({});
     toggleCreateModal();
   };
 
@@ -92,19 +89,33 @@ export const CreateShiftModal = () => {
 
   const onSubmit = async (data: FormData) => {
     try {
-      const originalEmployee = await findEmployeeByPhone(data.original_employee_phone);
-
+      let originalEmployeeId: string | undefined;
       let replacementEmployeeId: string | undefined;
-      const replacementPhone = data.replacement_employee_phone?.trim();
 
-      if (replacementPhone) {
-        const replacementEmployee = await findEmployeeByPhone(replacementPhone);
-        replacementEmployeeId = replacementEmployee.id;
+      const origValidation = referredEmployeePhoneSchema.safeParse(originalPhone);
+      if (!origValidation.success) {
+        setPhoneErrors((prev) => ({ ...prev, original_employee_phone: origValidation.error.issues[0]?.message || 'Invalid phone number' }));
+        return;
+      }
+      const originalEmployee = await findEmployeeByPhone(origValidation.data);
+      originalEmployeeId = originalEmployee.id;
+
+      if (shiftType === 'PRIVATE') {
+        const repPhone = replacementPhone.trim();
+        if (repPhone) {
+          const repValidation = referredEmployeePhoneSchema.safeParse(repPhone);
+          if (!repValidation.success) {
+            setPhoneErrors((prev) => ({ ...prev, replacement_employee_phone: repValidation.error.issues[0]?.message || 'Invalid phone number' }));
+            return;
+          }
+          const replacementEmployee = await findEmployeeByPhone(repValidation.data);
+          replacementEmployeeId = replacementEmployee.id;
+        }
       }
 
       createShift(
         {
-          original_employee_id: originalEmployee.id,
+          original_employee_id: originalEmployeeId,
           replacement_employee_id: replacementEmployeeId,
           payType: data.payType,
           shift_pay: Number(data.shift_pay),
@@ -329,41 +340,41 @@ export const CreateShiftModal = () => {
             </div>
 
             {/* Worker Information */}
-            {shiftType === 'PRIVATE' && (
-              <div className="space-y-4">
-                {/* <div className="flex items-center gap-2">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                <h3 className="text-sm font-semibold text-gray-900">Worker Details</h3>
-              </div> */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Controller
-                    control={control}
-                    name="original_employee_phone"
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        label="Worker Mobile Number *"
-                        placeholder="+919876543210"
-                        error={errors.original_employee_phone?.message}
-                      />
-                    )}
-                  />
+            <div className="space-y-4">
+              {/* <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-900">Worker Details</h3>
+            </div> */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <Input
+                  value={originalPhone}
+                  onChange={(e) => {
+                    setOriginalPhone(e.target.value);
+                    if (phoneErrors.original_employee_phone) {
+                      setPhoneErrors((prev) => ({ ...prev, original_employee_phone: undefined }));
+                    }
+                  }}
+                  label="Worker Mobile Number *"
+                  placeholder="+919876543210"
+                  error={phoneErrors.original_employee_phone}
+                />
 
-                  <Controller
-                    control={control}
-                    name="replacement_employee_phone"
-                    render={({ field }) => (
-                      <Input
-                        {...field}
-                        label="Replacement Mobile (Optional)"
-                        placeholder="+919876543210"
-                        error={errors.replacement_employee_phone?.message}
-                      />
-                    )}
+                {shiftType === 'PRIVATE' && (
+                  <Input
+                    value={replacementPhone}
+                    onChange={(e) => {
+                      setReplacementPhone(e.target.value);
+                      if (phoneErrors.replacement_employee_phone) {
+                        setPhoneErrors((prev) => ({ ...prev, replacement_employee_phone: undefined }));
+                      }
+                    }}
+                    label="Replacement Mobile (Optional)"
+                    placeholder="+919876543210"
+                    error={phoneErrors.replacement_employee_phone}
                   />
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="mt-2 flex justify-between">
               <div className="flex h-[50px] w-full max-w-[180px] rounded-xl border border-gray-300 bg-white p-1">
