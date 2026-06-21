@@ -222,20 +222,20 @@ function JobRow({
         </div>
       </td>
       {/* Location */}
-      <td className="px-5 py-3.5 text-sm text-gray-600 capitalize">
+      {/* <td className="px-5 py-3.5 text-sm text-gray-600 capitalize">
         {job.work_type ?? job.location ?? '—'}
         <div className="truncate max-w-[150px]" title={(job as any).address || job.location || '—'}>
           {(job as any).address || job.location || '—'}
         </div>
-      </td>
+      </td> */}
       {/* Applications */}
-      <td className="px-5 py-3.5 text-sm text-gray-700">{job.application_count ?? 0}</td>
+      {/* <td className="px-5 py-3.5 text-sm text-gray-700">{job.application_count ?? 0}</td> */}
       {/* Hires */}
-      <td className="px-5 py-3.5 text-sm text-gray-700">{job.hire_count ?? 0}</td>
+      {/* <td className="px-5 py-3.5 text-sm text-gray-700">{job.hire_count ?? 0}</td> */}
       {/* Status */}
-      <td className="px-5 py-3.5">
+      {/* <td className="px-5 py-3.5">
         <StatusBadge status={job.status} />
-      </td>
+      </td> */}
       {/* Posted On */}
       <td className="px-5 py-3.5 text-sm text-gray-500">{postedDate}</td>
       {/* Action */}
