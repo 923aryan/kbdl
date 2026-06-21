@@ -273,44 +273,6 @@ const employerBullets = [
 export default function Workers() {
   return (
     <div className="h-full w-full">
-      {/* <section className="relative w-full min-h-125 md:min-h-150 flex flex-col justify-center items-center overflow-hidden">
-       
-        <div className="absolute inset-0 z-0">
-          <Image
-            src={workerBg}
-            alt="Construction site workers building a modern high-rise"
-            fill
-            priority 
-            className="object-cover object-center"
-          />
-          
-          <div className="absolute inset-0 bg-[#070E1A]/40 md:bg-gradient-to-b md:from-[#050B14]/50 md:via-[#070E1A]/70 md:to-[#050B14]/50"></div>
-        </div>
-
-      
-        <div className="relative z-10 flex flex-col items-center text-center px-4 max-w-4xl mx-auto">
-        
-          <div className="px-6 py-2 mb-6 rounded-full border border-[#0658C2]/40 bg-[#0658C2]/10 backdrop-blur-md">
-            <span className="text-[#8FBFFF] text-xs font-bold tracking-[0.2em] uppercase">
-              Build Your Career
-            </span>
-          </div>
-
-       
-          <h1 className="text-5xl md:text-6xl lg:text-[72px] font-extrabold text-white leading-[1.1] mb-6">
-            Better Jobs.{' '} <br/>
-            <span className="text-primary">
-              Stronger Tomorrow.
-            </span>
-          </h1>
-
-          <p className="text-base md:text-lg lg:text-xl text-gray-300 max-w-2xl leading-relaxed">
-            We connect skilled workers with the right opportunities.
-            <br className="hidden sm:block" />
-            Find work that matches your skills and build a better future.
-          </p>
-        </div>
-      </section> */}
       <HeroBanners />
       <section className="bg-[#ffffff] py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">

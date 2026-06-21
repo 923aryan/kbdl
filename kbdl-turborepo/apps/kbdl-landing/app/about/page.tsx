@@ -89,40 +89,6 @@ export default function AboutUs() {
     <div className="h-full w-full bg-white ">
       {/* <StructuredData data={schema} /> */}
       {/* <HeroSection /> */}
-      {/* <section className="relative w-full min-h-[500px] md:min-h-[600px] flex flex-col justify-center items-center overflow-hidden">
-
-        <div className="absolute inset-0 z-0">
-          <Image
-            src={aboutUsHero}
-            alt="Construction site at sunset representing India's modern workforce"
-            fill
-            priority
-            className="object-cover object-center"
-          />
-
-          <div className="absolute inset-0 bg-black/40 md:bg-linear-to-b md:from-[#110D0A]/50 md:via-[#110D0A]/70 md:to-[#110D0A]/90"></div>
-        </div>
-
-
-        <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-4xl mx-auto mt-10">
-
-          <div className="px-5 py-1.5 mb-6 rounded-full border border-primary/40 bg-primary/20 backdrop-blur-sm">
-            <span className="text-primary text-sm font-bold tracking-widest uppercase">
-              About Us
-            </span>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl lg:text-[56px] font-bold text-white leading-[1.15] mb-6">
-            Building India's Modern <br className="hidden sm:block" />
-            <span className="text-primary">Workforce Ecosystem</span>
-          </h1>
-
-          <p className="text-base md:text-lg lg:text-xl text-gray-300 max-w-3xl leading-relaxed">
-            Kaam Badlo is India's first on-demand Blue-Collar Workforce platform built to connect
-            skilled and unskilled workers with reliable job opportunities across India.
-          </p>
-        </div>
-      </section> */}
       <HeroBanners />
       {/* <TimelineSection /> */}
       <section className="bg-white py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8">
