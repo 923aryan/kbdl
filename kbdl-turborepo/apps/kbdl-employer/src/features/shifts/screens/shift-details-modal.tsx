@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 import {
   BriefcaseBusiness,
   Calendar,
@@ -11,14 +11,8 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/features/auth/stores/use-auth-store';
-import {
-  getApprovalStatus,
-  getShiftDisplayState,
-  type EmployerShift,
-  type ShiftApplicationSummary,
-} from './shift-list-screen';
 import {
   useApproveShift,
   useCompleteShift,
@@ -28,6 +22,12 @@ import {
   useRejectShift,
   useReportShiftNoShow,
 } from '../hooks/use-shift-hook';
+import {
+  getApprovalStatus,
+  getShiftDisplayState,
+  type EmployerShift,
+  type ShiftApplicationSummary,
+} from './shift-list-screen';
 
 interface ShiftDetailsModalProps {
   shiftId: string | null;
@@ -436,6 +436,7 @@ export const ShiftDetailsModal = ({ shiftId, onClose }: ShiftDetailsModalProps) 
         score: rating,
         review,
         flagged_issue: attendance === 'absent',
+        is_absent: attendance === 'absent' ? true : false
       });
       if (attendance === 'absent') {
         await reportNoShow.mutateAsync(shift.id);
