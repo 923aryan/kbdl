@@ -351,3 +351,28 @@ export const syncSavedShiftsSchema = z.object({
     })
     .strict(),
 });
+
+export const getPublicShiftsSchema = z.object({
+  query: z
+    .object({
+      limit: z
+        .string()
+        .regex(/^\d+$/, 'Limit must be a number')
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 10)),
+      page: z
+        .string()
+        .regex(/^\d+$/, 'Page must be a number')
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 1)),
+    })
+    .strict(),
+});
+
+export const getPublicShiftDetailsSchema = z.object({
+  params: z
+    .object({
+      id: z.string().uuid('Invalid shift ID format'),
+    })
+    .strict(),
+});

@@ -16,6 +16,9 @@ import {
   GetOpenShiftsForEmployeeResponse,
   GetPendingShiftsQuery,
   GetPendingShiftsResponse,
+  GetPublicShiftDetailsResponse,
+  GetPublicShiftsQuery,
+  GetPublicShiftsResponse,
   getReferredEmployeePayload,
   getReferredEmployeeResponse,
   GetShiftDetailsQuery,
@@ -25,7 +28,7 @@ import {
   ShiftWithDistance,
   ShiftWithNotification,
   UpdateShiftPayload,
-  WithdrawShiftApplicationResponse
+  WithdrawShiftApplicationResponse,
 } from '@repo/types';
 import { publicShiftQueue } from '../config/queues/public-shift-queue';
 import { createNotificationService } from '../notifications/notification-service';
@@ -2247,4 +2250,76 @@ export const reportShiftNoShowService = async (
       no_show_reported: true,
     },
   });
+};
+
+const generateSeoTitle = (shift: any) => {
+  let location = 'India';
+  if (shift.employer?.company_address) {
+    const parts = shift.employer.company_address.split(',').map((s: string) => s.trim());
+    location = parts.pop() || 'India';
+  }
+  const pay = shift.shift_pay ? shift.shift_pay.toString() : '0';
+  return `${shift.skill_required} Shift Swap in ${location} | ₹${pay} | KaamBadlo`;
+};
+
+export const getPublicShiftsService = async (
+  query: GetPublicShiftsQuery,
+): Promise<{ shifts: GetPublicShiftsResponse; meta: Record<string, number> }> => {
+  const { limit = 10, page = 1 } = query;
+  const skip = (page - 1) * limit;
+
+  const whereClause: any = {
+    status: ShiftStatus.open,
+    replacement_employee_id: null,
+  };
+
+  const [shifts, total] = await Promise.all([
+    prisma.shift.findMany({
+      where: whereClause,
+      include: {
+        employer: { select: { company_name: true, company_address: true } },
+      },
+      orderBy: { created_at: 'desc' },
+      take: limit,
+      skip,
+    }),
+    prisma.shift.count({ where: whereClause }),
+  ]);
+
+  const shiftsWithTitle = shifts.map(shift => ({
+    ...shift,
+    seo_title: generateSeoTitle(shift),
+  }));
+
+  return {
+    shifts: shiftsWithTitle,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+export const getPublicShiftDetailsService = async (
+  id: string,
+): Promise<GetPublicShiftDetailsResponse> => {
+  const shift = await prisma.shift.findUnique({
+    where: { id, status: ShiftStatus.open, replacement_employee_id: null },
+    include: {
+      employer: { select: { company_name: true, company_address: true } },
+    },
+  });
+
+  if (!shift) {
+    throw new AppError(404, 'SHIFT_NOT_FOUND', 'Public shift not found or no longer available.');
+  }
+
+  const shiftWithTitle = {
+    ...shift,
+    seo_title: generateSeoTitle(shift),
+  };
+
+  return shiftWithTitle;
 };

@@ -10,6 +10,8 @@ import {
   GetExtraShiftsRequest,
   GetLatestShiftsRequest,
   GetPendingShiftsRequest,
+  GetPublicShiftDetailsRequest,
+  GetPublicShiftsQuery,
   getReferredEmployeeRequest,
   GetShiftDetailsRequest,
   RateShiftRequest,
@@ -31,6 +33,8 @@ import {
   getExtraShiftsSchema,
   getLatestShiftsSchema,
   getPendingShiftsSchema,
+  getPublicShiftDetailsSchema,
+  getPublicShiftsSchema,
   getReferredEmployeeSchema,
   getShiftDetailsSchema,
   rateShiftSchema,
@@ -60,6 +64,8 @@ import {
   getLatestShiftsService,
   getOpenShiftsForEmployeeService,
   getPendingShiftsForEmployerService,
+  getPublicShiftDetailsService,
+  getPublicShiftsService,
   getReferredEmployeeService,
   getScheduledShiftsService,
   getShiftDetailsService,
@@ -270,6 +276,18 @@ const syncSavedShifts = async (req: Request, res: Response) => {
   sendSuccess(res, 'Saved shifts synced successfully', shifts, 200);
 };
 
+const getPublicShifts = async (req: Request, res: Response) => {
+  const input : GetPublicShiftsQuery = validate(getPublicShiftsSchema, req);
+  const { shifts, meta } = await getPublicShiftsService(input);
+  sendSuccess(res, 'Public shifts retrieved successfully', shifts, 200, meta);
+};
+
+const getPublicShiftDetails = async (req: Request, res: Response) => {
+  const input :GetPublicShiftDetailsRequest = validate(getPublicShiftDetailsSchema, req);
+  const shift = await getPublicShiftDetailsService(input.params.id);
+  sendSuccess(res, 'Public shift details retrieved successfully', shift, 200);
+};
+
 export {
   acceptShiftSwap,
   applyForPublicShifts,
@@ -285,8 +303,7 @@ export {
   getEmployerShifts,
   getExtraShifts,
   getLatestShifts,
-  getPendingShiftsForEmployer,
-  getReferredEmployee,
+  getPendingShiftsForEmployer, getPublicShiftDetails, getPublicShifts, getReferredEmployee,
   getScheduledShifts,
   getShiftDetails,
   rateShift,
@@ -294,5 +311,6 @@ export {
   reportShiftNoShow,
   syncSavedShifts,
   updateShift,
-  withdrawShiftApplication,
+  withdrawShiftApplication
 };
+

@@ -2,18 +2,18 @@
 
 import {
   Briefcase,
-  CheckCircle,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  FileText,
+  ChevronUp,
   MoreVertical,
   Plus,
   Search,
-  Users,
+  X,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { EmployerJob, getEmployerJobs } from '../api';
 import { JobApplicationsDrawer } from './job-applications-drawer';
 
@@ -43,49 +43,6 @@ const STATUS_OPTIONS = [
   { label: 'Expired', value: 'expired' },
 ];
 
-const STATS_CONFIG = [
-  {
-    key: 'totalJobs',
-    label: 'Total Jobs',
-    sub: 'All Time',
-    icon: Briefcase,
-    iconBg: 'bg-blue-50',
-    iconColor: 'text-blue-500',
-  },
-  {
-    key: 'activeJobs',
-    label: 'Active Jobs',
-    sub: 'Currently Live',
-    icon: CheckCircle,
-    iconBg: 'bg-green-50',
-    iconColor: 'text-green-500',
-  },
-  {
-    key: 'draftJobs',
-    label: 'Draft Jobs',
-    sub: 'Not Published',
-    icon: FileText,
-    iconBg: 'bg-orange-50',
-    iconColor: 'text-orange-400',
-  },
-  {
-    key: 'totalApplications',
-    label: 'Total Applications',
-    sub: 'All Jobs',
-    icon: Users,
-    iconBg: 'bg-purple-50',
-    iconColor: 'text-purple-400',
-  },
-  {
-    key: 'hiresFromJobs',
-    label: 'Hires From Jobs',
-    sub: 'This Month',
-    icon: Users,
-    iconBg: 'bg-pink-50',
-    iconColor: 'text-pink-400',
-  },
-];
-
 const STATUS_BADGE: Record<string, { dot: string; pill: string; label: string }> = {
   open: {
     dot: 'bg-green-500',
@@ -108,39 +65,6 @@ const STATUS_BADGE: Record<string, { dot: string; pill: string; label: string }>
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
 
-function StatCard({
-  label,
-  sub,
-  icon: Icon,
-  iconBg,
-  iconColor,
-  value,
-}: {
-  label: string;
-  sub: string;
-  icon: typeof Briefcase;
-  iconBg: string;
-  iconColor: string;
-  value: number | string | null;
-}) {
-  return (
-    <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-4 shadow-sm">
-      <div
-        className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}
-      >
-        <Icon size={18} className={iconColor} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-gray-500 truncate">{label}</p>
-        <p className="text-2xl font-bold text-gray-900 leading-tight">
-          {value == null ? <span className="text-gray-300 text-xl">—</span> : value}
-        </p>
-        <p className="text-[11px] text-gray-400">{sub}</p>
-      </div>
-    </div>
-  );
-}
-
 function FilterSelect({
   value,
   onChange,
@@ -150,23 +74,42 @@ function FilterSelect({
   onChange: (v: string) => void;
   options: { label: string; value: string }[];
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selected = options.find((option) => option.value === value);
+
   return (
     <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 text-sm text-gray-700 cursor-pointer outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 font-medium"
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex h-11 min-w-40 items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm"
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        size={13}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-      />
+        <span>{selected?.label || options[0]?.label}</span>
+        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-14 z-20 w-64 rounded-xl border border-blue-100 bg-white p-3 shadow-xl">
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              className={`mb-1 flex w-full items-center justify-between rounded-md px-4 py-3 text-left text-sm font-medium ${
+                value === option.value
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              {option.label}
+              {value === option.value && <Check className="h-4 w-4" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -179,21 +122,144 @@ function StatusBadge({ status }: { status: string }) {
   };
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${cfg.pill}`}
+      className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium ${cfg.pill}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+      <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
+  );
+}
+
+function formatJobLabel(value?: string | null) {
+  return value ? value.replace(/_/g, ' ') : '—';
+}
+
+function formatJobDate(value?: string | null) {
+  return value
+    ? new Date(value).toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
+}
+
+function formatSalary(job: EmployerJob) {
+  if (job.salary_min == null && job.salary_max == null) return '—';
+
+  const min = job.salary_min == null ? '0' : job.salary_min.toLocaleString('en-IN');
+  const max = job.salary_max == null ? 'Open' : job.salary_max.toLocaleString('en-IN');
+  return `Rs ${min} - ${max} / ${formatJobLabel(job.salary_type)}`;
+}
+
+function DetailItem({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
+      <p className="text-[11px] font-semibold uppercase text-gray-400">{label}</p>
+      <div className="mt-1 text-sm font-medium text-gray-900 capitalize">{value}</div>
+    </div>
+  );
+}
+
+function JobDetailsModal({
+  job,
+  onClose,
+}: {
+  job: EmployerJob | null;
+  onClose: () => void;
+}) {
+  if (!job) return null;
+
+  const status = job.status ?? 'draft';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <StatusBadge status={status} />
+              <span className="text-xs font-medium text-gray-400 capitalize">
+                {formatJobLabel(job.employment_type)}
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">{job.title}</h2>
+            <p className="mt-1 text-sm text-gray-500">{job.address || formatJobLabel(job.work_type)}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close job details"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-5">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <DetailItem label="Openings" value={job.seats_available ?? '—'} />
+            <DetailItem label="Applications" value={job.application_count ?? 0} />
+            <DetailItem label="Hires" value={job.hire_count ?? 0} />
+            <DetailItem label="Work Type" value={formatJobLabel(job.work_type)} />
+            <DetailItem label="Employment" value={formatJobLabel(job.employment_type)} />
+            <DetailItem label="Salary" value={formatSalary(job)} />
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Description</h3>
+            <p className="mt-2 whitespace-pre-wrap rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm leading-6 text-gray-700">
+              {job.description || 'No description provided.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <DetailItem label="Start Time" value={formatJobDate(job.job_start_time)} />
+            <DetailItem label="End Time" value={formatJobDate(job.job_end_time)} />
+            <DetailItem label="Expires At" value={formatJobDate(job.expires_at)} />
+            <DetailItem label="Posted On" value={formatJobDate(job.created_at)} />
+            <DetailItem label="Negotiable" value={job.is_negotiable ? 'Yes' : 'No'} />
+            <DetailItem label="Company" value={job.employer?.name || 'Your company'} />
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+            <Link
+              href={`/jobs/${job.id}/edit`}
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              Edit Job
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function JobRow({
   job,
   onViewApplications,
+  onViewDetails,
   onUpdateStatus,
 }: {
   job: EmployerJob;
   onViewApplications: (job: EmployerJob) => void;
+  onViewDetails: (job: EmployerJob) => void;
   onUpdateStatus?: (jobId: string, status: string) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -204,17 +270,22 @@ function JobRow({
         year: 'numeric',
       })
     : '—';
+  const status = job.status ?? 'draft';
+  const locationLabel = job.address || job.work_type || '—';
 
   return (
-    <tr className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors group">
+    <tr
+      onClick={() => onViewDetails(job)}
+      className="bg-white transition hover:bg-gray-50/80 cursor-pointer"
+    >
       {/* Job Title */}
-      <td className="px-5 py-3.5">
+      <td className="px-5 py-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Briefcase size={14} className="text-blue-500" />
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600">
+            <Briefcase size={16} />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900 leading-tight">{job.title}</p>
+            <p className="font-medium text-gray-900 leading-tight">{job.title}</p>
             <p className="text-xs text-gray-400 mt-0.5 capitalize">
               {job.employment_type?.replace('_', '-') ?? ''}
             </p>
@@ -222,28 +293,31 @@ function JobRow({
         </div>
       </td>
       {/* Location */}
-      {/* <td className="px-5 py-3.5 text-sm text-gray-600 capitalize">
-        {job.work_type ?? job.location ?? '—'}
-        <div className="truncate max-w-[150px]" title={(job as any).address || job.location || '—'}>
-          {(job as any).address || job.location || '—'}
+      <td className="px-5 py-3 text-gray-600 capitalize">
+        <p className="font-medium text-gray-900">{formatJobLabel(job.work_type)}</p>
+        <div className="truncate max-w-[150px]" title={locationLabel}>
+          {locationLabel}
         </div>
-      </td> */}
+      </td> 
       {/* Applications */}
-      {/* <td className="px-5 py-3.5 text-sm text-gray-700">{job.application_count ?? 0}</td> */}
+      <td className="px-5 py-3 font-medium text-gray-900">{job.application_count ?? 0}</td>
       {/* Hires */}
-      {/* <td className="px-5 py-3.5 text-sm text-gray-700">{job.hire_count ?? 0}</td> */}
+      <td className="px-5 py-3 font-medium text-gray-900">{job.hire_count ?? 0}</td>
       {/* Status */}
-      {/* <td className="px-5 py-3.5">
-        <StatusBadge status={job.status} />
-      </td> */}
+      <td className="px-5 py-3">
+        <StatusBadge status={status} />
+      </td>
       {/* Posted On */}
-      <td className="px-5 py-3.5 text-sm text-gray-500">{postedDate}</td>
+      <td className="px-5 py-3 font-medium text-gray-900">{postedDate}</td>
       {/* Action */}
-      <td className="px-5 py-3.5 relative">
-        <div className="relative inline-block text-left">
+      <td className="px-5 py-3 relative" onClick={(event) => event.stopPropagation()}>
+        <div className="relative flex justify-center text-left">
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={(event) => {
+              event.stopPropagation();
+              setMenuOpen(!menuOpen);
+            }}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-blue-600 transition hover:bg-blue-50"
           >
             <MoreVertical size={16} />
           </button>
@@ -270,12 +344,15 @@ function JobRow({
                 </button>
                 <Link
                   href={`/jobs/${job.id}/edit`}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                  }}
                   className="block w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-gray-700 transition-colors"
                 >
                   Edit Job
                 </Link>
-                {job.status === 'draft' && (
+                {status === 'draft' && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -360,34 +437,39 @@ function Pagination({
   }
 
   return (
-    <div className="flex items-center justify-between px-5 py-3.5 border-t border-gray-100">
-      <p className="text-xs text-gray-400">
-        {total === 0 ? 'Showing 0 jobs' : `Showing ${from} to ${to} of ${total} jobs`}
+    <div className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        Showing <span className="font-medium text-gray-900">{from}</span>-
+        <span className="font-medium text-gray-900">{to}</span> of{' '}
+        <span className="font-medium text-gray-900">{total}</span>
       </p>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-end gap-2">
         <button
+          type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="w-7 h-7 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Previous page"
         >
-          <ChevronLeft size={13} />
+          <ChevronLeft size={16} />
         </button>
         {pages.map((p, i) =>
           p === '...' ? (
             <span
               key={`ellipsis-${i}`}
-              className="w-7 h-7 flex items-center justify-center text-xs text-gray-400"
+              className="flex h-9 w-9 items-center justify-center text-sm text-gray-400"
             >
               …
             </span>
           ) : (
             <button
               key={p}
+              type="button"
               onClick={() => onPageChange(p as number)}
-              className={`w-7 h-7 flex items-center justify-center rounded-md text-xs font-medium transition-colors ${
+              className={`h-9 min-w-9 rounded-md border px-3 text-sm font-medium transition ${
                 p === page
-                  ? 'bg-blue-600 text-white border border-blue-600'
-                  : 'border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50'
               }`}
             >
               {p}
@@ -395,11 +477,13 @@ function Pagination({
           ),
         )}
         <button
+          type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="w-7 h-7 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Next page"
         >
-          <ChevronRight size={13} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
@@ -419,6 +503,7 @@ export function JobsDashboardScreen() {
   const [location, setLocation] = useState('');
   const [search, setSearch] = useState('');
   const [selectedJob, setSelectedJob] = useState<EmployerJob | null>(null);
+  const [selectedDetailsJob, setSelectedDetailsJob] = useState<EmployerJob | null>(null);
 
   const loadJobs = async () => {
     setLoading(true);
@@ -459,34 +544,20 @@ export function JobsDashboardScreen() {
     setPage(1);
   };
 
-  const stats = useMemo(() => {
-    const activeJobs = jobs.filter((job) => job.status === 'open').length;
-    const draftJobs = jobs.filter((job) => job.status === 'draft').length;
-    return {
-      totalJobs: total || null,
-      activeJobs: activeJobs || null,
-      draftJobs: draftJobs || null,
-      totalApplications: null, // from dedicated API endpoint
-      hiresFromJobs: null, // from dedicated API endpoint
-    };
-  }, [jobs, total]);
-
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+    <div className="min-h-screen bg-gray-50 p-5 lg:p-6">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* ── Page header ── */}
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Jobs</h1>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Manage all job posting and track applications
-            </p>
+            <h1 className="text-xl font-bold uppercase tracking-wide text-gray-900">Jobs</h1>
+            <p className="mt-1 text-xs text-gray-500">Manage Jobs</p>
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             {/* Search */}
             <div className="relative">
               <Search
-                size={14}
+                size={16}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
@@ -495,39 +566,24 @@ export function JobsDashboardScreen() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search Employee..."
-                className="bg-white border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm w-48 text-gray-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+                placeholder="Search keywords..."
+                className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 lg:w-72"
               />
             </div>
             {/* Create button */}
             <Link
               href="/jobs/create"
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+              className="flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
-              <Plus size={15} />+ Create Job
+              <Plus size={16} />
+              Create New Job
             </Link>
           </div>
         </div>
 
         {/* ── Stat cards ── */}
-        <div className="grid grid-cols-5 gap-3">
-          {STATS_CONFIG.map((card) => (
-            <StatCard
-              key={card.key}
-              label={card.label}
-              sub={card.sub}
-              icon={card.icon}
-              iconBg={card.iconBg}
-              iconColor={card.iconColor}
-              value={stats[card.key as keyof typeof stats]}
-            />
-          ))}
-        </div>
-
-        {/* ── Table card ── */}
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-          {/* Filter row — right-aligned, inside the card above the table */}
-          <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-b border-gray-100">
+        <div className="flex flex-col gap-4 px-5 py-4 xl:flex-row xl:items-center xl:justify-end">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <FilterSelect value={jobType} onChange={handleFilter(setJobType)} options={JOB_TYPES} />
             <FilterSelect
               value={location}
@@ -540,31 +596,26 @@ export function JobsDashboardScreen() {
               options={STATUS_OPTIONS}
             />
           </div>
+        </div>
 
+        {/* ── Table card ── */}
+        <div className="overflow-hidden rounded-b-xl border border-t-0 border-gray-200 bg-white">
+          {/* Filter row — right-aligned, inside the card above the table */}
           {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  {[
-                    { label: 'Job Title', cls: 'w-[30%]' },
-                    { label: 'Location', cls: 'w-[13%]' },
-                    { label: 'Applications', cls: 'w-[13%]' },
-                    { label: 'Hires', cls: 'w-[8%]' },
-                    { label: 'Status', cls: 'w-[12%]' },
-                    { label: 'Posted On', cls: 'w-[14%]' },
-                    { label: 'Action', cls: 'w-[8%]' },
-                  ].map(({ label, cls }) => (
-                    <th
-                      key={label}
-                      className={`text-left text-xs font-semibold text-gray-400 px-5 py-3 ${cls}`}
-                    >
-                      {label}
-                    </th>
-                  ))}
+            <table className="w-full min-w-[980px] text-left">
+              <thead className="bg-gray-50 text-xs font-medium text-gray-500">
+                <tr>
+                  <th className="px-5 py-3">Job Title</th>
+                  <th className="px-5 py-3">Location</th>
+                  <th className="px-5 py-3">Applications</th>
+                  <th className="px-5 py-3">Hires</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Posted On</th>
+                  <th className="px-5 py-3 text-center">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-200 text-sm">
                 {loading ? (
                   <tr>
                     <td colSpan={7} className="text-center py-20 text-sm text-gray-400">
@@ -582,6 +633,7 @@ export function JobsDashboardScreen() {
                       key={job.id}
                       job={job}
                       onViewApplications={setSelectedJob}
+                      onViewDetails={setSelectedDetailsJob}
                       onUpdateStatus={handleUpdateStatus}
                     />
                   ))
@@ -601,6 +653,10 @@ export function JobsDashboardScreen() {
         jobTitle={selectedJob?.title}
         onClose={() => setSelectedJob(null)}
       />
+      <JobDetailsModal job={selectedDetailsJob} onClose={() => setSelectedDetailsJob(null)} />
     </div>
   );
 }
+
+
+
