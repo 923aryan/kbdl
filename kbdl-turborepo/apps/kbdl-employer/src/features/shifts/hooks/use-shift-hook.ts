@@ -161,6 +161,7 @@ export const useRejectShift = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employer-shifts'] });
+      queryClient.invalidateQueries({ queryKey: ['employer-pending-shifts'] });
     },
   });
 };

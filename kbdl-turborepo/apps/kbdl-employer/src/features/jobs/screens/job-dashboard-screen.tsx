@@ -1,21 +1,21 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import Link from 'next/link';
 import {
-  Search,
-  Plus,
   Briefcase,
   Check,
-  MoreVertical,
   ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  MoreVertical,
+  Plus,
+  Search,
   X,
 } from 'lucide-react';
-import { JobApplicationsDrawer } from './job-applications-drawer';
+import Link from 'next/link';
+import { useEffect, useState, type ReactNode } from 'react';
 import { EmployerJob, getEmployerJobs } from '../api';
+import { JobApplicationsDrawer } from './job-applications-drawer';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -298,7 +298,7 @@ function JobRow({
         <div className="truncate max-w-[150px]" title={locationLabel}>
           {locationLabel}
         </div>
-      </td>
+      </td> 
       {/* Applications */}
       <td className="px-5 py-3 font-medium text-gray-900">{job.application_count ?? 0}</td>
       {/* Hires */}
