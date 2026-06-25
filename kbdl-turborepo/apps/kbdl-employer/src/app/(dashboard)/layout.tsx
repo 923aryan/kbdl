@@ -253,33 +253,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <nav className="mt-6 flex-1 overflow-y-auto overflow-x-hidden">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.path;
+            {isCollapsed
+              ? menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive =
+                    pathname === item.path || item.subItems?.some((sub) => pathname === sub.path);
 
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`
-                    group relative flex items-center py-3 text-gray-700 hover:bg-gray-50 transition-colors
-                    ${isActive ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : ''}
-                    ${isCollapsed ? 'justify-center px-0' : 'px-6'}
-                  `}
-                >
-                  <Icon className={`w-5 h-5 shrink-0 ${isCollapsed ? '' : 'mr-3'}`} />
-                  
-                  {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
-                  
-                  {isCollapsed && (
-                    <div className="absolute left-full ml-2 hidden rounded-md bg-gray-800 px-2 py-1 text-xs text-white opacity-0 group-hover:block group-hover:opacity-100 whitespace-nowrap z-50">
-                      {item.label}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`
+                        group relative flex items-center justify-center py-3 text-gray-700 hover:bg-gray-50 transition-colors
+                        ${isActive ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : ''}
+                      `}
+                    >
+                      <Icon className="w-5 h-5 shrink-0" />
+
+                      <div className="absolute left-full ml-2 hidden rounded-md bg-gray-800 px-2 py-1 text-xs text-white opacity-0 group-hover:block group-hover:opacity-100 whitespace-nowrap z-50">
+                        {item.label}
+                      </div>
+                    </Link>
+                  );
+                })
+              : menuItems.map((item) => (
+                  <NavItem
+                    key={item.path}
+                    item={item}
+                    pathname={pathname}
+                    setSidebarOpen={setSidebarOpen}
+                  />
+                ))}
           </nav>
 
           <div className="w-full p-4 border-t border-gray-100 shrink-0">

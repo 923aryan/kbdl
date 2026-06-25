@@ -6,13 +6,9 @@ import { AlertCircle, Calendar, MapPin, Briefcase, DollarSign, Eye } from 'lucid
 import { createEmployerJob, getEmployerJob, updateEmployerJob } from '../api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createJobSchema } from '@repo/validator/shared';
-import { EmploymentType, JobStatus, JobWorkType, SalaryType } from '../../../lib/constants';
-import { Briefcase, Calendar, DollarSign, Eye, MapPin } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { createEmployerJob } from '../api';
+import { EmploymentType, JobWorkType } from '../../../lib/constants';
 
 const jobFormSchema = createJobSchema.shape.body;
 type JobFormInput = z.input<typeof jobFormSchema>;
