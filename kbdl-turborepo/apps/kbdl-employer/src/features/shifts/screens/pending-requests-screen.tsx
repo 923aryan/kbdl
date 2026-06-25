@@ -86,7 +86,7 @@ export const PendingRequestsScreen = ({
   };
 
   return (
-    <Dialog open={!!shiftId} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={!!shiftId} onOpenChange={(open: boolean) => !open && onClose()}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Pending Requests</DialogTitle>

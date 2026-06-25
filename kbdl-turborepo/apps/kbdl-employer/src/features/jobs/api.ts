@@ -15,6 +15,8 @@ export type EmployerJob = {
   job_end_time?: string | null;
   address?: string | null;
   seats_available?: number | null;
+  application_count?: number | null;
+  hire_count?: number | null;
   expires_at?: string | null;
   created_at?: string | null;
   employer?: { name?: string | null } | null;
@@ -73,6 +75,33 @@ export async function createEmployerJob(payload: {
   status?: string;
 }) {
   const response = await api.post<EmployerJob>('/jobs/employer', payload);
+  return response.data;
+}
+
+export async function getEmployerJob(jobId: string) {
+  const response = await api.get<EmployerJob>(`/jobs/employer/${jobId}`);
+  return response.data;
+}
+
+export async function updateEmployerJob(
+  jobId: string,
+  payload: Partial<{
+    title: string;
+    description: string;
+    employment_type: string;
+    work_type: string;
+    salary_type: string;
+    salary_min?: number;
+    salary_max?: number;
+    is_negotiable?: boolean;
+    job_start_time?: string;
+    job_end_time?: string;
+    address?: string;
+    seats_available?: number;
+    status?: string;
+  }>,
+) {
+  const response = await api.patch<EmployerJob>(`/jobs/employer/${jobId}`, payload);
   return response.data;
 }
 
