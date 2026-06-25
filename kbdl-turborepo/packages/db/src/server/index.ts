@@ -1,4 +1,4 @@
-export * from '../../generated/prisma/index.js';
-export * from '../../selects/employer-select.js';
-export * from '../../selects/user-select.js';
-export { prisma } from '../prisma.js';
+export * from '../../generated/prisma/index';
+export * from '../../selects/employer-select';
+export * from '../../selects/user-select';
+export { prisma } from '../prisma';

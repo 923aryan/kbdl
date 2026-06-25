@@ -1,4 +1,5 @@
 import { api } from '@/lib/api/api-client';
+import { ClearPushTokenPayload } from '@repo/types';
 import { RealtimeNotification } from './types/notification-types';
 export async function savePushToken(payload: {
   token: string;
@@ -6,6 +7,10 @@ export async function savePushToken(payload: {
   deviceId?: string;
 }) {
   return api.post('/notifications/push-token', payload);
+}
+
+export async function clearPushToken(payload: ClearPushTokenPayload) {
+  return api.patch('/notifications/push-token', payload);
 }
 
 export async function getNotifications() {

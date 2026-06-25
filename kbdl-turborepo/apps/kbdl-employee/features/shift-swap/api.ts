@@ -2,6 +2,7 @@ import { api } from '@/lib/api/api-client';
 import type {
   AcceptShiftPayload,
   AcceptShiftResponse,
+  ApiSuccess,
   ApplyForPublicShiftPayload,
   ApplyForPublicShiftResponse,
   CancelShiftPayload,
@@ -23,7 +24,7 @@ import type {
   WithdrawShiftApplicationPayload,
   WithdrawShiftApplicationResponse,
 } from '@repo/types';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { OpenShift } from './types/shift-swap-types';
 
 // A. Create Shift Swap
@@ -156,32 +157,25 @@ export const useGetOpenShifts = () => {
     },
   });
 };
+
 export const useGetLatestShifts = (query?: string) => {
-  return useQuery({
-    queryKey: ['employee-latest-shifts'],
-
-    queryFn: async () => {
-      const response = await api.get<GetLatestShiftsResponse>(`/shift-swap/latest?${query}`);
-
-      return response.data;
-    },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
-    refetchOnReconnect: true,
-  });
-};
-export const useGetBestMatchesShifts = (query?: string) => {
-  return useQuery({
-    queryKey: ['employee-best-matches-shifts'],
-
-    queryFn: async () => {
-      const response = await api.get<GetBestShiftMatchesResponse>(
-        `/shift-swap/best-matches?${query}`,
+  return useInfiniteQuery({
+    queryKey: ['employee-latest-shifts', query],
+    queryFn: async ({ pageParam = 1 }): Promise<ApiSuccess<GetLatestShiftsResponse>> => {
+      const separator = query ? '&' : '';
+      const response = await api.get<GetLatestShiftsResponse>(
+        `/shift-swap/latest?${query || ''}${separator}page=${pageParam}&limit=10`,
       );
-
-      return response.data;
+      return response;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: ApiSuccess<GetLatestShiftsResponse>) => {
+      const page = Number(lastPage.meta?.page);
+      const totalPages = Number(lastPage.meta?.totalPages);
+      if (page && totalPages && page < totalPages) {
+        return page + 1;
+      }
+      return undefined;
     },
     staleTime: 0,
     gcTime: 0,
@@ -190,6 +184,34 @@ export const useGetBestMatchesShifts = (query?: string) => {
     refetchOnReconnect: true,
   });
 };
+
+export const useGetBestMatchesShifts = (query?: string) => {
+  return useInfiniteQuery({
+    queryKey: ['employee-best-matches-shifts', query],
+    queryFn: async ({ pageParam = 1 }): Promise<ApiSuccess<GetBestShiftMatchesResponse>> => {
+      const separator = query ? '&' : '';
+      const response = await api.get<GetBestShiftMatchesResponse>(
+        `/shift-swap/best-matches?${query || ''}${separator}page=${pageParam}&limit=10`,
+      );
+      return response;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage: ApiSuccess<GetBestShiftMatchesResponse>) => {
+      const page = Number(lastPage.meta?.page);
+      const totalPages = Number(lastPage.meta?.totalPages);
+      if (page && totalPages && page < totalPages) {
+        return page + 1;
+      }
+      return undefined;
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+  });
+};
+
 export const useWithdrawShiftApplication = () => {
   return useMutation({
     mutationFn: async (payload: WithdrawShiftApplicationPayload) => {

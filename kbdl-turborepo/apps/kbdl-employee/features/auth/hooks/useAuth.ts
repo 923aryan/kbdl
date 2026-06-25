@@ -1,4 +1,6 @@
 // src/features/auth/hooks/useAuth.ts
+import { clearPushToken } from '@/features/notifications/api';
+import { registerPushToken } from '@/features/notifications/services/push-token-service';
 import { AppUser, UserRegisterPayload } from '@repo/types';
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
@@ -43,6 +45,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    try {
+      // Deactivate current device token
+      const token = await registerPushToken();
+
+      if (token) {
+        await clearPushToken({ token });
+      }
+    } catch (error) {
+      console.error('Failed to clear push token:', error);
+    }
     // 1. Clear secure storage
     await SecureStore.deleteItemAsync('accessToken');
     await SecureStore.deleteItemAsync('refreshToken');
