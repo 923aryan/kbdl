@@ -28,6 +28,8 @@ import {
   syncSavedShiftsSchema,
   updateShiftSchema,
   withdrawShiftApplicationSchema,
+  getPublicShiftsSchema,
+  getPublicShiftDetailsSchema,
 } from '@repo/validator/shared';
 import z from 'zod';
 
@@ -210,3 +212,17 @@ export type ReportShiftNoShowResponse = Shift;
 export type SyncSavedShiftsRequest = z.infer<typeof syncSavedShiftsSchema>;
 export type SyncSavedShiftsPayload = z.infer<typeof syncSavedShiftsSchema>['body'];
 export type SyncSavedShiftsResponse = GetEmployeeShiftsResponse;
+
+export type GetPublicShiftsRequest = z.infer<typeof getPublicShiftsSchema>;
+export type GetPublicShiftsQuery = z.infer<typeof getPublicShiftsSchema>['query'];
+export type GetPublicShiftsResponse = (Shift & {
+  employer: Pick<Employer, 'company_name' | 'company_address'>;
+  seo_title: string;
+})[];
+
+export type GetPublicShiftDetailsRequest = z.infer<typeof getPublicShiftDetailsSchema>;
+export type GetPublicShiftDetailsParams = z.infer<typeof getPublicShiftDetailsSchema>['params'];
+export type GetPublicShiftDetailsResponse = Shift & {
+  employer: Pick<Employer, 'company_name' | 'company_address'>;
+  seo_title: string;
+};
