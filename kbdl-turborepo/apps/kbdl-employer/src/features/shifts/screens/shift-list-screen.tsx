@@ -1,9 +1,12 @@
 'use client';
 
-import { Calendar, ChevronLeft, ChevronRight, Eye, UserRound } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { DataPagination } from '@/components/ui/pagination';
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
+import { Eye } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGetEmployerShifts } from '../hooks/use-shift-hook';
+
+// ... other code will remain the same but I should provide the full replacement or I can use update for specific lines.
 import { type ShiftStatus, useShiftStore } from '../stores/use-shift-store';
 
 type EmployeeSummary = {
@@ -34,17 +37,14 @@ export type ShiftApplicationSummary = {
   };
 };
 
-const hasRejectedPrivateInvite = (shift: { shiftApplications?: unknown[] }) =>
-  Array.isArray(shift.shiftApplications) &&
-  shift.shiftApplications.some((application) => {
-    if (!application || typeof application !== 'object') return false;
+export const getCancelledByName = (shift: EmployerShift): string | null => {
+  return getShiftDisplayState(shift).cancellation?.cancelledBy || null;
+};
 
-    const typedApplication = application as { status?: string; type?: string };
-    return (
-      typedApplication.status?.toLowerCase() === 'rejected' &&
-      typedApplication.type?.toLowerCase() === 'invited'
-    );
-  });
+// Tells us if the cancellation happened before or after employer approval
+export const getCancelledContext = (shift: EmployerShift): 'before_approval' | 'after_approval' | null => {
+  return getShiftDisplayState(shift).cancellation?.context || null;
+};
 
 export type EmployerShift = {
   id: string;
@@ -62,9 +62,7 @@ export type EmployerShift = {
   replacement_employee_id?: string | null;
   original_employee?: EmployeeSummary;
   replacement_employee?: EmployeeSummary | null;
-  employer?: {
-    company_name?: string | null;
-  };
+  employer?: { company_name?: string | null };
   pendingApplications?: ShiftApplicationSummary[];
   shiftApplications?: ShiftApplicationSummary[];
   applications?: unknown[];
@@ -73,6 +71,14 @@ export type EmployerShift = {
   ratings?: RatingSummary[];
 };
 
+const normalizeStatusForDisplay = (status?: string | null) => {
+  const normalizedStatus = status?.toLowerCase();
+
+  if (!normalizedStatus) return 'approved';
+  if (normalizedStatus === 'cancelledwa') return 'cancelled';
+
+  return normalizedStatus;
+};
 const statusStyles: Record<string, string> = {
   pending: 'border-orange-300 bg-orange-50 text-orange-600',
   open: 'border-blue-300 bg-blue-50 text-blue-600',
@@ -85,7 +91,9 @@ const statusStyles: Record<string, string> = {
 
 const ROWS_PER_PAGE = 10;
 
-export const getApprovalStatus = (shift: {
+type ApprovalStatus = 'open' | 'pending' | 'approved' | 'rejected' | 'completed' | 'absent' | 'cancelled';
+type CancellationContext = 'before_approval' | 'after_approval';
+type ShiftStatusInput = {
   created_by?: string;
   organization_approved?: boolean;
   status: string;
@@ -98,49 +106,172 @@ export const getApprovalStatus = (shift: {
   shiftApplications?: unknown[];
   applications?: unknown[];
   requests?: unknown[];
-}) => {
+  original_employee?: EmployeeSummary;
+};
+
+export type ShiftDisplayState = {
+  status: ApprovalStatus;
+  cancellation?: {
+    cancelledBy: string;
+    context: CancellationContext;
+    title: string;
+    detail: string;
+  };
+};
+
+const getEmployeeDisplayName = (employee?: EmployeeSummary | null, fallback = 'Worker') =>
+  employee?.name || employee?.phone_no || fallback;
+
+const getApplications = (shift: { shiftApplications?: unknown[] }) =>
+  Array.isArray(shift.shiftApplications) ? (shift.shiftApplications as ShiftApplicationSummary[]) : [];
+
+const getInvitedApplication = (shift: ShiftStatusInput) => {
+  const applications = getApplications(shift);
+
+  return (
+    applications.find(
+      (application) =>
+        application.type?.toLowerCase() === 'invited' &&
+        Boolean(shift.replacement_employee_id) &&
+        application.user_id === shift.replacement_employee_id,
+    ) || applications.find((application) => application.type?.toLowerCase() === 'invited')
+  );
+};
+const getWithdrawnApplication = (shift: ShiftStatusInput) => {
+  const applications = getApplications(shift);
+
+  return (
+    applications.find(
+      (application) =>
+        application.status?.toLowerCase() === 'withdrawn' &&
+        Boolean(shift.replacement_employee_id) &&
+        application.user_id === shift.replacement_employee_id,
+    ) || applications.find((application) => application.status?.toLowerCase() === 'withdrawn')
+  );
+};
+
+const isEmployerRejectedPrivateWorkerShift = (
+  shift: ShiftStatusInput,
+  shiftStatus: string,
+  hasDirectAssignee: boolean,
+) => {
+  const invitedStatus = getInvitedApplication(shift)?.status?.toLowerCase();
+
+  return (
+    shift.created_by === 'user' &&
+    hasDirectAssignee &&
+    !shift.organization_approved &&
+    shiftStatus === 'cancelled' &&
+    Boolean(shift.request_accepted || invitedStatus === 'accepted') &&
+    invitedStatus !== 'withdrawn'
+  );
+};
+
+export const getShiftDisplayState = (shift: ShiftStatusInput): ShiftDisplayState => {
+  
   const applicantCount = getApplicantCount(shift);
   const hasDirectAssignee = Boolean(shift.replacement_employee_id || shift.replacement_employee);
+  const shiftStatus = normalizeStatusForDisplay(shift.status);
+  const invitedApplication = getInvitedApplication(shift);
+  const invitedStatus = invitedApplication?.status?.toLowerCase();
+  const withdrawnApplication = getWithdrawnApplication(shift);
+  const rejectedInvitedApplication =
+    invitedStatus === 'rejected' ? invitedApplication : undefined;
+  const approvedApplication = getApplications(shift).find(
+    (application) => application.status?.toLowerCase() === 'approved',
+  );
+  // const isEmployerRejected =
+  //   shift.created_by === 'user' &&
+  //   hasDirectAssignee &&
+  //   shiftStatus === 'rejected' &&
+  //   shift.request_accepted === true;
+  // const isCancelled =
+  //   shiftStatus === 'cancelled' ||
+  //   Boolean(withdrawnApplication) ||
+  //   (shiftStatus === 'rejected' && shift.request_accepted === false);
 
-  if (shift.no_show_reported) {
-    return 'absent';
+
+    const isEmployerRejected =
+  shift.created_by === 'user' &&
+  hasDirectAssignee &&
+  shiftStatus === 'rejected' &&
+  invitedStatus === 'rejected';
+
+const isCancelled =
+  shiftStatus === 'cancelled' ||
+  invitedStatus === 'withdrawn' ||
+  (shiftStatus === 'rejected' && !isEmployerRejected);
+
+  if (shift.no_show_reported) return { status: 'absent' };
+
+  if (isEmployerRejected) {
+    return {
+      status: 'rejected',
+    };
   }
 
-  if (shift.created_by === 'user' && !shift.organization_approved) {
-    if (shift.status === 'cancelled') {
-      return 'cancelled';
+  if (isCancelled) {
+    const context = shift.organization_approved ? 'after_approval' : 'before_approval';
+    // const cancelledByApplication =
+    //   withdrawnApplication ||
+    //   rejectedInvitedApplication ||
+    //   approvedApplication;
+    // const cancelledBy =
+    //   cancelledByApplication?.user?.name ||
+    //   cancelledByApplication?.user?.phone_no ||
+    //   (shift.created_by === 'user' && !withdrawnApplication && !invitedApplication
+    //     ? getEmployeeDisplayName(shift.original_employee)
+    let cancelledBy: string;
+
+    if (withdrawnApplication) {
+      cancelledBy = getEmployeeDisplayName(shift.replacement_employee);
+    } else if (shiftStatus === 'cancelled') {
+      cancelledBy = getEmployeeDisplayName(shift.original_employee);
+    } else {
+      cancelledBy = getEmployeeDisplayName(shift.replacement_employee);
+    }
+    const timing =
+      context === 'after_approval' ? 'after employer approval' : 'before employer approval';
+
+    return {
+      status: 'cancelled',
+      cancellation: {
+        cancelledBy,
+        context,
+        title:
+          context === 'after_approval'
+            ? 'Shift Cancelled After Approval'
+            : 'Shift Cancelled Before Approval',
+        detail: `${cancelledBy} cancelled this shift ${timing}.`,
+      },
+    };
+  }
+
+  if (shiftStatus === 'completed') return { status: 'completed' };
+  if (shiftStatus === 'absent') return { status: 'absent' };
+
+  if (shift.created_by === 'user' && hasDirectAssignee) {
+    if (shift.organization_approved || shiftStatus === 'approved') return { status: 'approved' };
+    if (shift.request_accepted || invitedStatus === 'accepted') return { status: 'pending' };
+    return { status: 'open' };
+  }
+
+  if (shift.created_by === 'employer' && hasDirectAssignee) {
+    if (shift.organization_approved || shift.request_accepted || shiftStatus === 'approved') {
+      return { status: 'approved' };
     }
 
-    if (hasRejectedPrivateInvite(shift)) {
-      return 'rejected';
-    }
-
-    if (hasDirectAssignee) {
-      return shift.request_accepted ? 'pending' : 'open';
-    }
-
-    return applicantCount > 0 ? 'pending' : 'open';
+    return { status: 'open' };
   }
 
-  if (shift.status === 'open') {
-    return applicantCount > 0 && !shift.organization_approved ? 'pending' : 'open';
-  }
+  if (shiftStatus === 'approved') return { status: 'approved' };
+  if (shiftStatus === 'matched' || shiftStatus === 'pending') return { status: 'pending' };
+  if (shiftStatus === 'open') return { status: applicantCount > 0 ? 'pending' : 'open' };
 
-  if (shift.status === 'matched') {
-    return 'pending';
-  }
-
-  if (
-    shift.created_by === 'user' &&
-    shift.status === 'pending' &&
-    !hasDirectAssignee &&
-    applicantCount === 0
-  ) {
-    return 'open';
-  }
-
-  return shift.status || 'approved';
+  return { status: 'approved' };
 };
+
+export const getApprovalStatus = (shift: ShiftStatusInput) => getShiftDisplayState(shift).status;
 
 const titleCase = (value: string) =>
   value
@@ -178,14 +309,14 @@ const getApplicantCount = (shift: {
   applications?: unknown[];
   requests?: unknown[];
 }) => {
-  if (typeof shift.applicant_count === 'number') return shift.applicant_count;
   if (Array.isArray(shift.pendingApplications)) return shift.pendingApplications.length;
   if (Array.isArray(shift.shiftApplications)) {
     return shift.shiftApplications.filter((application) => {
       if (!application || typeof application !== 'object') return true;
-      return (application as { status?: string }).status !== 'rejected';
+      return (application as { status?: string }).status === 'pending';
     }).length;
   }
+  if (typeof shift.applicant_count === 'number') return shift.applicant_count;
   if (Array.isArray(shift.applications)) return shift.applications.length;
   if (Array.isArray(shift.requests)) return shift.requests.length;
   return 0;
@@ -264,9 +395,6 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
     const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
     return filteredShifts.slice(startIndex, startIndex + ROWS_PER_PAGE);
   }, [currentPage, filteredShifts]);
-  const firstRow = filteredShifts.length ? (currentPage - 1) * ROWS_PER_PAGE + 1 : 0;
-  const lastRow = Math.min(currentPage * ROWS_PER_PAGE, filteredShifts.length);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [filters.createdBy, filters.dateFrom, filters.dateTo, filters.search, filters.statuses]);
@@ -327,9 +455,9 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                 <tr key={shift.id} className="bg-white transition hover:bg-gray-50/80">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600">
+                      {/* <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600">
                         <Calendar className="h-4 w-4" />
-                      </span>
+                      </span> */}
                       <div>
                         <p className="font-medium text-gray-900">
                           {titleCase(shift.skill_required || 'Shift')}
@@ -348,13 +476,13 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                           
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-3">
-                      <span
+                      {/* <span
                         className={`flex h-8 w-8 items-center justify-center rounded-full ${
                           assignee ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         <UserRound className="h-4 w-4" />
-                      </span>
+                      </span> */}
                       <div>
                         <p className="font-medium text-gray-900">
                           {assignee ? assigneeName : 'Open Shift'}
@@ -411,47 +539,14 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 border-t border-gray-200 px-5 py-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
-        <p>
-          Showing <span className="font-medium text-gray-900">{firstRow}</span>-
-          <span className="font-medium text-gray-900">{lastRow}</span> of{' '}
-          <span className="font-medium text-gray-900">{filteredShifts.length}</span>
-        </p>
-        <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-            <button
-              key={page}
-              type="button"
-              onClick={() => setCurrentPage(page)}
-              className={`h-9 min-w-9 rounded-md border px-3 text-sm font-medium transition ${
-                currentPage === page
-                  ? 'border-blue-600 bg-blue-600 text-white'
-                  : 'border-gray-200 text-gray-700 hover:border-blue-200 hover:bg-blue-50'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-          <button
-            type="button"
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 text-gray-700 transition hover:border-blue-200 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Next page"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+      <DataPagination
+        currentPage={currentPage}
+        pageSize={ROWS_PER_PAGE}
+        totalItems={filteredShifts.length}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };
+
+

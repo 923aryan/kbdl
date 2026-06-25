@@ -112,8 +112,10 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
 
   // Helper to get Status Tag styling and text
   const getStatusConfig = () => {
+    console.log('status ', shiftApplication);
     // If there is an application, prioritize its status
     if (shiftApplication) {
+      console.log('shift application status: ', shiftApplication.status);
       switch (shiftApplication.status) {
         case ShiftApplicationStatus.pending:
           return { text: 'Pending', bg: '#FEF3C7', color: '#D97706' };
@@ -138,6 +140,10 @@ export default function ShiftCard({ shift, distance, buttonTitle }: ShiftCardPro
         return { text: 'Completed', bg: '#E6FBEB', color: '#22C55E' };
       case ShiftStatus.cancelled:
         return { text: 'Cancelled', bg: '#FFE5E5', color: '#EF4444' };
+      case ShiftStatus.rejected:
+        return { text: 'Rejected', bg: '#FFE5E5', color: '#EF4444' };
+      case ShiftStatus.absent:
+        return { text: 'Absent', bg: '#FFE5E5', color: '#EF4444' };
       default:
         return { text: String(status), bg: theme.surface, color: theme.text };
     }

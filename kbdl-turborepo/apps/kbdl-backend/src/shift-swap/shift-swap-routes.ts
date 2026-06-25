@@ -26,6 +26,8 @@ import {
   syncSavedShifts,
   updateShift,
   withdrawShiftApplication,
+  getPublicShifts,
+  getPublicShiftDetails,
 } from './shift-swap-controller';
 
 const shiftSwapRouter: Router = Router();
@@ -75,6 +77,14 @@ shiftSwapRouter.post(
   authenticate([ROLES.EMPLOYER, ROLES.USER]),
   getReferredEmployee,
 );
+
+// GET /api/shift-swap/public
+// Returns public open shifts with SEO metadata
+shiftSwapRouter.get('/public', getPublicShifts);
+
+// GET /api/shift-swap/public/:id
+// Returns complete public shift details with SEO metadata
+shiftSwapRouter.get('/public/:id', getPublicShiftDetails);
 
 // GET /api/shift-swap/:id
 // Returns complete shift details, including the original and replacement employee profiles

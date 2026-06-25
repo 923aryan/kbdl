@@ -3,11 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "tsc"
-  },
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {},
   "dependencies": {
     "zod": "^4.3.6",
     "@repo/db": "workspace:*",
@@ -15,8 +13,8 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./index.ts",
+      "default": "./index.ts"
     }
   },
   "publishConfig": {
