@@ -7,11 +7,11 @@ import {
   Check,
   MoreVertical,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Plus,
   Search,
-  X,
   X,
 } from 'lucide-react';
 import { EmployerJob, getEmployerJobs } from '../api';
