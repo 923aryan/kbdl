@@ -7,11 +7,11 @@ import {
   Check,
   MoreVertical,
   ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Plus,
   Search,
+  X,
   X,
 } from 'lucide-react';
 import { EmployerJob, getEmployerJobs } from '../api';
@@ -166,13 +166,7 @@ function DetailItem({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function JobDetailsModal({
-  job,
-  onClose,
-}: {
-  job: EmployerJob | null;
-  onClose: () => void;
-}) {
+function JobDetailsModal({ job, onClose }: { job: EmployerJob | null; onClose: () => void }) {
   if (!job) return null;
 
   const status = job.status ?? 'draft';
@@ -195,7 +189,9 @@ function JobDetailsModal({
               </span>
             </div>
             <h2 className="text-xl font-bold text-gray-900">{job.title}</h2>
-            <p className="mt-1 text-sm text-gray-500">{job.address || formatJobLabel(job.work_type)}</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {job.address || formatJobLabel(job.work_type)}
+            </p>
           </div>
           <button
             type="button"
@@ -670,6 +666,3 @@ export function JobsDashboardScreen() {
     </div>
   );
 }
-
-
-
