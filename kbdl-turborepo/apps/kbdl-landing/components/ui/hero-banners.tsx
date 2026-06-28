@@ -17,7 +17,8 @@ export default function HeroBanners() {
       <div className="absolute inset-0 z-0">
         <Image
           src={data.bgImage}
-          alt={data.title}
+          alt=""
+          aria-hidden="true"
           fill
           priority
           className="object-cover object-center opacity-90"
