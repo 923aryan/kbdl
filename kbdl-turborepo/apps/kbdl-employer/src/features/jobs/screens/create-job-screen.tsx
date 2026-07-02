@@ -2,28 +2,70 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createJobSchema } from '@repo/validator/shared';
-import { EmploymentType, JobStatus, JobWorkType, SalaryType } from '../../../lib/constants';
-import { Briefcase, Calendar, DollarSign, Eye, MapPin } from 'lucide-react';
+import { AlertCircle, Briefcase, Calendar, DollarSign, Eye, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { createEmployerJob } from '../api';
+import { EmploymentType, JobStatus, JobWorkType } from '../../../lib/constants';
+import { createEmployerJob, getEmployerJob, updateEmployerJob } from '../api';
 
 const jobFormSchema = createJobSchema.shape.body;
-type JobFormData = z.input<typeof jobFormSchema>;
+type JobFormInput = z.input<typeof jobFormSchema>;
+type JobFormData = z.output<typeof jobFormSchema>;
+
+type CreateJobScreenProps = {
+  jobId?: string;
+};
+
+const DEFAULT_VALUES: JobFormInput = {
+  title: '',
+  description: '',
+  employment_type: 'full_time',
+  work_type: 'remote',
+  salary_type: 'monthly',
+  salary_min: undefined,
+  salary_max: undefined,
+  address: '',
+  seats_available: undefined,
+  job_start_time: undefined,
+  is_negotiable: false,
+};
+
+const FIELD_LABELS: Partial<Record<keyof JobFormInput, string>> = {
+  title: 'Job Title',
+  description: 'Job Description',
+  employment_type: 'Employment Type',
+  work_type: 'Work Type',
+  salary_type: 'Salary Type',
+  salary_min: 'Minimum Salary',
+  salary_max: 'Maximum Salary',
+  address: 'Work Location',
+  seats_available: 'Number of Openings',
+  job_start_time: 'Job Start Date & Time',
+};
+
+const FIELD_ORDER = Object.keys(FIELD_LABELS) as (keyof JobFormInput)[];
+
+function toDateTimeLocalInput(value?: string | null) {
+  return value ? new Date(value).toISOString().slice(0, 16) : '';
+}
+
+function getFormErrorMessage(error: unknown) {
+  return typeof error === 'object' && error && 'message' in error
+    ? String(error.message)
+    : undefined;
+}
 
 // ── Reusable field wrapper ────────────────────────────────────────────────────
 function Field({
   label,
   required,
-  error,
   children,
   className = '',
 }: {
   label: string;
   required?: boolean;
-  error?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -34,7 +76,39 @@ function Field({
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
-      {error && <span className="text-sm text-red-600">{error}</span>}
+    </div>
+  );
+}
+
+function ErrorSummary({
+  serverError,
+  validationErrors,
+}: {
+  serverError?: string | null;
+  validationErrors: { label: string; message: string }[];
+}) {
+  if (!serverError && validationErrors.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-700 shadow-sm">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100">
+          <AlertCircle size={18} className="text-red-600" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-sm font-bold text-red-800">Please fix these errors</h2>
+          {serverError && <p className="mt-1 text-sm font-medium">{serverError}</p>}
+          {validationErrors.length > 0 && (
+            <ul className="mt-2 space-y-1 text-sm">
+              {validationErrors.map((item) => (
+                <li key={item.label} className="leading-5">
+                  <span className="font-semibold">{item.label}:</span> {item.message}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -90,41 +164,86 @@ function SummaryRow({
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export function CreateJobScreen() {
+export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
   const router = useRouter();
+  const isEditing = Boolean(jobId);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingJob, setLoadingJob] = useState(isEditing);
   const [error, setError] = useState<string | null>(null);
+  const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   const {
     register,
     handleSubmit,
     watch,
     control,
+    reset,
     formState: { errors },
-  } = useForm<JobFormData>({
+  } = useForm<JobFormInput, unknown, JobFormData>({
     resolver: zodResolver(jobFormSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      employment_type: EmploymentType.full_time,
-      work_type: JobWorkType.remote,
-      salary_type: SalaryType.monthly,
-      salary_min: undefined,
-      salary_max: undefined,
-      address: '',
-      seats_available: undefined,
-      job_start_time: undefined,
-      is_negotiable: false,
-    },
+    defaultValues: DEFAULT_VALUES,
   });
 
   const watchAll = watch();
+  const validationErrors = useMemo(
+    () =>
+      FIELD_ORDER.map((name) => {
+        const message = getFormErrorMessage(errors[name]);
+        return message ? { label: FIELD_LABELS[name] ?? String(name), message } : null;
+      }).filter((item): item is { label: string; message: string } => Boolean(item)),
+    [errors],
+  );
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    let cancelled = false;
+
+    const loadJob = async () => {
+      setLoadingJob(true);
+      setError(null);
+      try {
+        const job = await getEmployerJob(jobId);
+        if (cancelled) return;
+
+        reset({
+          title: job.title,
+          description: job.description ?? '',
+          employment_type: (job.employment_type as JobFormInput['employment_type']) ?? 'full_time',
+          work_type: (job.work_type as JobFormInput['work_type']) ?? 'remote',
+          salary_type: (job.salary_type as JobFormInput['salary_type']) ?? 'monthly',
+          salary_min: job.salary_min ?? undefined,
+          salary_max: job.salary_max ?? undefined,
+          address: job.address ?? '',
+          seats_available: job.seats_available ?? undefined,
+          job_start_time: job.job_start_time ?? undefined,
+          job_end_time: job.job_end_time ?? undefined,
+          is_negotiable: job.is_negotiable ?? false,
+          status: (job.status as JobFormInput['status']) ?? 'draft',
+        });
+      } catch (caught) {
+        if (!cancelled) {
+          setError(caught instanceof Error ? caught.message : 'Unable to load job.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingJob(false);
+        }
+      }
+    };
+
+    loadJob();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [jobId, reset]);
 
   const onSubmit = async (data: JobFormData, status: typeof JobStatus.open | typeof JobStatus.draft = JobStatus.open) => {
     setError(null);
     setSubmitting(true);
     try {
-      await createEmployerJob({
+      const payload = {
         title: data.title,
         description: data.description,
         employment_type: data.employment_type,
@@ -137,13 +256,26 @@ export function CreateJobScreen() {
         is_negotiable: data.is_negotiable,
         job_start_time: data.job_start_time,
         status,
-      });
+      };
+
+      if (jobId) {
+        await updateEmployerJob(jobId, payload);
+      } else {
+        await createEmployerJob(payload);
+      }
       router.push('/jobs'); // Redirect back to jobs list after creation
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to create job.');
+      setError(caught instanceof Error ? caught.message : `Unable to ${isEditing ? 'update' : 'create'} job.`);
       setSubmitting(false); // Only set false if error, on success we navigate away
     }
+  };
+
+  const onInvalidSubmit = () => {
+    setError(null);
+    requestAnimationFrame(() => {
+      errorSummaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   // salary display for summary
@@ -166,25 +298,40 @@ export function CreateJobScreen() {
   };
 
   const salaryLabel: Record<string, string> = {
-    [SalaryType.monthly]: 'Monthly',
-    [SalaryType.hourly]: 'Hourly',
-    [SalaryType.weekly]: 'Weekly',
+    monthly: 'Monthly',
+    hourly: 'Hourly',
+    daily: 'Daily',
+    weekly: 'Weekly',
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-20">
+    <div className="min-h-screen bg-white pb-20">
       <div className="max-w-7xl mx-auto px-6 pt-10">
         
         {/* Top Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create New Jobs</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+            {isEditing ? 'Edit Job' : 'Create New Jobs'}
+          </h1>
           <p className="text-sm text-gray-500 mt-2">
-            Fill in the details to post a new job and find right candidate
+            {isEditing
+              ? 'Update this job posting and choose whether it should be published or saved as draft'
+              : 'Fill in the details to post a new job and find right candidate'}
           </p>
         </div>
 
-        {/* Main Content Layout */}
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div ref={errorSummaryRef}>
+          <ErrorSummary serverError={error} validationErrors={validationErrors} />
+        </div>
+
+        {loadingJob ? (
+          <div className="rounded-xl border border-gray-200 bg-white px-5 py-8 text-center text-sm text-gray-500 shadow-sm">
+            Loading job...
+          </div>
+        ) : (
+          <>
+            {/* Main Content Layout */}
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
           
           {/* ── Left: form sections ── */}
           <div className="flex-1 w-full space-y-6">
@@ -192,14 +339,14 @@ export function CreateJobScreen() {
             {/* 1. Job Information */}
             <Section number="1" title="Job Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Job Title" required error={errors.title?.message}>
+                <Field label="Job Title" required>
                   <input
                     {...register('title')}
                     placeholder="Enter job title(e.g. Warehouse Assistant)"
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Employment Type" required error={errors.employment_type?.message}>
+                <Field label="Employment Type" required>
                   <select {...register('employment_type')} className={selectCls}>
                     <option value={EmploymentType.full_time}>Full-Time</option>
                     <option value={EmploymentType.part_time}>Part-Time</option>
@@ -209,7 +356,7 @@ export function CreateJobScreen() {
                 </Field>
               </div>
 
-              <Field label="Job Description" required error={errors.description?.message}>
+              <Field label="Job Description" required>
                 <textarea
                   {...register('description')}
                   rows={4}
@@ -222,14 +369,14 @@ export function CreateJobScreen() {
             {/* 2. Location */}
             <Section number="2" title="Location">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Work Location" required error={errors.address?.message}>
+                <Field label="Work Location" required>
                   <input
                     {...register('address')}
                     placeholder="Enter complete address"
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Work Type" required error={errors.work_type?.message}>
+                <Field label="Work Type" required>
                   <select {...register('work_type')} className={selectCls}>
                     <option value={JobWorkType.remote}>Remote</option>
                     <option value={JobWorkType.onsite}>On-site</option>
@@ -242,7 +389,7 @@ export function CreateJobScreen() {
             {/* 3. Requirements */}
             <Section number="3" title="Requirements">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Number of Openings" required error={errors.seats_available?.message}>
+                <Field label="Number of Openings" required>
                   <input
                     {...register('seats_available', {
                       setValueAs: (v) => (v === '' ? undefined : Number(v)),
@@ -253,12 +400,12 @@ export function CreateJobScreen() {
                     className={inputCls}
                   />
                 </Field>
-                <Field label="Job Start Date & Time" error={errors.job_start_time?.message}>
+                <Field label="Job Start Date & Time">
                   <Controller
                     control={control}
                     name="job_start_time"
                     render={({ field: { onChange, value } }) => {
-                      const dateStr = value ? new Date(value).toISOString().slice(0, 16) : '';
+                      const dateStr = toDateTimeLocalInput(value);
                       return (
                         <input
                           type="datetime-local"
@@ -279,14 +426,15 @@ export function CreateJobScreen() {
             {/* 4. Salary & Benefits */}
             <Section number="4" title="Salary & Benefits">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <Field label="Salary Type" required error={errors.salary_type?.message}>
+                <Field label="Salary Type" required>
                   <select {...register('salary_type')} className={selectCls}>
-                    <option value={SalaryType.monthly}>Monthly</option>
-                    <option value={SalaryType.hourly}>Hourly</option>
-                    <option value={SalaryType.weekly}>Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="hourly">Hourly</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
                   </select>
                 </Field>
-                <Field label="Minimum Salary" error={errors.salary_min?.message}>
+                <Field label="Minimum Salary">
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
                     <input
@@ -300,7 +448,7 @@ export function CreateJobScreen() {
                     />
                   </div>
                 </Field>
-                <Field label="Maximum Salary" error={errors.salary_max?.message}>
+                <Field label="Maximum Salary">
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
                     <input
@@ -332,11 +480,6 @@ export function CreateJobScreen() {
               </div>
             </Section>
 
-            {error && (
-              <div className="rounded-xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-700 font-medium">
-                {error}
-              </div>
-            )}
           </div>
 
           {/* ── Right: sticky sidebar ── */}
@@ -391,24 +534,26 @@ export function CreateJobScreen() {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleSubmit((data) => onSubmit(data, JobStatus.open))}
+                onClick={handleSubmit((data) => onSubmit(data, 'open'), onInvalidSubmit)}
                 className="w-full bg-[#0a58ca] hover:bg-[#084298] text-white text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60 shadow-sm"
               >
-                {submitting ? 'Publishing...' : 'Publish Job'}
+                {submitting ? 'Saving...' : isEditing ? 'Update & Publish' : 'Publish Job'}
               </button>
 
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleSubmit((data) => onSubmit(data, JobStatus.draft))}
+                onClick={handleSubmit((data) => onSubmit(data, 'draft'), onInvalidSubmit)}
                 className="w-full bg-[#eef2f9] hover:bg-[#e2e8f0] text-[#475569] text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60"
               >
-                Save as Draft
+                {isEditing ? 'Update as Draft' : 'Save as Draft'}
               </button>
             </div>
 
           </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

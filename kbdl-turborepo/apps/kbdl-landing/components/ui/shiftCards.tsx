@@ -7,7 +7,6 @@ interface JobCardProps {
     company: string;
     salary: string;
     location: string;
-    distance: string;
     time: string;
     date: string;
     postedAt: string;
@@ -60,9 +59,6 @@ export default function JobCard({ job }: JobCardProps) {
 
           <span className="font-medium text-[#1E293B]">{job.location}</span>
 
-          <span className="rounded-md bg-[#FFF2E0] px-2 py-1 text-xs text-[#F59E0B]">
-            {job.distance}
-          </span>
         </div>
 
         <div className="flex items-center gap-2">

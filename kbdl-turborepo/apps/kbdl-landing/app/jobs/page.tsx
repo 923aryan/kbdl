@@ -1,7 +1,7 @@
 import { DownloadSection } from "../../components/ui/download";
 import HeroBanners from "../../components/ui/hero-banners";
 import { BriefcaseBusiness, Search } from 'lucide-react';
-import JobCard from '../../components/ui/JobCards';
+import JobCard from '../../components/ui/shiftCards';
 import { jobs } from '../../app/data/jobs';
 
 
