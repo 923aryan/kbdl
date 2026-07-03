@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { DownloadSection } from '../../components/ui/download';
 import FAQBanner from '../../components/ui/faq-banner';
+import HeroBanners from '../../components/ui/hero-banners';
 
 /* ----------------------------- FAQ DATA ----------------------------- */
 
@@ -116,7 +117,7 @@ export default function FAQSection() {
 
   return (
     <div className="w-full overflow-hidden">
-      <FAQBanner />
+      <HeroBanners />
       <DownloadSection />
 
       <section className="py-[35px] md:py-[55px] lg:py-[70px] px-4 md:px-8 bg-[#F8F9FA]">

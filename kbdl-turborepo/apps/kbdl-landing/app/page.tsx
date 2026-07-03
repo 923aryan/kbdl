@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import StructuredData from '../components/seo/structured-data';
 import { DownloadSection } from '../components/ui/download';
 import GetWorkSection from '../components/ui/geJob';
-import HeroSection from '../components/ui/hero';
+import HeroBanners from '../components/ui/hero-banners';
 import ShiftSwapSection from '../components/ui/shift_swap';
 import TimelineSection from '../components/ui/timeline';
 import WhomWeServeSection from '../components/ui/whom-we-serve';
@@ -97,7 +97,7 @@ export default function Home() {
   return (
     <div className="h-full w-full">
       <StructuredData data={schema} />
-      <HeroSection />
+      <HeroBanners />
       <TimelineSection />
       <ShiftSwapSection />
       <GetWorkSection />
