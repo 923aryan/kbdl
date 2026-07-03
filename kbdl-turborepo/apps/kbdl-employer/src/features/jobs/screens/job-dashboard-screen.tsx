@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   Briefcase,
   Check,
+  CheckCircle2,
+  ClipboardList,
   MoreVertical,
   ChevronDown,
   ChevronUp,
@@ -12,9 +14,12 @@ import {
   ChevronRight,
   Plus,
   Search,
+  UserCheck,
+  Users,
   X,
+  type LucideIcon,
 } from 'lucide-react';
-import { EmployerJob, getEmployerJobs } from '../api';
+import { EmployerJob, EmployerJobStats, getEmployerJobs } from '../api';
 import { JobApplicationsDrawer } from './job-applications-drawer';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -62,6 +67,24 @@ const STATUS_BADGE: Record<string, { dot: string; pill: string; label: string }>
     label: 'Expired',
   },
 };
+
+const EMPTY_JOB_STATS: EmployerJobStats = {
+  totalJobs: 0,
+  activeJobs: 0,
+  draftJobs: 0,
+  totalApplications: 0,
+  hiresFromJobs: 0,
+};
+
+function buildFallbackJobStats(jobs: EmployerJob[], totalJobs: number): EmployerJobStats {
+  return {
+    totalJobs,
+    activeJobs: jobs.filter((job) => job.status === 'open').length,
+    draftJobs: jobs.filter((job) => job.status === 'draft').length,
+    totalApplications: jobs.reduce((sum, job) => sum + (job.application_count ?? 0), 0),
+    hiresFromJobs: jobs.reduce((sum, job) => sum + (job.hire_count ?? 0), 0),
+  };
+}
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
 
@@ -130,6 +153,39 @@ function StatusBadge({ status }: { status: string }) {
       <span className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${cfg.dot}`} />
       {cfg.label}
     </span>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconClassName,
+  iconBgClassName,
+}: {
+  title: string;
+  value: number;
+  subtitle: string;
+  icon: LucideIcon;
+  iconClassName: string;
+  iconBgClassName: string;
+}) {
+  return (
+    <div className="flex min-h-[86px] items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBgClassName}`}
+      >
+        <Icon className={`h-5 w-5 ${iconClassName}`} />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold text-gray-600">{title}</p>
+        <p className="mt-0.5 text-2xl font-bold leading-none text-gray-900">
+          {value.toLocaleString('en-IN')}
+        </p>
+        <p className="mt-1 text-xs font-medium text-gray-400">{subtitle}</p>
+      </div>
+    </div>
   );
 }
 
@@ -497,6 +553,7 @@ export function JobsDashboardScreen() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [stats, setStats] = useState<EmployerJobStats>(EMPTY_JOB_STATS);
   const [status, setStatus] = useState('');
   const [jobType, setJobType] = useState('');
   const [location, setLocation] = useState('');
@@ -505,7 +562,7 @@ export function JobsDashboardScreen() {
   const [selectedJob, setSelectedJob] = useState<EmployerJob | null>(null);
   const [selectedDetailsJob, setSelectedDetailsJob] = useState<EmployerJob | null>(null);
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getEmployerJobs({
@@ -516,16 +573,18 @@ export function JobsDashboardScreen() {
         employment_type: jobType || undefined,
         work_type: location || undefined,
       });
+      const nextTotal = result.meta.total ?? result.jobs.length;
       setJobs(result.jobs);
-      setTotal(result.meta.total ?? result.jobs.length);
+      setTotal(nextTotal);
       setPage(result.meta.page ?? page);
-      setPageSize(result.meta.pageSize ?? pageSize);
+      setPageSize(result.meta.pageSize ?? result.meta.limit ?? pageSize);
+      setStats(result.meta.stats ?? buildFallbackJobStats(result.jobs, nextTotal));
     } catch (error) {
       console.error('Unable to load jobs', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobType, location, page, pageSize, search, status]);
 
   const handleUpdateStatus = async (jobId: string, newStatus: string) => {
     // TODO: Connect with backend when API is available.
@@ -536,13 +595,56 @@ export function JobsDashboardScreen() {
 
   useEffect(() => {
     loadJobs();
-  }, [page, status, jobType, location, search]);
+  }, [loadJobs]);
 
   // Reset page when filters change (not page itself)
   const handleFilter = (setter: (v: string) => void) => (v: string) => {
     setter(v);
     setPage(1);
   };
+
+  const statCards = [
+    {
+      title: 'Total Jobs',
+      value: stats.totalJobs,
+      subtitle: 'All Time',
+      icon: Briefcase,
+      iconBgClassName: 'bg-blue-50',
+      iconClassName: 'text-blue-600',
+    },
+    {
+      title: 'Active Jobs',
+      value: stats.activeJobs,
+      subtitle: 'Currently Live',
+      icon: CheckCircle2,
+      iconBgClassName: 'bg-green-50',
+      iconClassName: 'text-green-600',
+    },
+    {
+      title: 'Draft Jobs',
+      value: stats.draftJobs,
+      subtitle: 'Not Published',
+      icon: ClipboardList,
+      iconBgClassName: 'bg-orange-50',
+      iconClassName: 'text-orange-500',
+    },
+    {
+      title: 'Total Applications',
+      value: stats.totalApplications,
+      subtitle: 'All Jobs',
+      icon: Users,
+      iconBgClassName: 'bg-purple-50',
+      iconClassName: 'text-purple-600',
+    },
+    {
+      title: 'Hires From Jobs',
+      value: stats.hiresFromJobs,
+      subtitle: 'This Month',
+      icon: UserCheck,
+      iconBgClassName: 'bg-pink-50',
+      iconClassName: 'text-pink-600',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-5 lg:p-6">
@@ -608,6 +710,12 @@ export function JobsDashboardScreen() {
         </div>
 
         {/* ── Table card ── */}
+        <div className="grid grid-cols-1 gap-4 px-5 pb-4 sm:grid-cols-2 xl:grid-cols-5">
+          {statCards.map((card) => (
+            <StatCard key={card.title} {...card} />
+          ))}
+        </div>
+
         <div className="overflow-hidden rounded-b-xl border border-t-0 border-gray-200 bg-white">
           {/* Filter row — right-aligned, inside the card above the table */}
           {/* Table */}

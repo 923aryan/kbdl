@@ -34,6 +34,14 @@ export type JobApplication = {
   } | null;
 };
 
+export type EmployerJobStats = {
+  totalJobs: number;
+  activeJobs: number;
+  draftJobs: number;
+  totalApplications: number;
+  hiresFromJobs: number;
+};
+
 export async function getEmployerJobs(options: {
   page?: number;
   limit?: number;
@@ -55,7 +63,13 @@ export async function getEmployerJobs(options: {
 
   return {
     jobs: response.data,
-    meta: response.meta as { total?: number; page?: number; pageSize?: number },
+    meta: response.meta as {
+      total?: number;
+      page?: number;
+      limit?: number;
+      pageSize?: number;
+      stats?: EmployerJobStats;
+    },
   };
 }
 

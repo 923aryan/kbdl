@@ -51,6 +51,8 @@ export type JobDTO = Job;
 export type JobWithPosterDTO = Job & {
   employer: JobEmployerDTO | null;
   user: JobUserDTO | null;
+  application_count?: number;
+  hire_count?: number;
 };
 
 export type JobDetailsDTO = JobWithPosterDTO & {
