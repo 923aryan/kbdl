@@ -1,14 +1,14 @@
 'use client';
 
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { AlertCircle, Calendar, MapPin, Briefcase, DollarSign, Eye } from 'lucide-react';
+import { createEmployerJob, getEmployerJob, updateEmployerJob } from '../api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createJobSchema } from '@repo/validator/shared';
-import { AlertCircle, Briefcase, Calendar, DollarSign, Eye, MapPin } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { EmploymentType, JobStatus, JobWorkType } from '../../../lib/constants';
-import { createEmployerJob, getEmployerJob, updateEmployerJob } from '../api';
+import { EmploymentType, JobWorkType } from '../../../lib/constants';
 
 const jobFormSchema = createJobSchema.shape.body;
 type JobFormInput = z.input<typeof jobFormSchema>;
@@ -239,7 +239,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
     };
   }, [jobId, reset]);
 
-  const onSubmit = async (data: JobFormData, status: typeof JobStatus.open | typeof JobStatus.draft = JobStatus.open) => {
+  const onSubmit = async (data: JobFormData, status: 'open' | 'draft' = 'open') => {
     setError(null);
     setSubmitting(true);
     try {
@@ -266,7 +266,11 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
       router.push('/jobs'); // Redirect back to jobs list after creation
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : `Unable to ${isEditing ? 'update' : 'create'} job.`);
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : `Unable to ${isEditing ? 'update' : 'create'} job.`,
+      );
       setSubmitting(false); // Only set false if error, on success we navigate away
     }
   };
@@ -307,7 +311,6 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
   return (
     <div className="min-h-screen bg-white pb-20">
       <div className="max-w-7xl mx-auto px-6 pt-10">
-        
         {/* Top Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -332,225 +335,224 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
           <>
             {/* Main Content Layout */}
             <div className="flex flex-col lg:flex-row gap-8 items-start">
-          
-          {/* ── Left: form sections ── */}
-          <div className="flex-1 w-full space-y-6">
-            
-            {/* 1. Job Information */}
-            <Section number="1" title="Job Information">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Job Title" required>
-                  <input
-                    {...register('title')}
-                    placeholder="Enter job title(e.g. Warehouse Assistant)"
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Employment Type" required>
-                  <select {...register('employment_type')} className={selectCls}>
-                    <option value={EmploymentType.full_time}>Full-Time</option>
-                    <option value={EmploymentType.part_time}>Part-Time</option>
-                    <option value={EmploymentType.contract}>Contract</option>
-                    <option value={EmploymentType.internship}>Internship</option>
-                  </select>
-                </Field>
-              </div>
+              {/* ── Left: form sections ── */}
+              <div className="flex-1 w-full space-y-6">
+                {/* 1. Job Information */}
+                <Section number="1" title="Job Information">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Field label="Job Title" required>
+                      <input
+                        {...register('title')}
+                        placeholder="Enter job title(e.g. Warehouse Assistant)"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Employment Type" required>
+                      <select {...register('employment_type')} className={selectCls}>
+                        <option value={EmploymentType.full_time}>Full-Time</option>
+                        <option value={EmploymentType.part_time}>Part-Time</option>
+                        <option value={EmploymentType.contract}>Contract</option>
+                        <option value={EmploymentType.internship}>Internship</option>
+                      </select>
+                    </Field>
+                  </div>
 
-              <Field label="Job Description" required>
-                <textarea
-                  {...register('description')}
-                  rows={4}
-                  placeholder="Describe the job responsibilities, task and expectations"
-                  className={`${inputCls} resize-none min-h-[120px]`}
-                />
-              </Field>
-            </Section>
+                  <Field label="Job Description" required>
+                    <textarea
+                      {...register('description')}
+                      rows={4}
+                      placeholder="Describe the job responsibilities, task and expectations"
+                      className={`${inputCls} resize-none min-h-[120px]`}
+                    />
+                  </Field>
+                </Section>
 
-            {/* 2. Location */}
-            <Section number="2" title="Location">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Work Location" required>
-                  <input
-                    {...register('address')}
-                    placeholder="Enter complete address"
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Work Type" required>
-                  <select {...register('work_type')} className={selectCls}>
-                    <option value={JobWorkType.remote}>Remote</option>
-                    <option value={JobWorkType.onsite}>On-site</option>
-                    <option value={JobWorkType.hybrid}>Hybrid</option>
-                  </select>
-                </Field>
-              </div>
-            </Section>
+                {/* 2. Location */}
+                <Section number="2" title="Location">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Field label="Work Location" required>
+                      <input
+                        {...register('address')}
+                        placeholder="Enter complete address"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Work Type" required>
+                      <select {...register('work_type')} className={selectCls}>
+                        <option value={JobWorkType.remote}>Remote</option>
+                        <option value={JobWorkType.onsite}>On-site</option>
+                        <option value={JobWorkType.hybrid}>Hybrid</option>
+                      </select>
+                    </Field>
+                  </div>
+                </Section>
 
-            {/* 3. Requirements */}
-            <Section number="3" title="Requirements">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Field label="Number of Openings" required>
-                  <input
-                    {...register('seats_available', {
-                      setValueAs: (v) => (v === '' ? undefined : Number(v)),
-                    })}
-                    placeholder="e.g. 5"
-                    inputMode="numeric"
-                    type="number"
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Job Start Date & Time">
-                  <Controller
-                    control={control}
-                    name="job_start_time"
-                    render={({ field: { onChange, value } }) => {
-                      const dateStr = toDateTimeLocalInput(value);
-                      return (
+                {/* 3. Requirements */}
+                <Section number="3" title="Requirements">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <Field label="Number of Openings" required>
+                      <input
+                        {...register('seats_available', {
+                          setValueAs: (v) => (v === '' ? undefined : Number(v)),
+                        })}
+                        placeholder="e.g. 5"
+                        inputMode="numeric"
+                        type="number"
+                        className={inputCls}
+                      />
+                    </Field>
+                    <Field label="Job Start Date & Time">
+                      <Controller
+                        control={control}
+                        name="job_start_time"
+                        render={({ field: { onChange, value } }) => {
+                          const dateStr = toDateTimeLocalInput(value);
+                          return (
+                            <input
+                              type="datetime-local"
+                              value={dateStr}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onChange(val ? new Date(val).toISOString() : undefined);
+                              }}
+                              className={inputCls}
+                            />
+                          );
+                        }}
+                      />
+                    </Field>
+                  </div>
+                </Section>
+
+                {/* 4. Salary & Benefits */}
+                <Section number="4" title="Salary & Benefits">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <Field label="Salary Type" required>
+                      <select {...register('salary_type')} className={selectCls}>
+                        <option value="monthly">Monthly</option>
+                        <option value="hourly">Hourly</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                      </select>
+                    </Field>
+                    <Field label="Minimum Salary">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                          ₹
+                        </span>
                         <input
-                          type="datetime-local"
-                          value={dateStr}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            onChange(val ? new Date(val).toISOString() : undefined);
-                          }}
-                          className={inputCls}
+                          {...register('salary_min', {
+                            setValueAs: (v) => (v === '' ? undefined : Number(v)),
+                          })}
+                          placeholder="25000"
+                          inputMode="numeric"
+                          type="number"
+                          className={`${inputCls} pl-8`}
                         />
-                      );
-                    }}
-                  />
-                </Field>
-              </div>
-            </Section>
+                      </div>
+                    </Field>
+                    <Field label="Maximum Salary">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                          ₹
+                        </span>
+                        <input
+                          {...register('salary_max', {
+                            setValueAs: (v) => (v === '' ? undefined : Number(v)),
+                          })}
+                          placeholder="50000"
+                          inputMode="numeric"
+                          type="number"
+                          className={`${inputCls} pl-8`}
+                        />
+                      </div>
+                    </Field>
+                  </div>
 
-            {/* 4. Salary & Benefits */}
-            <Section number="4" title="Salary & Benefits">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <Field label="Salary Type" required>
-                  <select {...register('salary_type')} className={selectCls}>
-                    <option value="monthly">Monthly</option>
-                    <option value="hourly">Hourly</option>
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                  </select>
-                </Field>
-                <Field label="Minimum Salary">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
+                  <div className="flex items-center gap-3 pt-2">
                     <input
-                      {...register('salary_min', {
-                        setValueAs: (v) => (v === '' ? undefined : Number(v)),
-                      })}
-                      placeholder="25000"
-                      inputMode="numeric"
-                      type="number"
-                      className={`${inputCls} pl-8`}
+                      id="negotiable"
+                      type="checkbox"
+                      {...register('is_negotiable')}
+                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label
+                      htmlFor="negotiable"
+                      className="text-sm font-medium text-gray-700 cursor-pointer select-none"
+                    >
+                      Salary is negotiable
+                    </label>
+                  </div>
+                </Section>
+              </div>
+
+              {/* ── Right: sticky sidebar ── */}
+              <div className="w-full lg:w-[340px] shrink-0 sticky top-10 space-y-5">
+                {/* Summary Card */}
+                <div className="bg-white border border-gray-200/80 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Job Summary</h3>
+                  <div className="space-y-1">
+                    <SummaryRow icon={Briefcase} label="Job Title" value={watchAll.title || ''} />
+                    <SummaryRow
+                      icon={Calendar}
+                      label="Openings"
+                      value={watchAll.seats_available?.toString() || ''}
+                    />
+                    <SummaryRow
+                      icon={MapPin}
+                      label="Location"
+                      value={workLabel[watchAll.work_type] ?? watchAll.work_type}
+                    />
+                    <SummaryRow
+                      icon={DollarSign}
+                      label="Pay Type"
+                      value={salaryLabel[watchAll.salary_type] ?? watchAll.salary_type}
+                    />
+                    <SummaryRow icon={DollarSign} label="Pay Rate" value={salaryDisplay} />
+                    <SummaryRow
+                      icon={Calendar}
+                      label="Start Date"
+                      value={
+                        watchAll.job_start_time
+                          ? new Date(watchAll.job_start_time).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''
+                      }
+                    />
+                    <SummaryRow
+                      icon={Eye}
+                      label="Employment"
+                      value={employmentLabel[watchAll.employment_type] ?? watchAll.employment_type}
                     />
                   </div>
-                </Field>
-                <Field label="Maximum Salary">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
-                    <input
-                      {...register('salary_max', {
-                        setValueAs: (v) => (v === '' ? undefined : Number(v)),
-                      })}
-                      placeholder="50000"
-                      inputMode="numeric"
-                      type="number"
-                      className={`${inputCls} pl-8`}
-                    />
-                  </div>
-                </Field>
+                </div>
+
+                {/* Actions */}
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={handleSubmit((data) => onSubmit(data, 'open'), onInvalidSubmit)}
+                    className="w-full bg-[#0a58ca] hover:bg-[#084298] text-white text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60 shadow-sm"
+                  >
+                    {submitting ? 'Saving...' : isEditing ? 'Update & Publish' : 'Publish Job'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={handleSubmit((data) => onSubmit(data, 'draft'), onInvalidSubmit)}
+                    className="w-full bg-[#eef2f9] hover:bg-[#e2e8f0] text-[#475569] text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60"
+                  >
+                    {isEditing ? 'Update as Draft' : 'Save as Draft'}
+                  </button>
+                </div>
               </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <input
-                  id="negotiable"
-                  type="checkbox"
-                  {...register('is_negotiable')}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <label
-                  htmlFor="negotiable"
-                  className="text-sm font-medium text-gray-700 cursor-pointer select-none"
-                >
-                  Salary is negotiable
-                </label>
-              </div>
-            </Section>
-
-          </div>
-
-          {/* ── Right: sticky sidebar ── */}
-          <div className="w-full lg:w-[340px] shrink-0 sticky top-10 space-y-5">
-            
-            {/* Summary Card */}
-            <div className="bg-white border border-gray-200/80 rounded-xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Job Summary</h3>
-              <div className="space-y-1">
-                <SummaryRow icon={Briefcase} label="Job Title" value={watchAll.title || ''} />
-                <SummaryRow
-                  icon={Calendar}
-                  label="Openings"
-                  value={watchAll.seats_available?.toString() || ''}
-                />
-                <SummaryRow
-                  icon={MapPin}
-                  label="Location"
-                  value={workLabel[watchAll.work_type] ?? watchAll.work_type}
-                />
-                <SummaryRow
-                  icon={DollarSign}
-                  label="Pay Type"
-                  value={salaryLabel[watchAll.salary_type] ?? watchAll.salary_type}
-                />
-                <SummaryRow icon={DollarSign} label="Pay Rate" value={salaryDisplay} />
-                <SummaryRow
-                  icon={Calendar}
-                  label="Start Date"
-                  value={
-                    watchAll.job_start_time
-                      ? new Date(watchAll.job_start_time).toLocaleDateString('en-GB', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : ''
-                  }
-                />
-                <SummaryRow
-                  icon={Eye}
-                  label="Employment"
-                  value={employmentLabel[watchAll.employment_type] ?? watchAll.employment_type}
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-3">
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleSubmit((data) => onSubmit(data, 'open'), onInvalidSubmit)}
-                className="w-full bg-[#0a58ca] hover:bg-[#084298] text-white text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60 shadow-sm"
-              >
-                {submitting ? 'Saving...' : isEditing ? 'Update & Publish' : 'Publish Job'}
-              </button>
-
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleSubmit((data) => onSubmit(data, 'draft'), onInvalidSubmit)}
-                className="w-full bg-[#eef2f9] hover:bg-[#e2e8f0] text-[#475569] text-[15px] font-semibold py-3.5 rounded-xl transition-colors disabled:opacity-60"
-              >
-                {isEditing ? 'Update as Draft' : 'Save as Draft'}
-              </button>
-            </div>
-
-          </div>
             </div>
           </>
         )}

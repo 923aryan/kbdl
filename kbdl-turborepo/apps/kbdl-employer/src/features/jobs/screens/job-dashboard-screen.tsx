@@ -1,19 +1,19 @@
 'use client';
 
+import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import {
   Briefcase,
   Check,
+  MoreVertical,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  MoreVertical,
   Plus,
   Search,
   X,
 } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState, type ReactNode } from 'react';
 import { EmployerJob, getEmployerJobs } from '../api';
 import { JobApplicationsDrawer } from './job-applications-drawer';
 
@@ -69,20 +69,23 @@ function FilterSelect({
   value,
   onChange,
   options,
+  isOpen,
+  onOpenChange,
 }: {
   value: string;
   onChange: (v: string) => void;
   options: { label: string; value: string }[];
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="flex h-11 min-w-40 items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm"
+        onClick={() => onOpenChange(!isOpen)}
+        className="flex h-12 min-w-[210px] cursor-pointer items-center justify-between rounded-xl border border-gray-300 bg-white px-6 text-base font-semibold text-gray-900"
       >
         <span>{selected?.label || options[0]?.label}</span>
         {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -96,7 +99,7 @@ function FilterSelect({
               type="button"
               onClick={() => {
                 onChange(option.value);
-                setIsOpen(false);
+                onOpenChange(false);
               }}
               className={`mb-1 flex w-full items-center justify-between rounded-md px-4 py-3 text-left text-sm font-medium ${
                 value === option.value
@@ -163,13 +166,7 @@ function DetailItem({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-function JobDetailsModal({
-  job,
-  onClose,
-}: {
-  job: EmployerJob | null;
-  onClose: () => void;
-}) {
+function JobDetailsModal({ job, onClose }: { job: EmployerJob | null; onClose: () => void }) {
   if (!job) return null;
 
   const status = job.status ?? 'draft';
@@ -192,7 +189,9 @@ function JobDetailsModal({
               </span>
             </div>
             <h2 className="text-xl font-bold text-gray-900">{job.title}</h2>
-            <p className="mt-1 text-sm text-gray-500">{job.address || formatJobLabel(job.work_type)}</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {job.address || formatJobLabel(job.work_type)}
+            </p>
           </div>
           <button
             type="button"
@@ -298,7 +297,7 @@ function JobRow({
         <div className="truncate max-w-[150px]" title={locationLabel}>
           {locationLabel}
         </div>
-      </td> 
+      </td>
       {/* Applications */}
       <td className="px-5 py-3 font-medium text-gray-900">{job.application_count ?? 0}</td>
       {/* Hires */}
@@ -502,6 +501,7 @@ export function JobsDashboardScreen() {
   const [jobType, setJobType] = useState('');
   const [location, setLocation] = useState('');
   const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'jobType' | 'location' | 'status' | null>(null);
   const [selectedJob, setSelectedJob] = useState<EmployerJob | null>(null);
   const [selectedDetailsJob, setSelectedDetailsJob] = useState<EmployerJob | null>(null);
 
@@ -554,23 +554,6 @@ export function JobsDashboardScreen() {
             <p className="mt-1 text-xs text-gray-500">Manage Jobs</p>
           </div>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            {/* Search */}
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                placeholder="Search keywords..."
-                className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 lg:w-72"
-              />
-            </div>
-            {/* Create button */}
             <Link
               href="/jobs/create"
               className="flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
@@ -582,18 +565,44 @@ export function JobsDashboardScreen() {
         </div>
 
         {/* ── Stat cards ── */}
-        <div className="flex flex-col gap-4 px-5 py-4 xl:flex-row xl:items-center xl:justify-end">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <FilterSelect value={jobType} onChange={handleFilter(setJobType)} options={JOB_TYPES} />
+        <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row xl:items-center xl:justify-between">
+          <div className="relative max-w-full flex-1 lg:max-w-[500px]">
+            <Search
+              className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-black"
+              aria-hidden="true"
+            />
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Search keywords..."
+              className="h-11 w-full rounded-lg border border-gray-300 px-6 pr-14 text-sm outline-none focus:border-[#0658C2]"
+            />
+          </div>
+
+          <div className="flex flex-row flex-wrap gap-4 sm:flex-row">
+            <FilterSelect
+              value={jobType}
+              onChange={handleFilter(setJobType)}
+              options={JOB_TYPES}
+              isOpen={activeFilter === 'jobType'}
+              onOpenChange={(isOpen) => setActiveFilter(isOpen ? 'jobType' : null)}
+            />
             <FilterSelect
               value={location}
               onChange={handleFilter(setLocation)}
               options={WORK_TYPES}
+              isOpen={activeFilter === 'location'}
+              onOpenChange={(isOpen) => setActiveFilter(isOpen ? 'location' : null)}
             />
             <FilterSelect
               value={status}
               onChange={handleFilter(setStatus)}
               options={STATUS_OPTIONS}
+              isOpen={activeFilter === 'status'}
+              onOpenChange={(isOpen) => setActiveFilter(isOpen ? 'status' : null)}
             />
           </div>
         </div>
@@ -657,6 +666,3 @@ export function JobsDashboardScreen() {
     </div>
   );
 }
-
-
-
