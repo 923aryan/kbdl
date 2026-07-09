@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Calendar, MapPin, Briefcase, DollarSign, Eye } from 'lucide-react';
-import { createEmployerJob, getEmployerJob, updateEmployerJob } from '../api';
+import { createEmployerJob, getEmployerJob, updateEmployerJob, type EmployerJob } from '../api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createJobSchema } from '@repo/validator/shared';
 import { Controller, useForm } from 'react-hook-form';
@@ -29,6 +29,8 @@ const DEFAULT_VALUES: JobFormInput = {
   address: '',
   seats_available: undefined,
   job_start_time: undefined,
+  job_end_time: undefined,
+  expires_at: undefined,
   is_negotiable: false,
 };
 
@@ -144,6 +146,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
   const [loadingJob, setLoadingJob] = useState(isEditing);
   const [error, setError] = useState<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const loadedJobRef = useRef<EmployerJob | null>(null);
 
   const {
     register,
@@ -171,6 +174,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
       try {
         const job = await getEmployerJob(jobId);
         if (cancelled) return;
+        loadedJobRef.current = job;
 
         reset({
           title: job.title,
@@ -184,6 +188,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
           seats_available: job.seats_available ?? undefined,
           job_start_time: job.job_start_time ?? undefined,
           job_end_time: job.job_end_time ?? undefined,
+          expires_at: job.expires_at ?? undefined,
           is_negotiable: job.is_negotiable ?? false,
           status: (job.status as JobFormInput['status']) ?? 'draft',
         });
@@ -220,9 +225,20 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
         address: data.address || undefined,
         seats_available: data.seats_available,
         is_negotiable: data.is_negotiable,
-        job_start_time: data.job_start_time,
         status,
       };
+
+      if (!isEditing || data.job_start_time !== loadedJobRef.current?.job_start_time) {
+        Object.assign(payload, { job_start_time: data.job_start_time });
+      }
+
+      if (!isEditing || data.job_end_time !== loadedJobRef.current?.job_end_time) {
+        Object.assign(payload, { job_end_time: data.job_end_time });
+      }
+
+      if (!isEditing || data.expires_at !== loadedJobRef.current?.expires_at) {
+        Object.assign(payload, { expires_at: data.expires_at });
+      }
 
       if (jobId) {
         await updateEmployerJob(jobId, payload);
@@ -391,6 +407,46 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                         }}
                       />
                     </Field>
+                    <Field label="Job End Date & Time" error={fieldError('job_end_time')}>
+                      <Controller
+                        control={control}
+                        name="job_end_time"
+                        render={({ field: { onChange, value } }) => {
+                          const dateStr = toDateTimeLocalInput(value);
+                          return (
+                            <input
+                              type="datetime-local"
+                              value={dateStr}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onChange(val ? new Date(val).toISOString() : undefined);
+                              }}
+                              className={inputCls}
+                            />
+                          );
+                        }}
+                      />
+                    </Field>
+                    <Field label="Job Expiry Date & Time" error={fieldError('expires_at')}>
+                      <Controller
+                        control={control}
+                        name="expires_at"
+                        render={({ field: { onChange, value } }) => {
+                          const dateStr = toDateTimeLocalInput(value);
+                          return (
+                            <input
+                              type="datetime-local"
+                              value={dateStr}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onChange(val ? new Date(val).toISOString() : undefined);
+                              }}
+                              className={inputCls}
+                            />
+                          );
+                        }}
+                      />
+                    </Field>
                   </div>
                 </Section>
 
@@ -485,6 +541,36 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                       value={
                         watchAll.job_start_time
                           ? new Date(watchAll.job_start_time).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''
+                      }
+                    />
+                    <SummaryRow
+                      icon={Calendar}
+                      label="End Date"
+                      value={
+                        watchAll.job_end_time
+                          ? new Date(watchAll.job_end_time).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''
+                      }
+                    />
+                    <SummaryRow
+                      icon={Calendar}
+                      label="Expiry"
+                      value={
+                        watchAll.expires_at
+                          ? new Date(watchAll.expires_at).toLocaleDateString('en-GB', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
