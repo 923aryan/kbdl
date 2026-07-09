@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { DownloadSection } from '../../components/ui/download';
-import FAQBanner from '../../components/ui/faq-banner';
 import HeroBanners from '../../components/ui/hero-banners';
 
 /* ----------------------------- FAQ DATA ----------------------------- */
