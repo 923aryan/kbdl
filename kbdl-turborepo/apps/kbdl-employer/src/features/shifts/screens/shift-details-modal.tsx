@@ -268,7 +268,10 @@ const ShiftSummary = ({
       </div>
       <div className="flex gap-3">
         <IndianRupee className="h-4 w-4 text-gray-500" />
-        <p className="font-medium text-gray-900">{String(shift.shift_pay)} / Pay Per Shift</p>
+        <p className="font-medium text-gray-900">
+          ₹{Number(shift.shift_pay).toLocaleString()} /{' '}
+          {shift.payType === 'HOURLY' ? 'hr' : 'shift'}
+        </p>
       </div>
     </div>
 
