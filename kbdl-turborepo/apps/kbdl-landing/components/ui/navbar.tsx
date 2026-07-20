@@ -15,6 +15,7 @@ const navLinks = [
   { name: 'Jobs', href: '/jobs'},
   { name: 'FAQ', href: '/faq' },
   { name: 'Contact Us', href: '/contact' },
+  { name: 'Blog', href: '/blogs' },
 ];
 
 export default function Navbar() {

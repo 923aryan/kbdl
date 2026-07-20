@@ -67,4 +67,13 @@ export const bannerData = {
         bgImage: "/contact-heroBanner.png",
         showButtons: false,
     },
+      "/blogs": {
+        badge: " KAAM BADLO BLOG",
+        title: "Insights for India &",
+        highlight: "Blue-Collar Workforce",
+        description:
+            " Tips, guides, and industry news to help workers find better jobs, swap shifts easily, and grow their careers.",
+        bgImage: "/contact-heroBanner.png",
+        showButtons: false,
+    },
 };
