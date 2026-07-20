@@ -11,6 +11,8 @@ const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'About Us', href: '/about' },
   { name: 'Workers', href: '/services/workers' },
+  { name: "Shift Swap", href: "/shift"},
+  { name: 'Jobs', href: '/jobs'},
   { name: 'FAQ', href: '/faq' },
   { name: 'Contact Us', href: '/contact' },
 ];
