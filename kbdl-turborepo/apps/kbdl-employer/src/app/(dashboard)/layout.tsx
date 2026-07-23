@@ -4,12 +4,17 @@ import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 import {
   Briefcase,
   ChevronDown,
+  ChevronUp,
   Clock,
-  CreditCard,
+  FileText,
   LayoutDashboard,
   LogOut,
   Menu,
+  Settings,
+  ShieldCheck,
+  UserCheck,
   Users,
+  WalletCards,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -18,18 +23,30 @@ import { useCallback, useEffect, useState } from 'react';
 
 const menuItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
-  { path: '/shifts', label: 'Shifts', icon: Clock },
   { path: '/employees', label: 'Employees', icon: Users },
+  { path: '/shifts', label: 'Shifts', icon: Clock },
+  { path: '/jobs', label: 'Jobs', icon: Briefcase },
   {
-    path: '/jobs',
-    label: 'Jobs',
-    icon: Briefcase,
+    path: '/payroll',
+    label: 'Payroll',
+    icon: WalletCards,
     subItems: [
-      { path: '/jobs', label: 'All Jobs' },
-      { path: '/jobs/create', label: 'Create Job' },
+      { path: '/payroll/run', label: 'Run Payroll', icon: Clock },
+      { path: '/payroll/worker-wages', label: 'Worker Wages', icon: Users },
+      { path: '/payroll/payslips', label: 'Payslips', icon: FileText },
+      { path: '/payroll/statutory-filing', label: 'Statutory Filing', icon: ShieldCheck },
+      { path: '/payroll/settings', label: 'Payroll Setting', icon: Settings },
     ],
   },
-  { path: '/dashboard/billing', label: 'Billing', icon: CreditCard },
+  {
+    path: '/leave',
+    label: 'Leave',
+    icon: UserCheck,
+    subItems: [
+      { path: '/leave/apply', label: 'Apply Leave', icon: Users },
+      { path: '/leave/requests', label: 'Leaves Request', icon: Users },
+    ],
+  },
 ];
 
 function NavItem({
@@ -44,6 +61,7 @@ function NavItem({
   const Icon = item.icon;
   const isExactActive = pathname === item.path;
   const isChildActive = item.subItems?.some((sub) => pathname === sub.path);
+  const isSectionActive = item.path !== '/' && pathname.startsWith(item.path);
   const isActive = isExactActive || isChildActive;
 
   const [isOpen, setIsOpen] = useState(isActive);
@@ -60,11 +78,11 @@ function NavItem({
         href={item.path}
         onClick={() => setSidebarOpen(false)}
         className={`
-          flex items-center px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors
-          ${isExactActive ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : ''}
+          mx-3 mb-2 flex h-11 items-center rounded-xl px-5 text-[15px] font-semibold transition-colors
+          ${isExactActive || isSectionActive ? 'bg-[#DBEAFF] text-[#0658C2]' : 'text-[#0F172A] hover:bg-[#FAFAFA]'}
         `}
       >
-        <Icon className="w-5 h-5 mr-3" />
+        <Icon className="mr-4 h-5 w-5 shrink-0" />
         <span>{item.label}</span>
       </Link>
     );
@@ -76,37 +94,37 @@ function NavItem({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          w-full flex items-center justify-between px-6 py-3 text-gray-700 hover:bg-gray-50 transition-colors
-          ${isActive && !isOpen ? 'bg-blue-50/30 text-blue-600' : ''}
+          mx-3 mb-2 flex h-11 w-[calc(100%-24px)] items-center justify-between rounded-xl px-5 text-[15px] font-semibold transition-colors
+          ${isActive || isSectionActive ? 'bg-[#DBEAFF] text-[#0658C2]' : 'text-[#0F172A] hover:bg-[#FAFAFA]'}
         `}
       >
         <div className="flex items-center">
-          <Icon className="w-5 h-5 mr-3" />
+          <Icon className="mr-4 h-5 w-5 shrink-0" />
           <span>{item.label}</span>
         </div>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-        />
+        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
       {isOpen && (
-        <div className="bg-gray-50/50 py-1 space-y-1">
+        <div className="mx-5 mb-3 rounded-xl bg-white p-2 shadow-sm ring-1 ring-gray-100">
           {item.subItems.map((sub) => {
             const isSubActive = pathname === sub.path;
+            const SubIcon = sub.icon;
             return (
               <Link
                 key={sub.path}
                 href={sub.path}
                 onClick={() => setSidebarOpen(false)}
                 className={`
-                  flex items-center pl-[52px] pr-6 py-2.5 text-sm transition-colors
+                  mb-1 flex h-10 items-center rounded-lg px-3 text-sm font-medium transition-colors last:mb-0
                   ${
                     isSubActive
-                      ? 'text-blue-600 font-medium border-r-4 border-blue-600 bg-blue-50'
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+                      ? 'bg-[#DBEAFF] text-[#0658C2]'
+                      : 'text-[#111827] hover:bg-[#FAFAFA]'
                   }
                 `}
               >
+                <SubIcon className="mr-3 h-4 w-4" />
                 {sub.label}
               </Link>
             );
@@ -239,15 +257,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         `}
       >
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          <div className={`p-6 border-b border-gray-100 flex items-center shrink-0 ${isCollapsed ? 'justify-center' : ''} h-[92px]`}>
+          <div className={`border-b border-gray-100 px-6 py-3 flex items-center shrink-0 ${isCollapsed ? 'justify-center' : 'justify-center'} h-[92px]`}>
             {isCollapsed ? (
-              <h1 className="text-xl font-bold text-gray-800">K</h1>
+              <h1 className="text-xl font-bold text-[#0658C2]">KB</h1>
             ) : (
-              <div>
-                <h1 className="text-xl font-bold text-gray-800 whitespace-nowrap">KBDL Employer</h1>
-                <div className="flex items-center gap-2 mt-2">
-                  <p className="text-sm text-gray-500 whitespace-nowrap truncate">Welcome, {employer?.company_name || 'Employer'}</p>
-                </div>
+              <div className="text-center">
+                <div className="text-3xl font-black leading-7 text-[#092052]">K<span className="text-[#0658C2]">B</span></div>
+                <h1 className="text-sm font-black tracking-wide text-[#092052]">KAAM <span className="text-[#0658C2]">BADLO</span></h1>
+                <p className="text-xs text-[#676767]">Employer Portal</p>
               </div>
             )}
           </div>
@@ -266,7 +283,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       onClick={() => setSidebarOpen(false)}
                       className={`
                         group relative flex items-center justify-center py-3 text-gray-700 hover:bg-gray-50 transition-colors
-                        ${isActive ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600' : ''}
+                        ${isActive ? 'bg-[#DBEAFF] text-[#0658C2]' : ''}
                       `}
                     >
                       <Icon className="w-5 h-5 shrink-0" />
@@ -286,6 +303,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   />
                 ))}
           </nav>
+
+          {!isCollapsed && (
+            <div className="mx-4 mb-3 rounded-xl bg-[#FAFAFA] p-2">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[#DBEAFF] font-bold text-[#0658C2]">TI</div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold">{employer?.company_name || 'Texo Industries Ltd.'}</p>
+                  <p className="text-xs text-[#676767]">Delhi, Gujrat</p>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs text-[#676767]">
+                <span>Status: Verified</span>
+                <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+              </div>
+            </div>
+          )}
 
           <div className="w-full p-4 border-t border-gray-100 shrink-0">
             <button
