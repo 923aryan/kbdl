@@ -49,6 +49,7 @@ export const getCancelledContext = (shift: EmployerShift): 'before_approval' | '
 export type EmployerShift = {
   id: string;
   shift_pay: unknown;
+  payType: string;
   shift_date: string;
   shift_start: string;
   shift_end: string;
@@ -508,7 +509,10 @@ export const ShiftListScreen = ({ onSelectShift }: ShiftListScreenProps) => {
                   </td>
 
                   <td className="px-5 py-3 font-medium text-gray-900">
-                    {String(shift.shift_pay)}Rs
+                    <span>
+                      ₹{Number(shift.shift_pay).toLocaleString()} /{' '}
+                      {shift.payType === 'HOURLY' ? 'hr' : 'shift'}
+                    </span>
                   </td>
 
                   <td className="px-5 py-3">
