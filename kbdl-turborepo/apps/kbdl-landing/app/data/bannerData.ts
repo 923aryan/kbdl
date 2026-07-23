@@ -14,7 +14,7 @@ export const bannerData = {
         highlight: "Workforce Ecosystem",
         description:
             "Kaam Badlo is India's first on-demand Blue Collar Workforce platform built to connect skilled and unskilled workers with reliable job opportunities across India.",
-        bgImage: "/aboutus-hero-bg.png",
+        bgImage: "/aboutUs-heroBanner.png",
         showButtons: false,
     },
 
