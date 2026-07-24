@@ -68,7 +68,7 @@ import {
 } from '../utils/constants';
 
 type PaginatedResult<T> = {
-  meta: Record<string, number>;
+  meta: Record<string, number | Record<string, number>>;
 } & T;
 
 type JobQueryWithLocation = {
@@ -420,9 +420,63 @@ const getPaginatedJobs = async (
     prisma.job.count({ where }),
   ]);
 
+  const jobIds = jobs.map((job) => job.id);
+  const [applicationCounts, hireCounts] =
+    jobIds.length > 0
+      ? await Promise.all([
+          prisma.jobApplication.groupBy({
+            by: ['job_id'],
+            where: { job_id: { in: jobIds } },
+            _count: { _all: true },
+          }),
+          prisma.jobApplication.groupBy({
+            by: ['job_id'],
+            where: { job_id: { in: jobIds }, status: JobApplicationStatus.hired },
+            _count: { _all: true },
+          }),
+        ])
+      : [[], []];
+
+  const applicationCountByJobId = new Map(
+    applicationCounts.map((item) => [item.job_id, item._count._all]),
+  );
+  const hireCountByJobId = new Map(hireCounts.map((item) => [item.job_id, item._count._all]));
+
   return {
-    jobs,
+    jobs: jobs.map((job) => ({
+      ...job,
+      application_count: applicationCountByJobId.get(job.id) ?? 0,
+      hire_count: hireCountByJobId.get(job.id) ?? 0,
+    })),
     meta: getPaginationMeta(total, page, limit),
+  };
+};
+
+const getEmployerJobStats = async (employerId: string) => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const employerJobWhere = { employer_id: employerId };
+
+  const [totalJobs, activeJobs, draftJobs, totalApplications, hiresFromJobs] = await Promise.all([
+    prisma.job.count({ where: employerJobWhere }),
+    prisma.job.count({ where: { ...employerJobWhere, status: JobStatus.open } }),
+    prisma.job.count({ where: { ...employerJobWhere, status: JobStatus.draft } }),
+    prisma.jobApplication.count({ where: { job: employerJobWhere } }),
+    prisma.jobApplication.count({
+      where: {
+        status: JobApplicationStatus.hired,
+        hired_at: { gte: startOfMonth },
+        job: employerJobWhere,
+      },
+    }),
+  ]);
+
+  return {
+    totalJobs,
+    activeJobs,
+    draftJobs,
+    totalApplications,
+    hiresFromJobs,
   };
 };
 
@@ -699,8 +753,18 @@ export const getEmployerJobsService = async (
 ): Promise<PaginatedResult<{ jobs: GetEmployerJobsResponse }>> => {
   const { limit = 10, page = 1 } = query;
   const where = await buildJobWhereClause(query, { employerId });
+  const [result, stats] = await Promise.all([
+    getPaginatedJobs(where, limit, page),
+    getEmployerJobStats(employerId),
+  ]);
 
-  return getPaginatedJobs(where, limit, page);
+  return {
+    ...result,
+    meta: {
+      ...result.meta,
+      stats,
+    },
+  };
 };
 
 export const getEmployerJobByIdService = async (
