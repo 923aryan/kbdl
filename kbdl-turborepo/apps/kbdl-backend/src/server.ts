@@ -12,6 +12,7 @@ import authRouter from './auth/auth-routes';
 import { initializeQueues } from './config/queues/queue-bootstrap';
 import redis from './config/redis';
 import { initializeSocketServer } from './config/socket/socket-server';
+import swaggerRouter from './docs/swagger';
 import jobRouter from './jobs/job-routes';
 import leadRouter from './leads/leads-routes';
 import notificationRouter from './notifications/notification-routes';
@@ -46,6 +47,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(morgan('combined'));
+
+// API docs (not rate-limited) — baseline contract for pre/post refactor comparison
+app.use('/api/docs', swaggerRouter);
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

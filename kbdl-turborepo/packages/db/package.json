@@ -22,7 +22,8 @@
   "scripts": {
     "generate": "prisma generate",
     "push": "prisma db push",
-    "build": "prisma generate"
+    "build": "prisma generate",
+    "clone-db": "node --env-file=.env ./scripts/clone-database.mjs"
   },
   "publishConfig": {
     "access": "public"

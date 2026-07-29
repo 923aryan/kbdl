@@ -3,7 +3,14 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=kbdl-backend --filter=kbdl-employer --filter=kbdl-admin --filter=kbdl-landing",
+    "dev:all": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=kbdl-backend",
+    "dev:frontend": "turbo run dev --filter=kbdl-employer --filter=kbdl-admin --filter=kbdl-landing",
+    "dev:employer": "turbo run dev --filter=kbdl-employer",
+    "dev:admin": "turbo run dev --filter=kbdl-admin",
+    "dev:landing": "turbo run dev --filter=kbdl-landing",
+    "dev:web": "turbo run dev --filter=kbdl-backend --filter=kbdl-employer",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
