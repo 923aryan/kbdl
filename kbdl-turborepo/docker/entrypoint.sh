@@ -22,7 +22,7 @@ echo "✅ Postgres is ready"
 
 echo "▶ Applying Prisma schema (db push)..."
 cd /app/packages/db
-pnpm exec prisma db push --skip-generate
+pnpm exec prisma db push
 
 if [ "$SEED_ON_START" = "true" ]; then
   echo "▶ Seeding database (SEED_ON_START=true)..."
