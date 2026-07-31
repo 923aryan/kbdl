@@ -1,5 +1,6 @@
 import { Job, JobApplication, Prisma } from '@repo/db/server';
-import { safeEmployerSelect, safeUserSelect } from '@repo/db/shared';
+import { safeUserSelect } from '@repo/db/shared';
+import type { EmployerDto } from '@repo/db/server';
 import {
   adminUpdateJobApplicationStatusSchema,
   adminUpdateJobStatusSchema,
@@ -38,17 +39,16 @@ import {
 } from '@repo/validator/shared';
 import { z } from 'zod';
 
-export type JobEmployerDTO = Prisma.EmployerGetPayload<{
-  select: typeof safeEmployerSelect;
-}>;
+export type JobEmployerDTO = EmployerDto;
 
 export type JobUserDTO = Prisma.UserGetPayload<{
   select: typeof safeUserSelect;
 }>;
 
-export type JobDTO = Job;
+export type JobDTO = Job & { employer_id: string };
 
 export type JobWithPosterDTO = Job & {
+  employer_id: string;
   employer: JobEmployerDTO | null;
   user: JobUserDTO | null;
 };

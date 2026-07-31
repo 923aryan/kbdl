@@ -11,6 +11,8 @@
     "dev:admin": "turbo run dev --filter=kbdl-admin",
     "dev:landing": "turbo run dev --filter=kbdl-landing",
     "dev:web": "turbo run dev --filter=kbdl-backend --filter=kbdl-employer",
+    "db:seed": "pnpm --filter @repo/db seed",
+    "db:push": "pnpm --filter @repo/db push",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"

@@ -4,6 +4,7 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { setAuthCookies } from '../auth/auth-controller';
 import { generateAccessToken, generateRefreshToken } from '../auth/auth-service';
+import { ensureEmployerContext } from '../compat/employer-compat';
 import { AppError } from '../utils/api-error';
 import { ROLES } from '../utils/constants';
 import { JwtPayload } from '../utils/jwt-payload';
@@ -56,16 +57,9 @@ export const authenticate = (
           return next();
         }
         console.log('inside auth middleware: role : employer id =  ', user.payload.employer.id);
-        const currentEmployer = await prisma.employer.findUnique({
-          where: { id: user.payload.employer.id },
-          select: {
-            id: true,
-            email: true,
-            is_verified: true,
-          },
-        });
-        console.log('curent employer ', currentEmployer);
-        if (!currentEmployer?.is_verified) {
+        const { company, ownerUser } = await ensureEmployerContext(user.payload.employer.id);
+        console.log('curent employer ', { id: company.id, email: ownerUser.email, is_verified: company.is_verified });
+        if (!company.is_verified) {
           return next(new AppError(403, 'UNVERIFIED', 'Verification pending.'));
         }
 
@@ -75,8 +69,8 @@ export const authenticate = (
           role: ROLES.EMPLOYER,
           payload: {
             employer: {
-              id: currentEmployer.id,
-              email: currentEmployer.email,
+              id: company.id,
+              email: ownerUser.email ?? '',
               is_verified: true,
             },
           },
@@ -87,12 +81,12 @@ export const authenticate = (
         const newRefreshToken = generateRefreshToken(payload);
 
         /*
-          Persist refresh token
+          Persist refresh token on owner User
         */
 
-        await prisma.employer.update({
+        await prisma.user.update({
           where: {
-            id: currentEmployer.id,
+            id: ownerUser.id,
           },
           data: {
             refresh_token: newRefreshToken,

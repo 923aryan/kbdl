@@ -1,4 +1,10 @@
-import { Employer, prisma, User } from '@repo/db/server';
+import {
+  ensureDefaultCompanyRoles,
+  PlatformType,
+  prisma,
+  SYSTEM_ROLE_CODES,
+  User,
+} from '@repo/db/server';
 import {
   EmployerRegisterPayload,
   UserRegisterPayload,
@@ -6,6 +12,11 @@ import {
 } from '@repo/types';
 import { env } from '@repo/validator/server';
 import jwt from 'jsonwebtoken';
+import {
+  EmployerDto,
+  findEmployerByEmail,
+  toEmployerDto,
+} from '../compat/employer-compat';
 import { resendClient } from '../config/resend';
 import { AppError } from '../utils/api-error';
 import { OTP_ROLES, ROLES } from '../utils/constants';
@@ -444,13 +455,23 @@ export const verifyUserOtpService = async (payload: {
 };
 
 export const registerEmployerService = async (payload: EmployerRegisterPayload): Promise<null> => {
-  const existingEmployer = await prisma.employer.findFirst({
+  const existingUser = await prisma.user.findFirst({
     where: {
       OR: [{ email: payload.email }, { phone_no: payload.phone_no }],
     },
+    include: {
+      companyMemberships: {
+        where: { platform_type: PlatformType.EMPLOYER },
+        take: 1,
+      },
+    },
   });
 
-  if (existingEmployer) {
+  if (existingUser?.companyMemberships.length) {
+    throw new AppError(409, 'EMPLOYER_EXISTS', 'Employer with this email or phone already exists');
+  }
+
+  if (existingUser) {
     throw new AppError(409, 'EMPLOYER_EXISTS', 'Employer with this email or phone already exists');
   }
 
@@ -497,7 +518,7 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
   otp: string;
 }): Promise<{
   accessToken: string;
-  employer: Employer;
+  employer: EmployerDto;
   refreshToken: string;
 }> => {
   const { email, otp } = payload;
@@ -534,21 +555,54 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
 
   const pendingEmployerData = otpRecord.payload as EmployerRegisterPayload;
 
-  const newEmployer = await prisma.$transaction(async (tx) => {
-    const employer = await tx.employer.create({
+  const { company, ownerUser } = await prisma.$transaction(async (tx) => {
+    const conflictingUser = await tx.user.findFirst({
+      where: {
+        OR: [{ email: pendingEmployerData.email }, { phone_no: pendingEmployerData.phone_no }],
+      },
+    });
+
+    if (conflictingUser) {
+      throw new AppError(409, 'EMPLOYER_EXISTS', 'Employer with this email or phone already exists');
+    }
+
+    const user = await tx.user.create({
       data: {
-        company_name: pendingEmployerData.company_name,
         email: pendingEmployerData.email,
         phone_no: pendingEmployerData.phone_no,
+      },
+    });
+
+    const preferences: Record<string, string> = {};
+    if (pendingEmployerData.subscription_tier) {
+      preferences.subscription_tier = pendingEmployerData.subscription_tier;
+    }
+
+    const company = await tx.company.create({
+      data: {
+        company_name: pendingEmployerData.company_name,
         company_address: pendingEmployerData.company_address,
-        gst_number: pendingEmployerData.gst_number,
-        subscription_tier: pendingEmployerData.subscription_tier,
+        gst_number: pendingEmployerData.gst_number || null,
+        preferences: preferences as any,
+      },
+    });
+
+    // Seed default per-company roles, then attach OWNER by role_id
+    const roleIds = await ensureDefaultCompanyRoles(company.id, tx);
+
+    await tx.companyMember.create({
+      data: {
+        user_id: user.id,
+        company_id: company.id,
+        platform_type: PlatformType.EMPLOYER,
+        role_id: roleIds[SYSTEM_ROLE_CODES.OWNER]!,
+        is_active: true,
       },
     });
 
     if (pendingEmployerData?.company_location) {
       await tx.$executeRaw`
-        UPDATE employers
+        UPDATE companies
         SET company_location =
           ST_SetSRID(
             ST_MakePoint(
@@ -557,11 +611,11 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
             ),
             4326
           )::geography
-        WHERE id = ${employer.id}::uuid
+        WHERE id = ${company.id}::uuid
       `;
     }
 
-    return employer;
+    return { company, ownerUser: user };
   });
 
   await prisma.otpVerification.delete({
@@ -578,9 +632,9 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
       role: ROLES.EMPLOYER,
       payload: {
         employer: {
-          id: newEmployer.id,
-          email: newEmployer.email,
-          is_verified: newEmployer.is_verified,
+          id: company.id,
+          email: ownerUser.email,
+          is_verified: company.is_verified,
         },
       },
     } as JwtPayload,
@@ -595,9 +649,9 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
       role: ROLES.EMPLOYER,
       payload: {
         employer: {
-          id: newEmployer.id,
-          email: newEmployer.email,
-          is_verified: newEmployer.is_verified,
+          id: company.id,
+          email: ownerUser.email,
+          is_verified: company.is_verified,
         },
       },
     } as JwtPayload,
@@ -607,19 +661,14 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
     },
   );
 
-  const employer = await prisma.employer.update({
-    where: {
-      id: newEmployer.id,
-    },
-
-    data: {
-      refresh_token: refreshToken,
-    },
+  const updatedOwner = await prisma.user.update({
+    where: { id: ownerUser.id },
+    data: { refresh_token: refreshToken },
   });
 
   return {
     accessToken,
-    employer,
+    employer: toEmployerDto(company, updatedOwner),
     refreshToken,
   };
 };
@@ -627,11 +676,7 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
 export const sendEmployerOtpService = async (payload: { email: string }): Promise<null> => {
   const { email } = payload;
 
-  const existingEmployer = await prisma.employer.findUnique({
-    where: {
-      email,
-    },
-  });
+  const existingEmployer = await findEmployerByEmail(email);
 
   if (!existingEmployer) {
     throw new AppError(404, 'NON_EXISTENT_EMPLOYER', 'Employer not found. Please register first.');
@@ -675,7 +720,7 @@ export const verifyEmployerOtpService = async (payload: {
   otp: string;
 }): Promise<{
   accessToken: string;
-  employer: Employer;
+  employer: EmployerDto;
   refreshToken: string;
 }> => {
   const { email, otp } = payload;
@@ -719,24 +764,32 @@ export const verifyEmployerOtpService = async (payload: {
     },
   });
 
-  const existingEmployer = await prisma.employer.findUnique({
-    where: {
-      email,
+  const ownerUser = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      companyMemberships: {
+        where: { platform_type: PlatformType.EMPLOYER },
+        include: { company: true },
+        take: 1,
+      },
     },
   });
 
-  if (!existingEmployer) {
+  const membership = ownerUser?.companyMemberships[0];
+  if (!ownerUser || !membership) {
     throw new AppError(404, 'NON_EXISTENT_EMPLOYER', 'Employer not found');
   }
+
+  const company = membership.company;
 
   const accessToken = jwt.sign(
     {
       role: ROLES.EMPLOYER,
       payload: {
         employer: {
-          id: existingEmployer.id,
-          email: existingEmployer.email,
-          is_verified: existingEmployer.is_verified,
+          id: company.id,
+          email: ownerUser.email,
+          is_verified: company.is_verified,
         },
       },
     } as JwtPayload,
@@ -751,9 +804,9 @@ export const verifyEmployerOtpService = async (payload: {
       role: ROLES.EMPLOYER,
       payload: {
         employer: {
-          id: existingEmployer.id,
-          email: existingEmployer.email,
-          is_verified: existingEmployer.is_verified,
+          id: company.id,
+          email: ownerUser.email,
+          is_verified: company.is_verified,
         },
       },
     } as JwtPayload,
@@ -763,26 +816,21 @@ export const verifyEmployerOtpService = async (payload: {
     },
   );
 
-  const employer = await prisma.employer.update({
-    where: {
-      id: existingEmployer.id,
-    },
-
-    data: {
-      refresh_token: refreshToken,
-    },
+  const updatedOwner = await prisma.user.update({
+    where: { id: ownerUser.id },
+    data: { refresh_token: refreshToken },
   });
 
   return {
     accessToken,
-    employer,
+    employer: toEmployerDto(company, updatedOwner),
     refreshToken,
   };
 };
 
 export const generateRefreshTokenService = async (
   oldRefreshToken: string,
-): Promise<{ accessToken: string; refreshToken: string; user?: User; employer?: Employer }> => {
+): Promise<{ accessToken: string; refreshToken: string; user?: User; employer?: EmployerDto }> => {
   try {
     const decoded = jwt.verify(oldRefreshToken, env.JWT_REFRESH_SECRET as string) as JwtPayload;
     console.log('here');
@@ -828,12 +876,22 @@ export const generateRefreshTokenService = async (
       return { accessToken, refreshToken: newRefreshToken, user: updatedUser };
     } else if (decoded.role === ROLES.EMPLOYER) {
       console.log('employer here');
-      const existingEmployer = await prisma.employer.findUnique({
-        where: { id: decoded.payload.employer.id },
+      const companyId = decoded.payload.employer.id;
+      const ownerMember = await prisma.companyMember.findFirst({
+        where: {
+          company_id: companyId,
+          platform_type: PlatformType.EMPLOYER,
+          role: { code: SYSTEM_ROLE_CODES.OWNER },
+        },
+        include: {
+          user: true,
+          company: true,
+          role: true,
+        },
       });
       console.log('existin here');
 
-      if (!existingEmployer || existingEmployer.refresh_token !== oldRefreshToken) {
+      if (!ownerMember || ownerMember.user.refresh_token !== oldRefreshToken) {
         throw new AppError(401, 'INVALID_TOKEN', 'Invalid refresh token');
       }
       console.log('after employer here');
@@ -843,9 +901,9 @@ export const generateRefreshTokenService = async (
           role: ROLES.EMPLOYER,
           payload: {
             employer: {
-              id: existingEmployer.id,
-              email: existingEmployer.email,
-              is_verified: existingEmployer.is_verified,
+              id: ownerMember.company.id,
+              email: ownerMember.user.email,
+              is_verified: ownerMember.company.is_verified,
             },
           },
         } as JwtPayload,
@@ -857,9 +915,9 @@ export const generateRefreshTokenService = async (
           role: ROLES.EMPLOYER,
           payload: {
             employer: {
-              id: existingEmployer.id,
-              email: existingEmployer.email,
-              is_verified: existingEmployer.is_verified,
+              id: ownerMember.company.id,
+              email: ownerMember.user.email,
+              is_verified: ownerMember.company.is_verified,
             },
           },
         } as JwtPayload,
@@ -867,12 +925,16 @@ export const generateRefreshTokenService = async (
         { expiresIn: env.JWT_REFRESH_EXPIRY as any },
       );
 
-      const updatedEmployer = await prisma.employer.update({
-        where: { id: existingEmployer.id },
+      const updatedOwner = await prisma.user.update({
+        where: { id: ownerMember.user.id },
         data: { refresh_token: newRefreshToken },
       });
 
-      return { accessToken, refreshToken: newRefreshToken, employer: updatedEmployer };
+      return {
+        accessToken,
+        refreshToken: newRefreshToken,
+        employer: toEmployerDto(ownerMember.company, updatedOwner),
+      };
     } else {
       throw new AppError(401, 'INVALID_ROLE', 'Invalid role in token');
     }
