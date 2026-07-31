@@ -407,3 +407,35 @@ SELECT id, skill_required, status FROM shifts
 WHERE company_id = '<company_uuid>'
 LIMIT 5;
 ```
+
+users
+   ↓
+Actual people
+
+company_members
+   ↓
+Their employment record in a company
+
+company_roles
+   ↓
+What job title they have
+
+departments
+   ↓
+Which department they work in
+
+teams
+   ↓
+Which team inside that department
+
+manager_company_member_id
+   ↓
+Who they report to
+
+shifts
+   ↓
+Work assigned to employees
+
+shift_applications
+   ↓
+Who applied for that work

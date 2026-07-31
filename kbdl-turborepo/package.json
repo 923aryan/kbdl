@@ -13,6 +13,11 @@
     "dev:web": "turbo run dev --filter=kbdl-backend --filter=kbdl-employer",
     "db:seed": "pnpm --filter @repo/db seed",
     "db:push": "pnpm --filter @repo/db push",
+    "docker:up": "docker compose up --build",
+    "docker:up:detach": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:seed": "docker compose run --rm backend seed",
+    "docker:logs": "docker compose logs -f backend",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
