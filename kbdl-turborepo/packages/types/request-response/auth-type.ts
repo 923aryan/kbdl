@@ -1,4 +1,4 @@
-import { Employer, User } from '@repo/db/server';
+import { EmployerDto, User } from '@repo/db/server';
 import {
   employerRegisterSchema,
   employerSendOtpSchema,
@@ -20,7 +20,7 @@ export type EmployerRegisterRequest = z.infer<typeof employerRegisterSchema>;
 export type EmployerRegisterPayload = z.infer<typeof employerRegisterSchema>['body'];
 export type EmployerVerifyRegisterRequest = z.infer<typeof employerVerifyRegisterSchema>;
 export type EmployerVerifyRegisterPayload = z.infer<typeof employerVerifyRegisterSchema>['body'];
-export type EmployerVerifyRegisterResponse = Employer;
+export type EmployerVerifyRegisterResponse = EmployerDto;
 
 export type UserSendOTPRequest = z.infer<typeof userSendOtpSchema>;
 export type UserSendOTPResponse = null;
@@ -35,7 +35,7 @@ export type EmpployerSendOTPRequest = z.infer<typeof employerSendOtpSchema>;
 export type EmployerSendOTPResponse = null;
 export type EmpployerVerifyOTPRequest = z.infer<typeof employerVerifyOtpSchema>;
 export type EmployerVerifyOTPResponse = {
-  employer: Employer;
+  employer: EmployerDto;
   accessToken: string;
   refreshToken: string;
 };

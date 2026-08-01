@@ -1,4 +1,4 @@
-import { EmploymentStatus, prisma, safeEmployerSelect, safeUserSelect } from '@repo/db/server';
+import { EmploymentStatus, prisma, safeUserSelect } from '@repo/db/server';
 import {
   EmployeeEmploymentDTO,
   GetAllEmployeeEmploymentQuery,
@@ -11,10 +11,19 @@ import {
   SearchAddressResponse,
   UpdateEmploymentStatusPayload,
 } from '@repo/types';
+import {
+  companyAsEmployerInclude,
+  mapEmploymentToApi,
+} from '../compat/employer-compat';
 import { GEOAPIFY_CONFIG } from '../config/geoapify';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
 import { NotificationTypes } from '../utils/constants';
+
+const withEmployerId = <T extends { company_id: string }>(row: T): T & { employer_id: string } => ({
+  ...row,
+  employer_id: row.company_id,
+});
 
 export const getEmployerRosterService = async (
   employerId: string,
@@ -23,9 +32,8 @@ export const getEmployerRosterService = async (
   const { status, search, limit = 10, page = 1 } = query;
   const skip = (page - 1) * limit;
 
-  // Build the dynamic filter clause
   const whereClause: any = {
-    employer_id: employerId,
+    company_id: employerId,
   };
 
   if (status) {
@@ -33,7 +41,6 @@ export const getEmployerRosterService = async (
   }
 
   if (search) {
-    // Allows searching by the worker's name, phone number, or karigari ID
     whereClause.employee = {
       OR: [
         { name: { contains: search, mode: 'insensitive' } },
@@ -57,7 +64,7 @@ export const getEmployerRosterService = async (
   ]);
 
   return {
-    roster,
+    roster: roster.map(withEmployerId) as EmployeeEmploymentDTO[],
     meta: {
       total,
       page,
@@ -71,12 +78,10 @@ export const getEmployeeDetailsService = async (
   employerId: string,
   mappingId: string,
 ): Promise<EmployeeEmploymentDTO> => {
-  // Use findFirst to enforce the employerId security check
-  // ensuring an employer cannot fetch another company's worker mapping
   const employeeDetails = await prisma.employeeEmployment.findFirst({
     where: {
       id: mappingId,
-      employer_id: employerId,
+      company_id: employerId,
     },
     include: {
       employee: { select: safeUserSelect },
@@ -86,7 +91,7 @@ export const getEmployeeDetailsService = async (
   if (!employeeDetails) {
     throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee record not found or access denied');
   }
-  return employeeDetails;
+  return withEmployerId(employeeDetails) as EmployeeEmploymentDTO;
 };
 
 export const onboardEmployeeService = async (
@@ -95,7 +100,6 @@ export const onboardEmployeeService = async (
 ): Promise<EmployeeEmploymentDTO> => {
   const { phone_no, karigari_id, employee_no } = payload;
 
-  // 1. Locate the User in the system using the provided identifiers
   const user = await prisma.user.findFirst({
     where: {
       OR: [...(phone_no ? [{ phone_no }] : []), ...(karigari_id ? [{ karigari_id }] : [])],
@@ -110,11 +114,10 @@ export const onboardEmployeeService = async (
     );
   }
 
-  // 2. Prevent duplicate onboarding by checking the composite unique constraint
   const existingEmployment = await prisma.employeeEmployment.findUnique({
     where: {
-      employer_id_employee_id: {
-        employer_id: employerId,
+      company_id_employee_id: {
+        company_id: employerId,
         employee_id: user.id,
       },
     },
@@ -128,13 +131,12 @@ export const onboardEmployeeService = async (
     );
   }
 
-  // 3. Create the mapping row
   const employment = await prisma.employeeEmployment.create({
     data: {
-      employer_id: employerId,
+      company_id: employerId,
       employee_id: user.id,
       employee_no: employee_no || null,
-      employment_status: EmploymentStatus.pending, // Default status on creation
+      employment_status: EmploymentStatus.pending,
       joined_at: new Date(),
     },
     include: {
@@ -142,7 +144,6 @@ export const onboardEmployeeService = async (
     },
   });
 
-  //Modify this title and body for onboard request
   await createNotificationService({
     userId: user.id,
     type: NotificationTypes.onboardRequest,
@@ -154,7 +155,7 @@ export const onboardEmployeeService = async (
       employerId,
     },
   });
-  return employment;
+  return withEmployerId(employment) as EmployeeEmploymentDTO;
 };
 
 export const updateEmploymentStatusService = async (
@@ -164,11 +165,10 @@ export const updateEmploymentStatusService = async (
 ): Promise<EmployeeEmploymentDTO> => {
   const { status } = payload;
 
-  // 1. Verify ownership before mutation
   const existingRecord = await prisma.employeeEmployment.findFirst({
     where: {
       id: mappingId,
-      employer_id: employerId,
+      company_id: employerId,
     },
   });
 
@@ -176,22 +176,22 @@ export const updateEmploymentStatusService = async (
     throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee record not found or access denied');
   }
 
-  // 2. Logic: If the worker is leaving, automatically stamp the `left_at` date
   const isLeaving = status === EmploymentStatus.terminated || status === EmploymentStatus.resigned;
 
-  // 3. Execute the update
-  return prisma.employeeEmployment.update({
+  const updated = await prisma.employeeEmployment.update({
     where: {
       id: mappingId,
     },
     data: {
       employment_status: status,
-      left_at: isLeaving ? new Date() : null, // Clears the date if they are moved back to 'active' or 'inactive'
+      left_at: isLeaving ? new Date() : null,
     },
     include: {
       employee: true,
     },
   });
+
+  return withEmployerId(updated) as EmployeeEmploymentDTO;
 };
 
 export const getAllEmployeeEmploymentService = async (
@@ -209,7 +209,7 @@ export const getAllEmployeeEmploymentService = async (
     prisma.employeeEmployment.findMany({
       where: whereClause,
       include: {
-        employer: { select: safeEmployerSelect },
+        company: companyAsEmployerInclude,
       },
       orderBy: { joined_at: 'desc' },
       take: limit,
@@ -219,7 +219,7 @@ export const getAllEmployeeEmploymentService = async (
   ]);
 
   return {
-    employments,
+    employments: employments.map((e) => mapEmploymentToApi(e as any)) as GetAllEmployeeEmploymentResponse,
     meta: {
       total,
       page,
@@ -239,7 +239,7 @@ export const getEmployeeEmploymentService = async (
       employee_id: employeeId,
     },
     include: {
-      employer: { select: safeEmployerSelect },
+      company: companyAsEmployerInclude,
     },
   });
 
@@ -247,7 +247,7 @@ export const getEmployeeEmploymentService = async (
     throw new AppError(404, 'EMPLOYMENT_NOT_FOUND', 'Employment record not found or access denied');
   }
 
-  return employment;
+  return mapEmploymentToApi(employment as any) as GetEmployeeEmploymentResponse;
 };
 
 export const getEmployeePendingEmploymentsService = async (
@@ -266,7 +266,7 @@ export const getEmployeePendingEmploymentsService = async (
     prisma.employeeEmployment.findMany({
       where: whereClause,
       include: {
-        employer: { select: safeEmployerSelect },
+        company: companyAsEmployerInclude,
       },
       orderBy: { joined_at: 'desc' },
       take: limit,
@@ -276,7 +276,7 @@ export const getEmployeePendingEmploymentsService = async (
   ]);
 
   return {
-    employments,
+    employments: employments.map((e) => mapEmploymentToApi(e as any)) as GetEmployeePendingEmploymentResponse,
     meta: {
       total,
       page,
@@ -306,7 +306,6 @@ export const acceptEmploymentRequestService = async (
     );
   }
 
-  // Mark any currently active employment for this employee as resigned
   await prisma.employeeEmployment.updateMany({
     where: {
       employee_id: employeeId,
@@ -321,14 +320,11 @@ export const acceptEmploymentRequestService = async (
   const employment = await prisma.employeeEmployment.update({
     where: { id: mappingId },
     data: { employment_status: EmploymentStatus.active },
-    include: { employer: { select: safeEmployerSelect } },
+    include: { company: companyAsEmployerInclude },
   });
 
-  await prisma.user.update({
-    where: { id: employeeId },
-    data: { employer_id: employment.employer_id },
-  });
-  return employment;
+  // User.employer_id removed in schema refactor; active employment is source of truth.
+  return mapEmploymentToApi(employment as any) as GetEmployeeEmploymentResponse;
 };
 
 export const declineEmploymentRequestService = async (employeeId: string, mappingId: string) => {

@@ -9,55 +9,15 @@ datasource db {
   extensions = [postgis]
 }
 
-enum UserType {
-  employer
-  user
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
-  @@map("user_type")
-}
+enum PlatformType {
+  EMPLOYEE
+  EMPLOYER
 
-model User {
-  id          String  @id @default(uuid()) @db.Uuid
-  name        String? @db.VarChar
-  karigari_id String? @db.VarChar
-  employer_id String? @db.Uuid
-
-  phone_no           String                                 @unique @db.VarChar
-  default_address    String?                                @db.VarChar
-  skills             String[]
-  experience         Int?
-  city               String?                                @db.VarChar
-  area               String?                                @db.VarChar
-  preferences        Json?                                  @default("{}")
-  // PostGIS geography type
-  location           Unsupported("geography(Point, 4326)")?
-  role               String                                 @default("user")
-  rating_avg         Decimal?                               @db.Decimal(3, 2)
-  rating_count       Int?
-  verification_level Int?
-  extra_shift        Boolean                                @default(true)
-  refresh_token      String?                                @db.VarChar
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  //relations
-  original_shifts         Shift[]                 @relation("OriginalEmployeeShift")
-  replacement_shifts      Shift[]                 @relation("ReplacementEmployeeShift")
-  jobApplications         JobApplication[]
-  subscriptions           Subscriptions[]
-  employments             EmployeeEmployment[]
-  transactions            Transaction[]
-  orders                  Order[]
-  jobs                    Job[]
-  ratings_given           Rating[]                @relation("UserGivenRatings")
-  ratings_received        Rating[]                @relation("UserReceivedRatings")
-  pushTokens              PushToken[]
-  notifications           Notification[]
-  notificationPreferences NotificationPreference?
-  shiftApplications       ShiftApplication[]
-
-  @@map("users")
+  @@map("platform_type")
 }
 
 enum ShiftStatus {
@@ -78,40 +38,6 @@ enum PayType {
   @@map("pay_type")
 }
 
-model Shift {
-  id                      String      @id @default(uuid()) @db.Uuid
-  original_employee_id    String      @db.Uuid
-  replacement_employee_id String?     @db.Uuid
-  employer_id             String      @db.Uuid
-  request_accepted        Boolean     @default(false)
-  created_by              UserType
-  shift_date              DateTime    @db.Timestamptz()
-  shift_start             DateTime    @db.Timestamptz()
-  shift_end               DateTime    @db.Timestamptz()
-  payType                 PayType
-  shift_pay               Decimal     @db.Decimal(10, 2)
-  skill_required          String      @db.VarChar
-  status                  ShiftStatus
-
-  organization_approved Boolean @default(false)
-  no_show_reported      Boolean @default(false)
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  original_employee    User               @relation("OriginalEmployeeShift", fields: [original_employee_id], references: [id])
-  replacement_employee User?              @relation("ReplacementEmployeeShift", fields: [replacement_employee_id], references: [id])
-  employer             Employer           @relation(fields: [employer_id], references: [id])
-  ratings              Rating[]
-  shiftApplications    ShiftApplication[]
-
-  @@index([original_employee_id])
-  @@index([replacement_employee_id])
-  @@index([employer_id])
-  @@map("shifts")
-}
-
 enum ShiftApplicationStatus {
   pending
   accepted
@@ -126,58 +52,6 @@ enum ShiftApplicationType {
   applied
 
   @@map("shift_application_type")
-}
-
-model ShiftApplication {
-  id String @id @default(uuid()) @db.Uuid
-
-  shift_id String @db.Uuid
-  user_id  String @db.Uuid
-
-  type ShiftApplicationType
-
-  status ShiftApplicationStatus @default(pending)
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  //Relations:
-  shift Shift @relation(fields: [shift_id], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [user_id], references: [id])
-
-  @@unique([shift_id, user_id])
-  @@index([shift_id])
-  @@index([user_id])
-  @@map("shift_applications")
-}
-
-model Employer {
-  id                String                                 @id @default(uuid()) @db.Uuid
-  company_name      String                                 @db.VarChar
-  email             String                                 @unique @db.VarChar
-  role              String                                 @default("employer")
-  preferences       Json                                   @default("{}")
-  company_address   String?                                @db.VarChar
-  company_location  Unsupported("geography(Point, 4326)")?
-  phone_no          String                                 @unique @db.VarChar
-  subscription_tier String?                                @db.VarChar
-  gst_number        String?                                @db.VarChar
-  is_verified       Boolean                                @default(false)
-  refresh_token     String?                                @db.VarChar
-  created_at        DateTime                               @default(now()) @db.Timestamptz()
-  updated_at        DateTime                               @updatedAt @db.Timestamptz()
-
-  // relations
-  shifts              Shift[]
-  jobs                Job[]
-  ratings             Rating[]
-  employeeEmployments EmployeeEmployment[]
-  transactions        Transaction[]
-  orders              Order[]
-
-  subscriptions Subscriptions[]
-
-  @@map("employers")
 }
 
 enum SalaryType {
@@ -218,61 +92,6 @@ enum JobWorkType {
   @@map("job_work_type")
 }
 
-model Job {
-  id String @id @default(uuid()) @db.Uuid
-
-  // Who posted the job
-  employer_id String? @db.Uuid
-  user_id     String? @db.Uuid
-
-  // Basic Info
-  title       String @db.VarChar(255)
-  description String @db.Text
-
-  employment_type EmploymentType
-  work_type       JobWorkType
-
-  // Salary
-  salary_min    Decimal?   @db.Decimal(10, 2)
-  salary_max    Decimal?   @db.Decimal(10, 2)
-  salary_type   SalaryType
-  is_negotiable Boolean    @default(false)
-
-  // Schedule
-  job_start_time DateTime? @db.Timestamptz()
-  job_end_time   DateTime? @db.Timestamptz()
-
-  // Location
-  address String? @db.Text
-
-  // PostGIS
-  location Unsupported("geography(Point,4326)")?
-
-  // Hiring
-  seats_available Int?
-
-  // Status
-  status     JobStatus @default(open)
-  expires_at DateTime? @db.Timestamptz()
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  employer Employer? @relation(fields: [employer_id], references: [id])
-  user     User?     @relation(fields: [user_id], references: [id])
-
-  applications JobApplication[]
-  ratings      Rating[]
-
-  @@index([employer_id])
-  @@index([user_id])
-  @@index([status])
-  @@index([expires_at])
-  @@index([job_start_time])
-  @@map("jobs")
-}
-
 enum JobApplicationStatus {
   applied
   under_review
@@ -286,101 +105,13 @@ enum JobApplicationStatus {
   @@map("job_application_status")
 }
 
-model JobApplication {
-  id String @id @default(uuid()) @db.Uuid
-
-  job_id  String @db.Uuid
-  user_id String @db.Uuid
-
-  status JobApplicationStatus @default(applied)
-
-  // Candidate message
-  cover_letter String? @db.Text
-
-  // Recruiter notes
-  employer_notes String? @db.Text
-
-  // Timeline
-  applied_at     DateTime  @default(now()) @db.Timestamptz()
-  reviewed_at    DateTime? @db.Timestamptz()
-  shortlisted_at DateTime? @db.Timestamptz()
-  interview_at   DateTime? @db.Timestamptz()
-  hired_at       DateTime? @db.Timestamptz()
-  rejected_at    DateTime? @db.Timestamptz()
-  withdrawn_at   DateTime? @db.Timestamptz()
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  job  Job  @relation(fields: [job_id], references: [id], onDelete: Cascade)
-  user User @relation(fields: [user_id], references: [id])
-
-  @@unique([job_id, user_id])
-  @@index([job_id])
-  @@index([user_id])
-  @@index([status])
-  @@index([job_id, status])
-  @@map("job_applications")
-}
-
-model Rating {
-  id String @id @default(uuid()) @db.Uuid
-
-  employer_id      String? @db.Uuid
-  user_employer_id String? @db.Uuid
-  user_id          String  @db.Uuid
-  shift_id         String? @db.Uuid
-  job_id           String? @db.Uuid
-
-  score         Int
-  review        String? @db.Text
-  flagged_issue Boolean @default(false)
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  employer      Employer? @relation(fields: [employer_id], references: [id])
-  user_employer User?     @relation("UserGivenRatings", fields: [user_employer_id], references: [id])
-  user          User      @relation("UserReceivedRatings", fields: [user_id], references: [id])
-  shift         Shift?    @relation(fields: [shift_id], references: [id])
-  job           Job?      @relation(fields: [job_id], references: [id])
-
-  @@unique([shift_id, user_id, employer_id])
-  @@unique([shift_id, user_id, user_employer_id])
-  @@index([user_id])
-  @@index([employer_id])
-  @@index([shift_id])
-  @@index([job_id])
-  @@map("ratings")
-}
-
 enum TargetAudience {
   worker
-  employer
+  company
   individual
   contractor
 
   @@map("target_audience")
-}
-
-model SubscriptionPlan {
-  id     String         @id @default(uuid()) @db.Uuid
-  name   String         @db.VarChar
-  target TargetAudience
-
-  price         Decimal? @db.Decimal(10, 2)
-  billing_cycle String?  @db.VarChar
-  features      Json?    @db.JsonB
-
-  is_active Boolean @default(true)
-
-  created_at    DateTime        @default(now()) @db.Timestamptz()
-  updated_at    DateTime        @updatedAt @db.Timestamptz()
-  subscriptions Subscriptions[]
-
-  @@map("subscription_plans")
 }
 
 enum SubscriptionStatus {
@@ -392,45 +123,6 @@ enum SubscriptionStatus {
   @@map("subscription_status")
 }
 
-model Subscriptions {
-  id          String  @id @default(uuid()) @db.Uuid
-  user_id     String? @db.Uuid
-  employer_id String? @db.Uuid
-  plan_id     String  @db.Uuid
-
-  subscription_user_type UserType
-  status                 SubscriptionStatus
-
-  starts_at  DateTime? @db.Timestamptz()
-  expires_at DateTime? @db.Timestamptz()
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  user         User?            @relation(fields: [user_id], references: [id])
-  plan         SubscriptionPlan @relation(fields: [plan_id], references: [id])
-  transactions Transaction[]
-  employer     Employer?        @relation(fields: [employer_id], references: [id])
-
-  @@index([user_id])
-  @@index([plan_id])
-  @@map("subscriptions")
-}
-
-model Admin {
-  id            String @id @default(uuid()) @db.Uuid
-  name          String @db.VarChar
-  email         String @unique @db.VarChar
-  role          String @default("admin")
-  password_hash String @db.VarChar
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  @@map("admins")
-}
-
 enum EmploymentStatus {
   pending
   active
@@ -439,30 +131,6 @@ enum EmploymentStatus {
   resigned
 
   @@map("employment_status")
-}
-
-model EmployeeEmployment {
-  id          String @id @default(uuid()) @db.Uuid
-  employer_id String @db.Uuid
-  employee_id String @db.Uuid
-
-  employee_no       String?          @db.VarChar
-  employment_status EmploymentStatus
-
-  joined_at DateTime  @db.Timestamptz()
-  left_at   DateTime? @db.Timestamptz()
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  employer Employer @relation(fields: [employer_id], references: [id])
-  employee User     @relation(fields: [employee_id], references: [id])
-
-  @@unique([employer_id, employee_id])
-  @@index([employer_id])
-  @@index([employee_id])
-  @@map("employee_employments")
 }
 
 enum TransactionType {
@@ -488,40 +156,6 @@ enum PaymentMode {
   @@map("payment_mode")
 }
 
-model Transaction {
-  id String @id @default(uuid()) @db.Uuid
-
-  user_id         String? @db.Uuid
-  employer_id     String? @db.Uuid
-  subscription_id String? @db.Uuid
-  order_id        String? @db.Uuid
-
-  type                  TransactionType
-  transaction_user_type UserType
-  amount                Decimal           @db.Decimal(10, 2)
-  status                TransactionStatus
-  payment_mode          PaymentMode
-
-  razorpay_payment_id String? @db.VarChar
-  razorpay_order_id   String? @db.VarChar
-  razorpay_signature  String? @db.VarChar
-
-  created_at DateTime @default(now()) @db.Timestamptz()
-  updated_at DateTime @updatedAt @db.Timestamptz()
-
-  // Relations
-  employer     Employer?      @relation(fields: [employer_id], references: [id])
-  user         User?          @relation(fields: [user_id], references: [id])
-  subscription Subscriptions? @relation(fields: [subscription_id], references: [id])
-  order        Order?         @relation(fields: [order_id], references: [id])
-
-  @@index([user_id])
-  @@index([employer_id])
-  @@index([subscription_id])
-  @@index([order_id])
-  @@map("transactions")
-}
-
 enum PaymentStatus {
   pending
   paid
@@ -531,14 +165,592 @@ enum PaymentStatus {
   @@map("payment_status")
 }
 
+// ---------------------------------------------------------------------------
+// Identity — single User table (auth + profile)
+// ---------------------------------------------------------------------------
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  name        String? @db.VarChar
+  karigari_id String? @db.VarChar
+
+  phone_no String  @unique @db.VarChar
+  email    String? @unique @db.VarChar
+
+  password_hash String? @db.VarChar
+
+  default_address String?  @db.VarChar
+  skills          String[]
+  experience      Int?
+  city            String?  @db.VarChar
+  area            String?  @db.VarChar
+  preferences     Json?    @default("{}")
+
+  // PostGIS geography type
+  location Unsupported("geography(Point, 4326)")?
+
+  rating_avg         Decimal? @db.Decimal(3, 2)
+  rating_count       Int?
+  verification_level Int?
+  extra_shift        Boolean  @default(true)
+
+  refresh_token String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  companyMemberships CompanyMember[]
+
+  original_shifts    Shift[] @relation("OriginalEmployeeShift")
+  replacement_shifts Shift[] @relation("ReplacementEmployeeShift")
+
+  jobApplications   JobApplication[]
+  shiftApplications ShiftApplication[]
+
+  employments EmployeeEmployment[]
+
+  subscriptions Subscriptions[]
+  transactions  Transaction[]
+  orders        Order[]
+
+  ratings_given    Rating[] @relation("UserGivenRatings")
+  ratings_received Rating[] @relation("UserReceivedRatings")
+
+  pushTokens              PushToken[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference?
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Organization structure
+// ---------------------------------------------------------------------------
+
+model Company {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_name     String                                 @db.VarChar
+  company_address  String?                                @db.VarChar
+  company_location Unsupported("geography(Point, 4326)")?
+  gst_number       String?                                @db.VarChar
+  is_verified      Boolean                                @default(false)
+  preferences      Json                                   @default("{}")
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  departments   Department[]
+  roles         CompanyRole[]
+  members       CompanyMember[]
+  jobs          Job[]
+  shifts        Shift[]
+  ratings       Rating[]
+  employments   EmployeeEmployment[]
+  transactions  Transaction[]
+  orders        Order[]
+  subscriptions Subscriptions[]
+
+  @@index([company_name])
+  @@map("companies")
+}
+
+/// Per-company role catalog (like Department).
+/// Members reference `role_id` — rename/edit `name` without rewriting members.
+/// `code` is the stable machine key used by backend (OWNER, ADMIN, ...).
+model CompanyRole {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  /// Stable key for code lookups (OWNER, ADMIN, HR, CUSTOM_X, ...)
+  code String @db.VarChar
+
+  /// Display name — can be updated anytime
+  name String @db.VarChar
+
+  description String? @db.Text
+
+  /// System roles are seeded defaults; protect from accidental delete
+  is_system Boolean @default(false)
+  is_active Boolean @default(true)
+
+  /// Future RBAC hooks
+  permissions Json? @default("{}")
+
+  sort_order Int @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company         @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  members CompanyMember[]
+
+  @@unique([company_id, code])
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@index([code])
+  @@map("company_roles")
+}
+
+model Department {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id  String  @db.Uuid
+  name        String  @db.VarChar
+  description String? @db.Text
+
+  parent_department_id String? @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  company           Company      @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  parent_department Department?  @relation("DepartmentHierarchy", fields: [parent_department_id], references: [id])
+  child_departments Department[] @relation("DepartmentHierarchy")
+
+  teams   Team[]
+  members CompanyMember[]
+  jobs    Job[]
+  shifts  Shift[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@index([parent_department_id])
+  @@map("departments")
+}
+
+model Team {
+  id String @id @default(uuid()) @db.Uuid
+
+  department_id String @db.Uuid
+  name          String @db.VarChar
+
+  lead_company_member_id String? @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  department Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+
+  lead_company_member CompanyMember?  @relation("TeamLead", fields: [lead_company_member_id], references: [id])
+  members             CompanyMember[] @relation("TeamMembers")
+
+  jobs   Job[]
+  shifts Shift[]
+
+  @@unique([department_id, name])
+  @@index([department_id])
+  @@index([lead_company_member_id])
+  @@map("teams")
+}
+
+model CompanyMember {
+  id String @id @default(uuid()) @db.Uuid
+
+  user_id       String  @db.Uuid
+  company_id    String  @db.Uuid
+  department_id String? @db.Uuid
+  team_id       String? @db.Uuid
+
+  /// FK into per-company role catalog (not a free-form string / global enum)
+  role_id String @db.Uuid
+
+  platform_type PlatformType
+
+  // Manager hierarchy (self-relation)
+  manager_company_member_id String? @db.Uuid
+
+  is_active Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  company    Company     @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [department_id], references: [id])
+  team       Team?       @relation("TeamMembers", fields: [team_id], references: [id])
+  /// Restrict: cannot delete a role while members still reference it
+  role       CompanyRole @relation(fields: [role_id], references: [id], onDelete: Restrict)
+
+  manager CompanyMember?  @relation("ManagerHierarchy", fields: [manager_company_member_id], references: [id])
+  reports CompanyMember[] @relation("ManagerHierarchy")
+
+  led_teams Team[] @relation("TeamLead")
+
+  jobs_created    Job[]   @relation("JobCreatedBy")
+  shifts_created  Shift[] @relation("ShiftCreatedBy")
+  shifts_assigned Shift[] @relation("ShiftAssignedTo")
+
+  ratings_given    Rating[] @relation("MemberGivenRatings")
+  ratings_received Rating[] @relation("MemberReceivedRatings")
+
+  // One company per user for now.
+  // To allow multi-company later: remove @@unique([user_id]) only.
+  @@unique([user_id])
+  @@unique([company_id, user_id])
+  @@index([company_id])
+  @@index([department_id])
+  @@index([team_id])
+  @@index([role_id])
+  @@index([manager_company_member_id])
+  @@index([platform_type])
+  @@map("company_members")
+}
+
+// ---------------------------------------------------------------------------
+// Shifts
+// ---------------------------------------------------------------------------
+
+model Shift {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Organization ownership
+  company_id    String  @db.Uuid
+  department_id String? @db.Uuid
+  team_id       String? @db.Uuid
+
+  created_by_company_member_id String? @db.Uuid
+  assigned_company_member_id   String? @db.Uuid
+
+  // Shift-swap marketplace identities (User-level)
+  original_employee_id    String  @db.Uuid
+  replacement_employee_id String? @db.Uuid
+
+  created_by PlatformType
+
+  request_accepted Boolean @default(false)
+
+  shift_date  DateTime @db.Timestamptz()
+  shift_start DateTime @db.Timestamptz()
+  shift_end   DateTime @db.Timestamptz()
+
+  payType        PayType
+  shift_pay      Decimal     @db.Decimal(10, 2)
+  skill_required String      @db.VarChar
+  status         ShiftStatus
+
+  organization_approved Boolean @default(false)
+  no_show_reported      Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  company    Company     @relation(fields: [company_id], references: [id])
+  department Department? @relation(fields: [department_id], references: [id])
+  team       Team?       @relation(fields: [team_id], references: [id])
+
+  created_by_member CompanyMember? @relation("ShiftCreatedBy", fields: [created_by_company_member_id], references: [id])
+  assigned_member   CompanyMember? @relation("ShiftAssignedTo", fields: [assigned_company_member_id], references: [id])
+
+  original_employee    User  @relation("OriginalEmployeeShift", fields: [original_employee_id], references: [id])
+  replacement_employee User? @relation("ReplacementEmployeeShift", fields: [replacement_employee_id], references: [id])
+
+  ratings           Rating[]
+  shiftApplications ShiftApplication[]
+
+  @@index([company_id])
+  @@index([department_id])
+  @@index([team_id])
+  @@index([created_by_company_member_id])
+  @@index([assigned_company_member_id])
+  @@index([original_employee_id])
+  @@index([replacement_employee_id])
+  @@index([status])
+  @@map("shifts")
+}
+
+model ShiftApplication {
+  id String @id @default(uuid()) @db.Uuid
+
+  shift_id String @db.Uuid
+  user_id  String @db.Uuid
+
+  type   ShiftApplicationType
+  status ShiftApplicationStatus @default(pending)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  shift Shift @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id])
+
+  @@unique([shift_id, user_id])
+  @@index([shift_id])
+  @@index([user_id])
+  @@map("shift_applications")
+}
+
+// ---------------------------------------------------------------------------
+// Jobs / ATS
+// ---------------------------------------------------------------------------
+
+model Job {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id                   String  @db.Uuid
+  department_id                String? @db.Uuid
+  team_id                      String? @db.Uuid
+  created_by_company_member_id String? @db.Uuid
+
+  title       String @db.VarChar(255)
+  description String @db.Text
+
+  employment_type EmploymentType
+  work_type       JobWorkType
+
+  salary_min    Decimal?   @db.Decimal(10, 2)
+  salary_max    Decimal?   @db.Decimal(10, 2)
+  salary_type   SalaryType
+  is_negotiable Boolean    @default(false)
+
+  job_start_time DateTime? @db.Timestamptz()
+  job_end_time   DateTime? @db.Timestamptz()
+
+  address  String?                               @db.Text
+  location Unsupported("geography(Point,4326)")?
+
+  seats_available Int?
+
+  status     JobStatus @default(open)
+  expires_at DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company           Company        @relation(fields: [company_id], references: [id])
+  department        Department?    @relation(fields: [department_id], references: [id])
+  team              Team?          @relation(fields: [team_id], references: [id])
+  created_by_member CompanyMember? @relation("JobCreatedBy", fields: [created_by_company_member_id], references: [id])
+
+  applications JobApplication[]
+  ratings      Rating[]
+
+  @@index([company_id])
+  @@index([department_id])
+  @@index([team_id])
+  @@index([created_by_company_member_id])
+  @@index([status])
+  @@index([expires_at])
+  @@index([job_start_time])
+  @@map("jobs")
+}
+
+model JobApplication {
+  id String @id @default(uuid()) @db.Uuid
+
+  job_id  String @db.Uuid
+  user_id String @db.Uuid
+
+  status JobApplicationStatus @default(applied)
+
+  cover_letter   String? @db.Text
+  employer_notes String? @db.Text
+
+  applied_at     DateTime  @default(now()) @db.Timestamptz()
+  reviewed_at    DateTime? @db.Timestamptz()
+  shortlisted_at DateTime? @db.Timestamptz()
+  interview_at   DateTime? @db.Timestamptz()
+  hired_at       DateTime? @db.Timestamptz()
+  rejected_at    DateTime? @db.Timestamptz()
+  withdrawn_at   DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  job  Job  @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id])
+
+  @@unique([job_id, user_id])
+  @@index([job_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([job_id, status])
+  @@map("job_applications")
+}
+
+// ---------------------------------------------------------------------------
+// Ratings
+// ---------------------------------------------------------------------------
+
+model Rating {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Who gave / received the rating (User identity)
+  from_user_id String @db.Uuid
+  to_user_id   String @db.Uuid
+
+  // Optional company-member context
+  from_company_member_id String? @db.Uuid
+  to_company_member_id   String? @db.Uuid
+
+  company_id String? @db.Uuid
+  shift_id   String? @db.Uuid
+  job_id     String? @db.Uuid
+
+  score         Int
+  review        String? @db.Text
+  flagged_issue Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  from_user User @relation("UserGivenRatings", fields: [from_user_id], references: [id])
+  to_user   User @relation("UserReceivedRatings", fields: [to_user_id], references: [id])
+
+  from_company_member CompanyMember? @relation("MemberGivenRatings", fields: [from_company_member_id], references: [id])
+  to_company_member   CompanyMember? @relation("MemberReceivedRatings", fields: [to_company_member_id], references: [id])
+
+  company Company? @relation(fields: [company_id], references: [id])
+  shift   Shift?   @relation(fields: [shift_id], references: [id])
+  job     Job?     @relation(fields: [job_id], references: [id])
+
+  @@unique([shift_id, from_user_id, to_user_id])
+  @@unique([job_id, from_user_id, to_user_id])
+  @@index([from_user_id])
+  @@index([to_user_id])
+  @@index([from_company_member_id])
+  @@index([to_company_member_id])
+  @@index([company_id])
+  @@index([shift_id])
+  @@index([job_id])
+  @@map("ratings")
+}
+
+// ---------------------------------------------------------------------------
+// Subscriptions / Billing
+// ---------------------------------------------------------------------------
+
+model SubscriptionPlan {
+  id     String         @id @default(uuid()) @db.Uuid
+  name   String         @db.VarChar
+  target TargetAudience
+
+  price         Decimal? @db.Decimal(10, 2)
+  billing_cycle String?  @db.VarChar
+  features      Json?    @db.JsonB
+
+  is_active Boolean @default(true)
+
+  created_at    DateTime        @default(now()) @db.Timestamptz()
+  updated_at    DateTime        @updatedAt @db.Timestamptz()
+  subscriptions Subscriptions[]
+
+  @@map("subscription_plans")
+}
+
+model Subscriptions {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Individual subscription (marketplace worker)
+  user_id String? @db.Uuid
+
+  // Company subscription (org / employer side)
+  company_id String? @db.Uuid
+
+  plan_id String @db.Uuid
+
+  // Who owns this subscription at platform level
+  subscription_platform_type PlatformType
+  status                     SubscriptionStatus
+
+  starts_at  DateTime? @db.Timestamptz()
+  expires_at DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  user         User?            @relation(fields: [user_id], references: [id])
+  company      Company?         @relation(fields: [company_id], references: [id])
+  plan         SubscriptionPlan @relation(fields: [plan_id], references: [id])
+  transactions Transaction[]
+
+  @@index([user_id])
+  @@index([company_id])
+  @@index([plan_id])
+  @@map("subscriptions")
+}
+
+// ---------------------------------------------------------------------------
+// Employment history (HRMS)
+// ---------------------------------------------------------------------------
+
+model EmployeeEmployment {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id  String @db.Uuid
+  employee_id String @db.Uuid
+
+  employee_no       String?          @db.VarChar
+  employment_status EmploymentStatus
+
+  joined_at DateTime  @db.Timestamptz()
+  left_at   DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company  Company @relation(fields: [company_id], references: [id])
+  employee User    @relation(fields: [employee_id], references: [id])
+
+  @@unique([company_id, employee_id])
+  @@index([company_id])
+  @@index([employee_id])
+  @@map("employee_employments")
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+
+model Transaction {
+  id String @id @default(uuid()) @db.Uuid
+
+  user_id         String? @db.Uuid
+  company_id      String? @db.Uuid
+  subscription_id String? @db.Uuid
+  order_id        String? @db.Uuid
+
+  type                      TransactionType
+  transaction_platform_type PlatformType
+  amount                    Decimal           @db.Decimal(10, 2)
+  status                    TransactionStatus
+  payment_mode              PaymentMode
+
+  razorpay_payment_id String? @db.VarChar
+  razorpay_order_id   String? @db.VarChar
+  razorpay_signature  String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company      Company?       @relation(fields: [company_id], references: [id])
+  user         User?          @relation(fields: [user_id], references: [id])
+  subscription Subscriptions? @relation(fields: [subscription_id], references: [id])
+  order        Order?         @relation(fields: [order_id], references: [id])
+
+  @@index([user_id])
+  @@index([company_id])
+  @@index([subscription_id])
+  @@index([order_id])
+  @@map("transactions")
+}
+
 model Order {
   id String @id @default(uuid()) @db.Uuid
 
-  employer_id     String?  @db.Uuid
-  user_id         String?  @db.Uuid
-  order_user_type UserType
-  order_date      DateTime @db.Timestamptz()
-  total_price     Decimal? @db.Decimal(10, 2)
+  company_id          String?      @db.Uuid
+  user_id             String?      @db.Uuid
+  order_platform_type PlatformType
+  order_date          DateTime     @db.Timestamptz()
+  total_price         Decimal?     @db.Decimal(10, 2)
 
   payment_status PaymentStatus
 
@@ -548,28 +760,35 @@ model Order {
   created_at DateTime @default(now()) @db.Timestamptz()
   updated_at DateTime @updatedAt @db.Timestamptz()
 
-  // Relations
-  employer     Employer?     @relation(fields: [employer_id], references: [id])
+  company      Company?      @relation(fields: [company_id], references: [id])
   user         User?         @relation(fields: [user_id], references: [id])
   transactions Transaction[]
 
-  @@index([employer_id])
+  @@index([company_id])
   @@index([user_id])
   @@map("orders")
 }
 
-// model OtpVerification {
-//   id          String   @id @default(uuid()) @db.Uuid
-//   phone_no    String?  @unique @db.VarChar
-//   email       String?  @unique @db.VarChar
-//   otp         String   @db.VarChar
-//   expires_at  DateTime @db.Timestamptz()
-//   name        String?
-//   preferences Json?    @default("{}")
-//   created_at  DateTime @default(now()) @db.Timestamptz()
+// ---------------------------------------------------------------------------
+// Platform admin (separate from company roles)
+// ---------------------------------------------------------------------------
 
-//   @@map("otp_verifications")
-// }
+model Admin {
+  id            String @id @default(uuid()) @db.Uuid
+  name          String @db.VarChar
+  email         String @unique @db.VarChar
+  role          String @default("admin")
+  password_hash String @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  @@map("admins")
+}
+
+// ---------------------------------------------------------------------------
+// Auth helpers / leads / notifications
+// ---------------------------------------------------------------------------
 
 model OtpVerification {
   id String @id @default(uuid()) @db.Uuid
@@ -647,8 +866,7 @@ model NotificationPreference {
   user_id String @id @db.Uuid
 
   shiftSwap Boolean @default(true) @map("shift_swap")
-
-  jobAlert Boolean @default(true) @map("job_alert")
+  jobAlert  Boolean @default(true) @map("job_alert")
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

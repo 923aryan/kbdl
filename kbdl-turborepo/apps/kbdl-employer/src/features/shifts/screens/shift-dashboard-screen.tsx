@@ -42,7 +42,7 @@ const DateFilter = ({ isOpen, setIsOpen }: FilterProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-11 min-w-60 items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 shadow-sm"
+        className="flex h-12 min-w-40 items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 cursor-pointer"
       >
         <span>{label}</span>
         {isOpen ? <ChevronUp className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
@@ -75,14 +75,14 @@ const DateFilter = ({ isOpen, setIsOpen }: FilterProps) => {
             <button
               type="button"
               onClick={() => setFilters({ dateFrom: '', dateTo: '' })}
-              className="h-9 rounded-md border border-blue-600 px-4 text-sm font-medium text-blue-600"
+              className="h-9 rounded-md border border-[#0658c2] px-4 text-sm font-medium cursor-pointer"
             >
               Clear
             </button>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="h-9 rounded-md bg-blue-600 px-4 text-sm font-medium text-white"
+              className="h-9 rounded-md bg-[#0658c2] px-4 text-sm font-medium text-white cursor-pointer"
             >
               Apply
             </button>
@@ -102,7 +102,7 @@ const CreatedByFilter = ({ isOpen, setIsOpen }: FilterProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-12 min-w-[210px] items-center justify-between rounded-xl border border-gray-300 px-6 text-base font-semibold cursor-pointer text-gray-900"
+        className="flex h-12 min-w-40 items-center justify-between rounded-xl border border-gray-300 px-4 text-base font-semibold cursor-pointer text-gray-900"
       >
         <span>{selected?.label || 'Created By'}</span>
         {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -155,7 +155,7 @@ const StatusFilter = ({ isOpen, setIsOpen }: FilterProps) => {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-12 min-w-[210px] items-center justify-between rounded-xl border border-gray-300 px-6 text-base font-semibold cursor-pointer text-gray-900"
+        className="flex h-12 min-w-40 items-center justify-between rounded-xl border border-gray-300 px-4 text-base font-semibold cursor-pointer text-gray-900"
       >
         <span>
           {selectedStatuses.length ? `Selected (${selectedStatuses.length})` : 'All Status'}
@@ -257,7 +257,7 @@ export const ShiftDashboardScreen = () => {
             <button
               type="button"
               onClick={toggleCreateModal}
-              className="flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
+              className="flex h-12 items-center justify-center gap-2 rounded-lg bg-[#0658C2] px-5 text-sm font-semibold text-white transition hover:bg-blue-700 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               Create New Shift
@@ -267,35 +267,35 @@ export const ShiftDashboardScreen = () => {
 
      
 
-<div className="flex flex-col gap-4 px-5 py-4 lg:flex-row xl:items-center xl:justify-between">
-  {/* Search */}
-  <div className="relative  lg:max-w-[500px] max-w-full flex-1">
-    <Search className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-black" aria-hidden="true" />
-    <input
-      type="text"
-      placeholder="Search keywords..."
-      value={filters.search}
-      onChange={(event) => setFilters({ search: event.target.value })}
-      className="h-11 w-full rounded-lg border border-gray-300 px-6 pr-14 text-sm outline-none focus:border-[#0658C2]"
-    />
-  </div>
+        <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row xl:items-center xl:justify-between">
+          {/* Search */}
+          <div className="relative  lg:max-w-[400px] max-w-full flex-1">
+            <Search className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-black" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Search keywords..."
+              value={filters.search}
+              onChange={(event) => setFilters({ search: event.target.value })}
+              className="h-12 w-full rounded-lg border border-gray-300 px-6 pr-14 text-sm outline-none focus:border-[#0658C2]"
+            />
+          </div>
 
-  {/* Filters */}
-  <div className="flex flex-row flex-wrap gap-4 sm:flex-row" ref={filtersRef}>
-    <DateFilter
-      isOpen={activeFilter === 'date'}
-      setIsOpen={(val) => setActiveFilter(val ? 'date' : null)}
-    />
-    <CreatedByFilter
-      isOpen={activeFilter === 'createdBy'}
-      setIsOpen={(val) => setActiveFilter(val ? 'createdBy' : null)}
-    />
-    <StatusFilter
-      isOpen={activeFilter === 'status'}
-      setIsOpen={(val) => setActiveFilter(val ? 'status' : null)}
-    />
-  </div>
-</div>
+          {/* Filters */}
+          <div className="flex flex-row flex-wrap gap-4 sm:flex-row" ref={filtersRef}>
+            <DateFilter
+              isOpen={activeFilter === 'date'}
+              setIsOpen={(val) => setActiveFilter(val ? 'date' : null)}
+            />
+            <CreatedByFilter
+              isOpen={activeFilter === 'createdBy'}
+              setIsOpen={(val) => setActiveFilter(val ? 'createdBy' : null)}
+            />
+            <StatusFilter
+              isOpen={activeFilter === 'status'}
+              setIsOpen={(val) => setActiveFilter(val ? 'status' : null)}
+            />
+          </div>
+        </div>
         <ShiftListScreen onSelectShift={setSelectedShiftId} />
       </div>
 
