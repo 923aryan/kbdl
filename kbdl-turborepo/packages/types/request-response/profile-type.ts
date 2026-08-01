@@ -1,4 +1,4 @@
-import { Prisma, safeEmployerSelect, safeUserSelect } from '@repo/db/server';
+import { EmployerDto, Prisma, safeUserSelect } from '@repo/db/server';
 import {
   getPublicEmployerProfileSchema,
   getPublicUserProfileSchema,
@@ -78,9 +78,8 @@ export type GetPublicEmployerProfileRequest = z.infer<typeof getPublicEmployerPr
 export type GetPublicEmployerProfileResponse = Partial<EmployerDTO>;
 
 //Helpers:
-export type EmployerDTO = Prisma.EmployerGetPayload<{
-  select: typeof safeEmployerSelect;
-}>;
+/** Legacy Employer API DTO (Company + owner User fields). */
+export type EmployerDTO = EmployerDto;
 
 export type UserDTO = Prisma.UserGetPayload<{
   select: typeof safeUserSelect;

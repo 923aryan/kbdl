@@ -1,0 +1,3312 @@
+openapi: 3.0.3
+info:
+  title: KBDL Backend API
+  version: 1.0.0
+  description: |
+    Baseline OpenAPI contract for the KBDL backend **before** the Company/CompanyMember
+    schema refactor. Use this to compare response shapes after the migration.
+
+    ## Response envelope
+    All JSON endpoints use:
+    - Success: `{ success: true, message, data, meta? }`
+    - Error: `{ success: false, error: { code, message, details? } }`
+
+    ## Auth
+    Send `Authorization: Bearer <accessToken>` or cookie `accessToken`.
+    Refresh endpoints use Bearer refresh token or cookie `refreshToken`.
+  contact:
+    name: KBDL Backend
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.kaambadlo.com
+    description: Production (if applicable)
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Profile
+  - name: ShiftSwap
+  - name: Operations
+  - name: Jobs
+  - name: Notifications
+  - name: Leads
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Server is running
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      message:
+                        example: Server is running
+                      data:
+                        nullable: true
+                        example: null
+
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+  /api/v1/auth/register/user:
+    post:
+      tags: [Auth]
+      summary: Start user registration (send OTP)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_no]
+              properties:
+                phone_no:
+                  type: string
+                  example: '9876543210'
+                name:
+                  type: string
+                preferences:
+                  type: object
+                  properties:
+                    language:
+                      type: string
+                    theme:
+                      type: string
+                      enum: [light, dark, system]
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNull'
+        '409':
+          $ref: '#/components/responses/Error'
+
+  /api/v1/auth/register/user/verify:
+    post:
+      tags: [Auth]
+      summary: Verify user registration OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_no, otp]
+              properties:
+                phone_no:
+                  type: string
+                otp:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Created
+                      data:
+                        $ref: '#/components/schemas/UserAuthPayload'
+
+  /api/v1/auth/register/employer:
+    post:
+      tags: [Auth]
+      summary: Start employer registration (send OTP to email)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company_name, email, phone_no]
+              properties:
+                company_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone_no:
+                  type: string
+                company_address:
+                  type: string
+                gst_number:
+                  type: string
+                subscription_tier:
+                  type: string
+                company_location:
+                  type: object
+                  properties:
+                    lat:
+                      type: number
+                    lng:
+                      type: number
+      responses:
+        '201':
+          description: OTP sent (data is a string message in current API)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      message:
+                        example: Org Created
+                      data:
+                        type: string
+                        example: OTP sent to employer@example.com
+
+  /api/v1/auth/register/employer/verify:
+    post:
+      tags: [Auth]
+      summary: Verify employer registration OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp]
+              properties:
+                email:
+                  type: string
+                  format: email
+                otp:
+                  type: string
+      responses:
+        '201':
+          description: Employer created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployerAuthPayload'
+
+  /api/v1/auth/user/send-otp:
+    post:
+      tags: [Auth]
+      summary: Send login OTP to user phone
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNull'
+
+  /api/v1/auth/user/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify user login OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, otp]
+              properties:
+                phone:
+                  type: string
+                otp:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserAuthPayload'
+
+  /api/v1/auth/user/token-refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh user access token
+      security:
+        - bearerAuth: []
+        - cookieRefreshAuth: []
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UserAuthPayload'
+
+  /api/v1/auth/employer/send-otp:
+    post:
+      tags: [Auth]
+      summary: Send login OTP to employer email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNull'
+
+  /api/v1/auth/employer/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Verify employer login OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp]
+              properties:
+                email:
+                  type: string
+                otp:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployerAuthPayload'
+
+  /api/v1/auth/employer/token-refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh employer access token
+      security:
+        - bearerAuth: []
+        - cookieRefreshAuth: []
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployerAuthPayload'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (clear cookies)
+      security: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNull'
+
+  # ---------------------------------------------------------------------------
+  # Profile — User
+  # ---------------------------------------------------------------------------
+  /api/v1/profile/users/me:
+    get:
+      tags: [Profile]
+      summary: Get current user profile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+    patch:
+      tags: [Profile]
+      summary: Update current user profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                default_address:
+                  type: string
+                experience:
+                  type: integer
+                city:
+                  type: string
+                area:
+                  type: string
+                skills:
+                  type: array
+                  items:
+                    type: string
+                extra_shift:
+                  type: boolean
+                preferences:
+                  type: object
+                location:
+                  $ref: '#/components/schemas/LatLng'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+    delete:
+      tags: [Profile]
+      summary: Delete current user profile
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+
+  /api/v1/profile/users/me/skills:
+    patch:
+      tags: [Profile]
+      summary: Update user skills
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skills]
+              properties:
+                skills:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /api/v1/profile/users/me/preferences:
+    patch:
+      tags: [Profile]
+      summary: Update user preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [language, theme]
+              properties:
+                language:
+                  type: string
+                theme:
+                  type: string
+                  enum: [light, dark, system]
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /api/v1/profile/users/me/location:
+    patch:
+      tags: [Profile]
+      summary: Update user location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LatLng'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /api/v1/profile/users/me/availability:
+    patch:
+      tags: [Profile]
+      summary: Update extra_shift availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [extra_shift]
+              properties:
+                extra_shift:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  /api/v1/profile/users/me/push-token:
+    post:
+      tags: [Profile]
+      summary: Register push token (profile)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTokenInput'
+      responses:
+        '200':
+          description: Token registered
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+    delete:
+      tags: [Profile]
+      summary: Remove push token (profile)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                deviceId:
+                  type: string
+      responses:
+        '200':
+          description: Token removed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+
+  /api/v1/profile/users/{id}:
+    get:
+      tags: [Profile]
+      summary: Get public user profile by id
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Public user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+
+  # ---------------------------------------------------------------------------
+  # Profile — Employer
+  # ---------------------------------------------------------------------------
+  /api/v1/profile/employers/me:
+    get:
+      tags: [Profile]
+      summary: Get current employer profile
+      responses:
+        '200':
+          description: Employer profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Employer'
+    patch:
+      tags: [Profile]
+      summary: Update current employer profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                company_name:
+                  type: string
+                phone_no:
+                  type: string
+                company_address:
+                  type: string
+                gst_number:
+                  type: string
+      responses:
+        '200':
+          description: Updated employer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Employer'
+    delete:
+      tags: [Profile]
+      summary: Delete current employer profile
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          message:
+                            type: string
+
+  /api/v1/profile/employers/me/preferences:
+    patch:
+      tags: [Profile]
+      summary: Update employer preferences
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Updated employer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Employer'
+
+  /api/v1/profile/employers/me/location:
+    patch:
+      tags: [Profile]
+      summary: Update employer location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LatLng'
+      responses:
+        '200':
+          description: Updated employer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Employer'
+
+  /api/v1/profile/employers/me/documents:
+    post:
+      tags: [Profile]
+      summary: Upload employer verification documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '202':
+          description: Documents accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/v1/profile/employers/me/verification-status:
+    get:
+      tags: [Profile]
+      summary: Get employer verification status (works while unverified)
+      responses:
+        '200':
+          description: Verification status
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          is_verified:
+                            type: boolean
+
+  /api/v1/profile/employers/{id}:
+    get:
+      tags: [Profile]
+      summary: Get public employer profile by id
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Public employer
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Employer'
+
+  # ---------------------------------------------------------------------------
+  # Shift swap
+  # ---------------------------------------------------------------------------
+  /api/v1/shift-swap:
+    post:
+      tags: [ShiftSwap]
+      summary: Create shift swap
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShiftBody'
+      responses:
+        '201':
+          description: Shift created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+    patch:
+      tags: [ShiftSwap]
+      summary: Update shift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_id]
+              properties:
+                shift_id:
+                  type: string
+                  format: uuid
+                shift_date:
+                  type: string
+                  format: date-time
+                shift_start:
+                  type: string
+                  format: date-time
+                shift_end:
+                  type: string
+                  format: date-time
+                skill_required:
+                  type: string
+                replacement_employee_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Shift updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/accept:
+    post:
+      tags: [ShiftSwap]
+      summary: Accept invited shift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_id]
+              properties:
+                shift_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/apply:
+    post:
+      tags: [ShiftSwap]
+      summary: Apply for public shift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_id]
+              properties:
+                shift_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Application created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShiftApplication'
+
+  /api/v1/shift-swap/withdraw:
+    post:
+      tags: [ShiftSwap]
+      summary: Withdraw shift application
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_application_id]
+              properties:
+                shift_application_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Withdrawn
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShiftApplication'
+
+  /api/v1/shift-swap/sync-saved:
+    post:
+      tags: [ShiftSwap]
+      summary: Sync saved shift ids
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_ids]
+              properties:
+                shift_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Synced shifts
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/cancel:
+    post:
+      tags: [ShiftSwap]
+      summary: Cancel shift
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_id]
+              properties:
+                shift_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/reject:
+    post:
+      tags: [ShiftSwap]
+      summary: Reject shift application (employer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_application_id]
+              properties:
+                shift_application_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ShiftApplication'
+
+  /api/v1/shift-swap/rate:
+    post:
+      tags: [ShiftSwap]
+      summary: Rate a shift worker (employer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shift_id, user_id, score]
+              properties:
+                shift_id:
+                  type: string
+                  format: uuid
+                user_id:
+                  type: string
+                  format: uuid
+                score:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                review:
+                  type: string
+                flagged_issue:
+                  type: boolean
+                is_absent:
+                  type: boolean
+      responses:
+        '201':
+          description: Rating created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Rating'
+
+  /api/v1/shift-swap/referred-employee:
+    post:
+      tags: [ShiftSwap]
+      summary: Lookup / refer employee by phone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone_no]
+              properties:
+                phone_no:
+                  type: string
+      responses:
+        '200':
+          description: Employee id
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            format: uuid
+
+  /api/v1/shift-swap/employee:
+    get:
+      tags: [ShiftSwap]
+      summary: Get employee shifts
+      responses:
+        '200':
+          description: Shifts list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/employee/open:
+    get:
+      tags: [ShiftSwap]
+      summary: Get employee open shifts
+      responses:
+        '200':
+          description: Open shifts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/v1/shift-swap/employee/created:
+    get:
+      tags: [ShiftSwap]
+      summary: Get shifts created by employee
+      responses:
+        '200':
+          description: Created shifts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/v1/shift-swap/scheduled:
+    get:
+      tags: [ShiftSwap]
+      summary: Get scheduled shifts for employee
+      responses:
+        '200':
+          description: Scheduled shifts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/v1/shift-swap/employer:
+    get:
+      tags: [ShiftSwap]
+      summary: List employer shifts (filtered / paginated)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ShiftStatus'
+        - name: payType
+          in: query
+          schema:
+            $ref: '#/components/schemas/PayType'
+        - name: skill_required
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Employer shifts + meta
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Shift'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+
+  /api/v1/shift-swap/employer/pending:
+    get:
+      tags: [ShiftSwap]
+      summary: Pending shift applications for employer
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: shift_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pending applications + meta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/shift-swap/employer/analytics:
+    get:
+      tags: [ShiftSwap]
+      summary: Employer shift analytics
+      responses:
+        '200':
+          description: Analytics
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          totalShifts:
+                            type: integer
+                          openShifts:
+                            type: integer
+                          approvedShifts:
+                            type: integer
+                          completedShifts:
+                            type: integer
+                          cancelledShifts:
+                            type: integer
+                          totalApplications:
+                            type: integer
+                          pendingApplications:
+                            type: integer
+
+  /api/v1/shift-swap/extra:
+    get:
+      tags: [ShiftSwap]
+      summary: Extra shifts near location
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: longitude
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: skill
+          in: query
+          schema:
+            type: string
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: radius
+          in: query
+          schema:
+            type: number
+            default: 10
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Extra shifts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/shift-swap/latest:
+    get:
+      tags: [ShiftSwap]
+      summary: Latest shifts for user
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Latest shifts (may include distance_in_km)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/shift-swap/best-matches:
+    get:
+      tags: [ShiftSwap]
+      summary: Best matching shifts
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Best matches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/shift-swap/public:
+    get:
+      tags: [ShiftSwap]
+      summary: Public shift listings (SEO)
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Public shifts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/shift-swap/public/{id}:
+    get:
+      tags: [ShiftSwap]
+      summary: Public shift details
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Public shift details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  /api/v1/shift-swap/{shift_application_id}/approve:
+    patch:
+      tags: [ShiftSwap]
+      summary: Approve shift application (employer)
+      parameters:
+        - name: shift_application_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Approved shift
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/{id}:
+    get:
+      tags: [ShiftSwap]
+      summary: Get shift details
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Shift details + applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/shift-swap/{id}/complete:
+    patch:
+      tags: [ShiftSwap]
+      summary: Approve shift completion (employer)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Completed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+
+  /api/v1/shift-swap/{id}/no-show:
+    patch:
+      tags: [ShiftSwap]
+      summary: Report shift no-show (employer)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: No-show reported
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Shift'
+
+  # ---------------------------------------------------------------------------
+  # Operations
+  # ---------------------------------------------------------------------------
+  /api/v1/operations/employer:
+    get:
+      tags: [Operations]
+      summary: Employer roster
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, terminated, resigned]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Roster + meta
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EmployeeEmployment'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+
+  /api/v1/operations/employer/onboard:
+    post:
+      tags: [Operations]
+      summary: Onboard employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_no:
+                  type: string
+                karigari_id:
+                  type: string
+                employee_no:
+                  type: string
+      responses:
+        '201':
+          description: Employment pending
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/employer/{id}:
+    get:
+      tags: [Operations]
+      summary: Get employment / employee details
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Employment with employee
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/employer/{id}/status:
+    patch:
+      tags: [Operations]
+      summary: Update employment status
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [active, inactive, terminated, resigned]
+      responses:
+        '200':
+          description: Updated employment
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/employee:
+    get:
+      tags: [Operations]
+      summary: List my employments
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Employments + meta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/operations/employee/pending:
+    get:
+      tags: [Operations]
+      summary: Pending employment requests
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Pending employments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/operations/employee/{id}:
+    get:
+      tags: [Operations]
+      summary: Get one employment (with employer)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Employment
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/employee/{id}/accept:
+    patch:
+      tags: [Operations]
+      summary: Accept employment request
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/employee/{id}/decline:
+    patch:
+      tags: [Operations]
+      summary: Decline employment request
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Declined
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/addresses/search:
+    get:
+      tags: [Operations]
+      summary: Address autocomplete (Geoapify)
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+      responses:
+        '200':
+          description: Geoapify FeatureCollection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  # ---------------------------------------------------------------------------
+  # Jobs
+  # ---------------------------------------------------------------------------
+  /api/v1/jobs:
+    get:
+      tags: [Jobs]
+      summary: List jobs (filtered)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobStatus'
+        - name: employment_type
+          in: query
+          schema:
+            $ref: '#/components/schemas/EmploymentType'
+        - name: work_type
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobWorkType'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: employer_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Jobs + meta
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Job'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+
+  /api/v1/jobs/latest:
+    get:
+      tags: [Jobs]
+      summary: Latest jobs for worker
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Latest jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/jobs/recommended:
+    get:
+      tags: [Jobs]
+      summary: Recommended jobs
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: latitude
+          in: query
+          schema:
+            type: number
+        - name: longitude
+          in: query
+          schema:
+            type: number
+        - name: radius
+          in: query
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Recommended jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/jobs/employer:
+    get:
+      tags: [Jobs]
+      summary: List employer jobs
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Employer jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+    post:
+      tags: [Jobs]
+      summary: Create job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateJobBody'
+      responses:
+        '201':
+          description: Job created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+
+  /api/v1/jobs/employer/{id}:
+    get:
+      tags: [Jobs]
+      summary: Get employer job by id
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+    patch:
+      tags: [Jobs]
+      summary: Update employer job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateJobBody'
+      responses:
+        '200':
+          description: Job updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+    delete:
+      tags: [Jobs]
+      summary: Delete employer job (draft)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+
+  /api/v1/jobs/employer/{id}/duplicate:
+    post:
+      tags: [Jobs]
+      summary: Duplicate job as draft
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '201':
+          description: Draft copy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+
+  /api/v1/jobs/employer/{id}/status:
+    patch:
+      tags: [Jobs]
+      summary: Update job status
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/JobStatus'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+
+  /api/v1/jobs/employer/{id}/publish:
+    patch:
+      tags: [Jobs]
+      summary: Publish job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          $ref: '#/components/responses/JobSuccess'
+
+  /api/v1/jobs/employer/{id}/pause:
+    patch:
+      tags: [Jobs]
+      summary: Pause job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          $ref: '#/components/responses/JobSuccess'
+
+  /api/v1/jobs/employer/{id}/close:
+    patch:
+      tags: [Jobs]
+      summary: Close job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          $ref: '#/components/responses/JobSuccess'
+
+  /api/v1/jobs/employer/{id}/expire:
+    patch:
+      tags: [Jobs]
+      summary: Expire job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          $ref: '#/components/responses/JobSuccess'
+
+  /api/v1/jobs/employer/{id}/applications:
+    get:
+      tags: [Jobs]
+      summary: List applications for a job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/JobApplicationStatus'
+      responses:
+        '200':
+          description: Applications + meta
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/JobApplication'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMeta'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}:
+    get:
+      tags: [Jobs]
+      summary: Get one job application
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/JobApplication'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/status:
+    patch:
+      tags: [Jobs]
+      summary: Update application status
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/JobApplicationStatus'
+                employer_notes:
+                  type: string
+                interview_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/notes:
+    patch:
+      tags: [Jobs]
+      summary: Update employer notes on application
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employer_notes]
+              properties:
+                employer_notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/review:
+    patch:
+      tags: [Jobs]
+      summary: Mark application under review
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employer_notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/shortlist:
+    patch:
+      tags: [Jobs]
+      summary: Shortlist application
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/interview:
+    patch:
+      tags: [Jobs]
+      summary: Schedule interview
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [interview_at]
+              properties:
+                interview_at:
+                  type: string
+                  format: date-time
+                employer_notes:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/select:
+    patch:
+      tags: [Jobs]
+      summary: Select candidate
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/hire:
+    patch:
+      tags: [Jobs]
+      summary: Hire candidate
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/employer/{id}/applications/{applicationId}/reject:
+    patch:
+      tags: [Jobs]
+      summary: Reject application
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/applications/me:
+    get:
+      tags: [Jobs]
+      summary: My job applications
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Applications + meta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/jobs/applications/me/{applicationId}:
+    get:
+      tags: [Jobs]
+      summary: Get my application
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Application
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/JobApplication'
+    patch:
+      tags: [Jobs]
+      summary: Update my application cover letter
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cover_letter]
+              properties:
+                cover_letter:
+                  type: string
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/applications/me/{applicationId}/withdraw:
+    patch:
+      tags: [Jobs]
+      summary: Withdraw my application
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/admin/jobs:
+    get:
+      tags: [Jobs]
+      summary: Admin list all jobs
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/jobs/admin/applications:
+    get:
+      tags: [Jobs]
+      summary: Admin list all applications
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Applications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessPaginated'
+
+  /api/v1/jobs/admin/jobs/{id}/status:
+    patch:
+      tags: [Jobs]
+      summary: Admin update job status
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/JobStatus'
+      responses:
+        '200':
+          $ref: '#/components/responses/JobSuccess'
+
+  /api/v1/jobs/admin/applications/{applicationId}/status:
+    patch:
+      tags: [Jobs]
+      summary: Admin update application status
+      parameters:
+        - name: applicationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/JobApplicationStatus'
+                employer_notes:
+                  type: string
+                interview_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          $ref: '#/components/responses/JobApplicationSuccess'
+
+  /api/v1/jobs/{id}/apply:
+    post:
+      tags: [Jobs]
+      summary: Apply to a job
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cover_letter:
+                  type: string
+      responses:
+        '201':
+          description: Application created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/JobApplication'
+
+  /api/v1/jobs/{id}:
+    get:
+      tags: [Jobs]
+      summary: Get job by id
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Job'
+
+  # ---------------------------------------------------------------------------
+  # Notifications
+  # ---------------------------------------------------------------------------
+  /api/v1/notifications/push-token:
+    post:
+      tags: [Notifications]
+      summary: Save push token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushTokenInput'
+      responses:
+        '201':
+          description: Push token saved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/PushToken'
+    patch:
+      tags: [Notifications]
+      summary: Clear push token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccessNull'
+
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications
+      responses:
+        '200':
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Notification'
+
+  /api/v1/notifications/read:
+    patch:
+      tags: [Notifications]
+      summary: Mark notifications read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [notificationIds]
+              properties:
+                notificationIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
+  # ---------------------------------------------------------------------------
+  # Leads
+  # ---------------------------------------------------------------------------
+  /api/v1/leads:
+    post:
+      tags: [Leads]
+      summary: Create lead (public)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName, email, mobileNumber, subject, message]
+              properties:
+                fullName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                mobileNumber:
+                  type: string
+                subject:
+                  type: string
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Lead created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+    get:
+      tags: [Leads]
+      summary: List leads (admin)
+      responses:
+        '200':
+          description: Leads
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Lead'
+
+  /api/v1/leads/{id}:
+    get:
+      tags: [Leads]
+      summary: Get lead by id (admin)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Lead
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+    delete:
+      tags: [Leads]
+      summary: Delete lead (admin)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+
+  /api/v1/leads/{id}/resolve:
+    patch:
+      tags: [Leads]
+      summary: Resolve lead (admin)
+      parameters:
+        - $ref: '#/components/parameters/UuidId'
+      responses:
+        '200':
+          description: Resolved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Lead'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access token (or refresh token on refresh endpoints)
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: accessToken
+    cookieRefreshAuth:
+      type: apiKey
+      in: cookie
+      name: refreshToken
+
+  parameters:
+    UuidId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Error:
+      description: Error envelope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    JobSuccess:
+      description: Job success
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApiSuccess'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Job'
+    JobApplicationSuccess:
+      description: Job application success
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ApiSuccess'
+              - type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/JobApplication'
+
+  schemas:
+    ApiSuccess:
+      type: object
+      required: [success, message, data]
+      properties:
+        success:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+        data: {}
+        meta:
+          type: object
+          additionalProperties: true
+
+    ApiSuccessNull:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccess'
+        - type: object
+          properties:
+            data:
+              nullable: true
+              example: null
+
+    ApiSuccessPaginated:
+      allOf:
+        - $ref: '#/components/schemas/ApiSuccess'
+        - type: object
+          properties:
+            meta:
+              $ref: '#/components/schemas/PaginationMeta'
+
+    ApiError:
+      type: object
+      required: [success, error]
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              examples:
+                - VALIDATION_ERROR
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - UNVERIFIED
+                - NOT_FOUND
+                - DUPLICATE_ERROR
+                - TOO_MANY_REQUESTS
+                - INTERNAL_SERVER_ERROR
+            message:
+              type: string
+            details: {}
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    LatLng:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    User:
+      type: object
+      description: Baseline User DTO (pre CompanyMember refactor)
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        karigari_id:
+          type: string
+          nullable: true
+        phone_no:
+          type: string
+        default_address:
+          type: string
+          nullable: true
+        skills:
+          type: array
+          items:
+            type: string
+        experience:
+          type: integer
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        area:
+          type: string
+          nullable: true
+        preferences: {}
+        location:
+          nullable: true
+        role:
+          type: string
+        rating_avg:
+          type: number
+          nullable: true
+        rating_count:
+          type: integer
+          nullable: true
+        verification_level:
+          type: integer
+          nullable: true
+        extra_shift:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Employer:
+      type: object
+      description: Baseline Employer DTO (pre CompanyMember refactor)
+      properties:
+        id:
+          type: string
+          format: uuid
+        company_name:
+          type: string
+        email:
+          type: string
+        preferences: {}
+        company_address:
+          type: string
+          nullable: true
+        company_location:
+          nullable: true
+        phone_no:
+          type: string
+        subscription_tier:
+          type: string
+          nullable: true
+        gst_number:
+          type: string
+          nullable: true
+        is_verified:
+          type: boolean
+        role:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UserAuthPayload:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+
+    EmployerAuthPayload:
+      type: object
+      properties:
+        employer:
+          $ref: '#/components/schemas/Employer'
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+
+    ShiftStatus:
+      type: string
+      enum: [open, approved, completed, cancelled, absent, rejected]
+
+    PayType:
+      type: string
+      enum: [HOURLY, FIXED]
+
+    UserType:
+      type: string
+      enum: [employer, user]
+
+    Shift:
+      type: object
+      description: Baseline Shift shape (employer_id still present)
+      properties:
+        id:
+          type: string
+          format: uuid
+        original_employee_id:
+          type: string
+          format: uuid
+        replacement_employee_id:
+          type: string
+          format: uuid
+          nullable: true
+        employer_id:
+          type: string
+          format: uuid
+        request_accepted:
+          type: boolean
+        created_by:
+          $ref: '#/components/schemas/UserType'
+        shift_date:
+          type: string
+          format: date-time
+        shift_start:
+          type: string
+          format: date-time
+        shift_end:
+          type: string
+          format: date-time
+        payType:
+          $ref: '#/components/schemas/PayType'
+        shift_pay:
+          type: number
+        skill_required:
+          type: string
+        status:
+          $ref: '#/components/schemas/ShiftStatus'
+        organization_approved:
+          type: boolean
+        no_show_reported:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ShiftApplication:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [invited, applied]
+        status:
+          type: string
+          enum: [pending, accepted, rejected, withdrawn]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateShiftBody:
+      type: object
+      required: [payType, shift_pay, shift_date, shift_start, shift_end, skill_required]
+      properties:
+        payType:
+          $ref: '#/components/schemas/PayType'
+        shift_pay:
+          type: number
+        shift_date:
+          type: string
+          format: date-time
+        shift_start:
+          type: string
+          format: date-time
+        shift_end:
+          type: string
+          format: date-time
+        skill_required:
+          type: string
+        original_employee_id:
+          type: string
+          format: uuid
+        replacement_employee_id:
+          type: string
+          format: uuid
+
+    Rating:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        employer_id:
+          type: string
+          format: uuid
+          nullable: true
+        user_employer_id:
+          type: string
+          format: uuid
+          nullable: true
+        user_id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+          nullable: true
+        job_id:
+          type: string
+          format: uuid
+          nullable: true
+        score:
+          type: integer
+        review:
+          type: string
+          nullable: true
+        flagged_issue:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    JobStatus:
+      type: string
+      enum: [draft, open, paused, closed, expired]
+
+    EmploymentType:
+      type: string
+      enum: [full_time, part_time, contract, temporary, internship, freelance]
+
+    JobWorkType:
+      type: string
+      enum: [onsite, remote, hybrid]
+
+    SalaryType:
+      type: string
+      enum: [hourly, daily, weekly, monthly]
+
+    JobApplicationStatus:
+      type: string
+      enum:
+        - applied
+        - under_review
+        - shortlisted
+        - interview_scheduled
+        - selected
+        - hired
+        - rejected
+        - withdrawn
+
+    Job:
+      type: object
+      description: Baseline Job shape (employer_id / user_id still present)
+      properties:
+        id:
+          type: string
+          format: uuid
+        employer_id:
+          type: string
+          format: uuid
+          nullable: true
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+        employment_type:
+          $ref: '#/components/schemas/EmploymentType'
+        work_type:
+          $ref: '#/components/schemas/JobWorkType'
+        salary_min:
+          type: number
+          nullable: true
+        salary_max:
+          type: number
+          nullable: true
+        salary_type:
+          $ref: '#/components/schemas/SalaryType'
+        is_negotiable:
+          type: boolean
+        job_start_time:
+          type: string
+          format: date-time
+          nullable: true
+        job_end_time:
+          type: string
+          format: date-time
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        seats_available:
+          type: integer
+          nullable: true
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateJobBody:
+      type: object
+      required: [title, description, employment_type, work_type, salary_type]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        employment_type:
+          $ref: '#/components/schemas/EmploymentType'
+        work_type:
+          $ref: '#/components/schemas/JobWorkType'
+        salary_type:
+          $ref: '#/components/schemas/SalaryType'
+        salary_min:
+          type: number
+        salary_max:
+          type: number
+        is_negotiable:
+          type: boolean
+        job_start_time:
+          type: string
+          format: date-time
+        job_end_time:
+          type: string
+          format: date-time
+        address:
+          type: string
+        seats_available:
+          type: integer
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        expires_at:
+          type: string
+          format: date-time
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    UpdateJobBody:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        employment_type:
+          $ref: '#/components/schemas/EmploymentType'
+        work_type:
+          $ref: '#/components/schemas/JobWorkType'
+        salary_type:
+          $ref: '#/components/schemas/SalaryType'
+        salary_min:
+          type: number
+        salary_max:
+          type: number
+        is_negotiable:
+          type: boolean
+        job_start_time:
+          type: string
+          format: date-time
+        job_end_time:
+          type: string
+          format: date-time
+        address:
+          type: string
+        seats_available:
+          type: integer
+        status:
+          $ref: '#/components/schemas/JobStatus'
+        expires_at:
+          type: string
+          format: date-time
+
+    JobApplication:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        job_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/JobApplicationStatus'
+        cover_letter:
+          type: string
+          nullable: true
+        employer_notes:
+          type: string
+          nullable: true
+        applied_at:
+          type: string
+          format: date-time
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        shortlisted_at:
+          type: string
+          format: date-time
+          nullable: true
+        interview_at:
+          type: string
+          format: date-time
+          nullable: true
+        hired_at:
+          type: string
+          format: date-time
+          nullable: true
+        rejected_at:
+          type: string
+          format: date-time
+          nullable: true
+        withdrawn_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    EmployeeEmployment:
+      type: object
+      description: Baseline employment (employer_id still present)
+      properties:
+        id:
+          type: string
+          format: uuid
+        employer_id:
+          type: string
+          format: uuid
+        employee_id:
+          type: string
+          format: uuid
+        employee_no:
+          type: string
+          nullable: true
+        employment_status:
+          type: string
+          enum: [pending, active, inactive, terminated, resigned]
+        joined_at:
+          type: string
+          format: date-time
+        left_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        employee:
+          $ref: '#/components/schemas/User'
+        employer:
+          $ref: '#/components/schemas/Employer'
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        data: {}
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    PushTokenInput:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+        platform:
+          type: string
+        deviceId:
+          type: string
+
+    PushToken:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        token:
+          type: string
+        platform:
+          type: string
+          nullable: true
+        deviceId:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+        mobileNumber:
+          type: string
+        subject:
+          type: string
+        message:
+          type: string
+        isResolved:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

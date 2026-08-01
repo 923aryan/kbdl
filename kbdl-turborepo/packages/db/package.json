@@ -22,7 +22,13 @@
   "scripts": {
     "generate": "prisma generate",
     "push": "prisma db push",
-    "build": "prisma generate"
+    "build": "prisma generate",
+    "clone-db": "node --env-file=.env ./scripts/clone-database.mjs",
+    "seed": "node --env-file=.env ./prisma/seed.mjs",
+    "db:reset-seed": "prisma db push --force-reset && node --env-file=.env ./prisma/seed.mjs"
+  },
+  "prisma": {
+    "seed": "node --env-file=.env ./prisma/seed.mjs"
   },
   "publishConfig": {
     "access": "public"

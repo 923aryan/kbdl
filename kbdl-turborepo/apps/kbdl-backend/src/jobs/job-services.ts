@@ -1,4 +1,4 @@
-import { Prisma, prisma, safeEmployerSelect, safeUserSelect } from '@repo/db/server';
+import { Prisma, prisma, safeUserSelect } from '@repo/db/server';
 import {
   AdminUpdateJobApplicationStatusPayload,
   AdminUpdateJobApplicationStatusResponse,
@@ -58,6 +58,10 @@ import {
   UpdateMyJobApplicationResponse,
   WithdrawJobApplicationResponse,
 } from '@repo/types';
+import {
+  companyAsEmployerInclude,
+  toEmployerDtoFromIncludedCompany,
+} from '../compat/employer-compat';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
 import {
@@ -78,14 +82,31 @@ type JobQueryWithLocation = {
 };
 
 const jobInclude = {
-  employer: { select: safeEmployerSelect },
-  user: { select: safeUserSelect },
+  company: companyAsEmployerInclude,
 } as const;
 
 const jobDetailsInclude = {
   ...jobInclude,
   applications: true,
 } as const;
+
+const mapJobToApi = <T extends { company_id: string; company?: any }>(job: T) => {
+  const { company, ...rest } = job as T & { company?: any };
+  return {
+    ...rest,
+    employer_id: job.company_id,
+    employer: toEmployerDtoFromIncludedCompany(company),
+    user: null,
+  };
+};
+
+const mapJobApplicationToApi = <T extends { job?: any }>(application: T) => {
+  if (!application.job) return application;
+  return {
+    ...application,
+    job: mapJobToApi(application.job),
+  };
+};
 
 const notImplemented = async <T>(serviceName: string): Promise<T> => {
   throw new AppError(501, 'NOT_IMPLEMENTED', `${serviceName} service is not implemented yet.`);
@@ -295,7 +316,7 @@ const getOwnedJob = async (employerId: string, jobId: string) => {
   const job = await prisma.job.findFirst({
     where: {
       id: jobId,
-      employer_id: employerId,
+      company_id: employerId,
     },
   });
 
@@ -316,7 +337,7 @@ const buildJobWhereClause = async (
   const now = new Date();
 
   if (options.employerId) {
-    where.employer_id = options.employerId;
+    where.company_id = options.employerId;
   }
 
   if (query.status) {
@@ -346,11 +367,7 @@ const buildJobWhereClause = async (
   }
 
   if ('employer_id' in query && query.employer_id) {
-    where.employer_id = query.employer_id;
-  }
-
-  if ('user_id' in query && query.user_id) {
-    where.user_id = query.user_id;
+    where.company_id = query.employer_id;
   }
 
   if (query.salary_min !== undefined) {
@@ -381,7 +398,7 @@ const buildJobWhereClause = async (
         { title: { contains: query.search, mode: 'insensitive' } },
         { description: { contains: query.search, mode: 'insensitive' } },
         { address: { contains: query.search, mode: 'insensitive' } },
-        { employer: { company_name: { contains: query.search, mode: 'insensitive' } } },
+        { company: { company_name: { contains: query.search, mode: 'insensitive' } } },
       ],
     };
 
@@ -421,7 +438,7 @@ const getPaginatedJobs = async (
   ]);
 
   return {
-    jobs,
+    jobs: jobs.map(mapJobToApi),
     meta: getPaginationMeta(total, page, limit),
   };
 };
@@ -430,7 +447,7 @@ const getJobCreateData = (
   employerId: string,
   payload: CreateJobPayload,
 ): Prisma.JobUncheckedCreateInput => ({
-  employer_id: employerId,
+  company_id: employerId,
   title: payload.title,
   description: payload.description,
   employment_type: payload.employment_type,
@@ -502,7 +519,7 @@ const updateOwnedJobStatus = async (employerId: string, jobId: string, status: J
   return prisma.job.update({
     where: { id: jobId },
     data: { status },
-  });
+  }).then((job) => ({ ...job, employer_id: job.company_id })) as any;
 };
 
 export const getJobsService = async (
@@ -551,13 +568,20 @@ export const getRecommendedJobsService = async (
 
   const where: Prisma.JobWhereInput = {
     status: JobStatus.open,
-    user_id: { not: userId },
     OR: [{ expires_at: null }, { expires_at: { gt: new Date() } }],
     applications: {
       none: {
         user_id: userId,
         status: {
           not: JobApplicationStatus.withdrawn,
+        },
+      },
+    },
+    // Exclude jobs for companies the user belongs to
+    NOT: {
+      company: {
+        members: {
+          some: { user_id: userId },
         },
       },
     },
@@ -603,7 +627,7 @@ export const getJobByIdService = async (jobId: string): Promise<GetJobByIdRespon
     throw new AppError(404, 'JOB_NOT_FOUND', 'Job not found.');
   }
 
-  return job;
+  return mapJobToApi(job) as GetJobByIdResponse;
 };
 
 export const applyForJobService = async (
@@ -613,7 +637,14 @@ export const applyForJobService = async (
 ): Promise<ApplyForJobResponse> => {
   const job = await assertOpenForApplications(jobId);
 
-  if (job.user_id === userId) {
+  const companyMember = await prisma.companyMember.findFirst({
+    where: {
+      user_id: userId,
+      company_id: job.company_id,
+    },
+  });
+
+  if (companyMember) {
     throw new AppError(400, 'CANNOT_APPLY_TO_OWN_JOB', 'You cannot apply to your own job.');
   }
 
@@ -673,7 +704,7 @@ export const createJobService = async (
     );
   }
 
-  const employer = await prisma.employer.findUnique({
+  const employer = await prisma.company.findUnique({
     where: { id: employerId },
     select: { id: true },
   });
@@ -690,7 +721,7 @@ export const createJobService = async (
     await setJobLocation(job.id, payload.latitude, payload.longitude);
   }
 
-  return job;
+  return { ...job, employer_id: job.company_id } as CreateJobResponse;
 };
 
 export const getEmployerJobsService = async (
@@ -710,7 +741,7 @@ export const getEmployerJobByIdService = async (
   const job = await prisma.job.findFirst({
     where: {
       id: jobId,
-      employer_id: employerId,
+      company_id: employerId,
     },
     include: jobDetailsInclude,
   });
@@ -719,7 +750,7 @@ export const getEmployerJobByIdService = async (
     throw new AppError(404, 'JOB_NOT_FOUND', 'Job not found or access denied.');
   }
 
-  return job;
+  return mapJobToApi(job) as GetEmployerJobByIdResponse;
 };
 
 export const updateJobService = async (
@@ -763,7 +794,7 @@ export const updateJobService = async (
     await setJobLocation(jobId, payload.latitude, payload.longitude);
   }
 
-  return updatedJob;
+  return { ...updatedJob, employer_id: updatedJob.company_id } as any;
 };
 
 export const deleteJobService = async (
@@ -786,7 +817,7 @@ export const deleteJobService = async (
 
   return prisma.job.delete({
     where: { id: jobId },
-  });
+  }).then((job) => ({ ...job, employer_id: job.company_id })) as any;
 };
 
 export const duplicateJobService = async (
@@ -797,7 +828,7 @@ export const duplicateJobService = async (
 
   const duplicatedJob = await prisma.job.create({
     data: {
-      employer_id: employerId,
+      company_id: employerId,
       title: `${sourceJob.title} (Copy)`,
       description: sourceJob.description,
       employment_type: sourceJob.employment_type,
@@ -817,7 +848,7 @@ export const duplicateJobService = async (
 
   await copyJobLocation(sourceJob.id, duplicatedJob.id);
 
-  return duplicatedJob;
+  return { ...duplicatedJob, employer_id: duplicatedJob.company_id } as DuplicateJobResponse;
 };
 
 export const updateJobStatusService = async (
@@ -890,7 +921,7 @@ export const getJobApplicationsService = async (
   ]);
 
   return {
-    applications,
+    applications: applications.map(mapJobApplicationToApi) as any,
     meta: getPaginationMeta(total, page, limit),
   };
 };
@@ -917,7 +948,7 @@ export const getJobApplicationByIdService = async (
     throw new AppError(404, 'APPLICATION_NOT_FOUND', 'Job application not found.');
   }
 
-  return application;
+  return mapJobApplicationToApi(application) as any;
 };
 
 export const updateJobApplicationStatusService = async (
@@ -1318,7 +1349,7 @@ export const getMyJobApplicationsService = async (
   ]);
 
   return {
-    applications,
+    applications: applications.map(mapJobApplicationToApi) as any,
     meta: getPaginationMeta(total, page, limit),
   };
 };
@@ -1342,7 +1373,7 @@ export const getMyJobApplicationByIdService = async (
     throw new AppError(404, 'APPLICATION_NOT_FOUND', 'Job application not found.');
   }
 
-  return application;
+  return mapJobApplicationToApi(application) as any;
 };
 
 export const updateMyJobApplicationService = async (
@@ -1466,7 +1497,7 @@ export const getAllJobApplicationsForAdminService = async (
   ]);
 
   return {
-    applications,
+    applications: applications.map(mapJobApplicationToApi) as any,
     meta: getPaginationMeta(total, page, limit),
   };
 };
@@ -1488,7 +1519,7 @@ export const adminUpdateJobStatusService = async (
     data: {
       status: payload.status,
     },
-  });
+  }).then((job) => ({ ...job, employer_id: job.company_id })) as any;
 };
 
 export const adminUpdateJobApplicationStatusService = async (
