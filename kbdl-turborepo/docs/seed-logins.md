@@ -1,10 +1,10 @@
-# Seed login credentials (`kbdl_dev`)
+# Seed login credentials
 
-After `pnpm db:seed`, use these accounts for local/dev testing.
+After `pnpm db:seed` or `docker compose run --rm backend seed`, use these accounts for local/dev testing.
 
-**Employer OTP (local/dev):** usually `123456`  
-**Employer app:** http://localhost:3002  
-**API:** http://localhost:8000
+**Employer OTP (local/dev):** usually `123456`
+
+Useful URLs (Swagger, OpenAPI, apps): [dev-links.md](./dev-links.md)
 
 ## Company owners (employer login)
 

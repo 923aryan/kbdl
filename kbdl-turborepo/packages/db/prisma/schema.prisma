@@ -133,6 +133,27 @@ enum EmploymentStatus {
   @@map("employment_status")
 }
 
+enum AttendanceStatus {
+  present
+  absent
+  half_day
+  leave
+  holiday
+  week_off
+  on_duty
+
+  @@map("attendance_status")
+}
+
+enum AttendanceSource {
+  hr_manual
+  device
+  app
+  system
+
+  @@map("attendance_source")
+}
+
 enum TransactionType {
   payment
   refund
@@ -236,6 +257,10 @@ model Company {
   company_address  String?                                @db.VarChar
   company_location Unsupported("geography(Point, 4326)")?
   gst_number       String?                                @db.VarChar
+  pan              String?                                @db.VarChar
+  state            String?                                @db.VarChar
+  epf_registration_no String?                             @db.VarChar
+  esic_code        String?                                @db.VarChar
   is_verified      Boolean                                @default(false)
   preferences      Json                                   @default("{}")
 
@@ -254,8 +279,243 @@ model Company {
   orders        Order[]
   subscriptions Subscriptions[]
 
+  payroll_settings    PayrollSettings?
+  statutory_settings  StatutorySettings?
+  payment_settings    PaymentSettings?
+  work_schedule       CompanyWorkSchedule?
+  overtime_settings   OvertimeSettings?
+
+  work_shifts      WorkShift[]
+  employee_shifts  EmployeeShift[]
+  attendances      Attendance[]
+  holidays         CompanyHoliday[]
+
   @@index([company_name])
   @@map("companies")
+}
+
+/// Pay cycle — one row per company (Payroll Settings UI)
+model PayrollSettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  pay_frequency         String  @default("monthly") @db.VarChar
+  pay_day               String  @default("last_working_day") @db.VarChar
+  payroll_cutoff_day    Int     @default(28)
+  financial_year_start  String  @default("april") @db.VarChar
+  lock_after_processing Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("payroll_settings")
+}
+
+/// Statutory deduction rates — one row per company
+model StatutorySettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  employee_pf_rate   Decimal @default(12.00) @db.Decimal(5, 2)
+  employer_pf_rate   Decimal @default(12.00) @db.Decimal(5, 2)
+  employee_esic_rate Decimal @default(0.75) @db.Decimal(5, 2)
+  employer_esic_rate Decimal @default(3.25) @db.Decimal(5, 2)
+  professional_tax   Decimal @default(200.00) @db.Decimal(10, 2)
+  labour_welfare_fund Decimal @default(6.00) @db.Decimal(10, 2)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("statutory_settings")
+}
+
+/// Disbursement preferences — one row per company
+model PaymentSettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  default_disbursement_method String  @default("NEFT") @db.VarChar
+  allow_bank_transfer         Boolean @default(true)
+  allow_upi                   Boolean @default(true)
+  allow_cash                  Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("payment_settings")
+}
+
+/// Normal working week + day-length rules — one row per company
+model CompanyWorkSchedule {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  monday_working    Boolean @default(true)
+  tuesday_working   Boolean @default(true)
+  wednesday_working Boolean @default(true)
+  thursday_working  Boolean @default(true)
+  friday_working    Boolean @default(true)
+  saturday_working  Boolean @default(true)
+  sunday_working    Boolean @default(false)
+
+  daily_work_hours  Decimal @default(8.00) @db.Decimal(4, 2)
+  weekly_work_hours Decimal @default(48.00) @db.Decimal(5, 2)
+
+  half_day_percentage   Decimal @default(50.00) @db.Decimal(5, 2)
+  absent_deduction_type String  @default("per_day_rate") @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("company_work_schedules")
+}
+
+/// OT calculation rules — one row per company
+model OvertimeSettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  enabled Boolean @default(true)
+
+  ot_after_hours_per_day  Decimal @default(8.00) @db.Decimal(4, 2)
+  ot_after_hours_per_week Decimal @default(48.00) @db.Decimal(5, 2)
+
+  rate_multiplier      Decimal @default(2.00) @db.Decimal(5, 2)
+  max_ot_hours_per_day Decimal @default(4.00) @db.Decimal(4, 2)
+
+  include_holiday_ot Boolean @default(true)
+  include_weekoff_ot Boolean @default(true)
+  approval_required  Boolean @default(true)
+  auto_calculate_ot  Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("overtime_settings")
+}
+
+/// HR shift templates (General / Morning / Night…). Distinct from marketplace `shifts`.
+model WorkShift {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  name          String @db.VarChar
+  /// Time-of-day only (HH:mm)
+  start_time    DateTime @db.Time
+  end_time      DateTime @db.Time
+  break_minutes Int      @default(60)
+  is_active     Boolean  @default(true)
+  sort_order    Int      @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company         Company         @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  employee_shifts EmployeeShift[]
+  attendances     Attendance[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@map("work_shifts")
+}
+
+/// Which template an employee is on (effective-dated)
+model EmployeeShift {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id        String @db.Uuid
+  company_member_id String @db.Uuid
+  work_shift_id     String @db.Uuid
+
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company        Company       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  company_member CompanyMember @relation(fields: [company_member_id], references: [id], onDelete: Cascade)
+  work_shift     WorkShift     @relation(fields: [work_shift_id], references: [id], onDelete: Restrict)
+
+  @@index([company_id])
+  @@index([company_member_id])
+  @@index([work_shift_id])
+  @@index([company_member_id, effective_from])
+  @@map("employee_shifts")
+}
+
+/// Daily attendance / OT — one row per member per date
+model Attendance {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id        String @db.Uuid
+  company_member_id String @db.Uuid
+  work_shift_id     String? @db.Uuid
+
+  date DateTime @db.Date
+
+  check_in  DateTime? @db.Timestamptz()
+  check_out DateTime? @db.Timestamptz()
+
+  worked_minutes Int @default(0)
+  ot_minutes     Int @default(0)
+
+  status AttendanceStatus @default(present)
+  source AttendanceSource @default(hr_manual)
+
+  marked_by_company_member_id String? @db.Uuid
+  notes                       String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company        Company       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  company_member CompanyMember @relation("MemberAttendance", fields: [company_member_id], references: [id], onDelete: Cascade)
+  work_shift     WorkShift?    @relation(fields: [work_shift_id], references: [id], onDelete: SetNull)
+  marked_by      CompanyMember? @relation("AttendanceMarkedBy", fields: [marked_by_company_member_id], references: [id], onDelete: SetNull)
+
+  @@unique([company_member_id, date])
+  @@index([company_id])
+  @@index([company_id, date])
+  @@index([company_member_id])
+  @@index([status])
+  @@map("attendances")
+}
+
+/// Company holiday calendar (for holiday OT + attendance status)
+model CompanyHoliday {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  date        DateTime @db.Date
+  name        String   @db.VarChar
+  is_optional Boolean  @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, date])
+  @@index([company_id])
+  @@map("company_holidays")
 }
 
 /// Per-company role catalog (like Department).
@@ -390,6 +650,10 @@ model CompanyMember {
 
   ratings_given    Rating[] @relation("MemberGivenRatings")
   ratings_received Rating[] @relation("MemberReceivedRatings")
+
+  employee_shifts        EmployeeShift[]
+  attendances            Attendance[]     @relation("MemberAttendance")
+  attendances_marked     Attendance[]     @relation("AttendanceMarkedBy")
 
   // One company per user for now.
   // To allow multi-company later: remove @@unique([user_id]) only.

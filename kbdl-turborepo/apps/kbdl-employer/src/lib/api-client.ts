@@ -1,4 +1,8 @@
-// lib/api/api-client.ts
+// lib/api-client.ts
+// Set API host via env (apps/kbdl-employer/.env.local or .env.development):
+//   NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+//   NEXT_PUBLIC_API_URL=http://20.197.60.119:8000/api/v1
+// Restart next dev after changing NEXT_PUBLIC_* values.
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
