@@ -1,4 +1,4 @@
-import { Employer, prisma, safeEmployerSelect, safeUserSelect } from '@repo/db/server';
+import { prisma, safeUserSelect } from '@repo/db/server';
 import {
   GetCurrentEmployerProfileResponse,
   GetPublicEmployerProfileResponse,
@@ -21,15 +21,18 @@ import {
   UpdateUserSkillsPayload,
   UpdateUserSkillsResponse,
 } from '@repo/types';
+import {
+  EmployerDto,
+  ensureEmployerContext,
+  findEmployerById,
+  toEmployerDto,
+} from '../compat/employer-compat';
 import { AppError } from '../utils/api-error';
 
 export const getCurrentEmployerProfileService = async (
   employerId: string,
 ): Promise<GetCurrentEmployerProfileResponse> => {
-  const employer = await prisma.employer.findUnique({
-    where: { id: employerId },
-    select: safeEmployerSelect,
-  });
+  const employer = await findEmployerById(employerId);
   if (!employer) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
@@ -40,27 +43,64 @@ export const updateEmployerProfileService = async (
   employerId: string,
   payload: UpdateEmployerProfilePayload,
 ): Promise<UpdateEmployerProfileResponse> => {
-  return prisma.employer.update({
-    where: { id: employerId },
-    data: payload,
-    select: safeEmployerSelect,
+  const { company, ownerUser } = await ensureEmployerContext(employerId);
+
+  const companyData: {
+    company_name?: string;
+    company_address?: string;
+    gst_number?: string | null;
+  } = {};
+  if (payload.company_name !== undefined) companyData.company_name = payload.company_name;
+  if (payload.company_address !== undefined) companyData.company_address = payload.company_address;
+  if (payload.gst_number !== undefined) {
+    companyData.gst_number = payload.gst_number === '' ? null : payload.gst_number;
+  }
+
+  const [updatedCompany, updatedOwner] = await prisma.$transaction(async (tx) => {
+    const nextCompany =
+      Object.keys(companyData).length > 0
+        ? await tx.company.update({
+            where: { id: company.id },
+            data: companyData,
+          })
+        : company;
+
+    const nextOwner =
+      payload.phone_no !== undefined
+        ? await tx.user.update({
+            where: { id: ownerUser.id },
+            data: { phone_no: payload.phone_no },
+          })
+        : ownerUser;
+
+    return [nextCompany, nextOwner] as const;
   });
+
+  return toEmployerDto(updatedCompany, updatedOwner);
 };
 
 export const deleteEmployerProfileService = async (employerId: string): Promise<void> => {
-  await prisma.employer.delete({ where: { id: employerId } });
+  const { company, ownerUser } = await ensureEmployerContext(employerId);
+  await prisma.$transaction(async (tx) => {
+    await tx.company.delete({ where: { id: company.id } });
+    await tx.user.delete({ where: { id: ownerUser.id } });
+  });
 };
 
 export const updateEmployerPreferencesService = async (
   employerId: string,
   payload: UpdateEmployerPreferencesResponse,
-): Promise<Employer> => {
-  const employer = await getCurrentEmployerProfileService(employerId);
-  const newPreferences = { ...(employer.preferences as object), ...payload };
-  return prisma.employer.update({
+): Promise<EmployerDto> => {
+  const { company, ownerUser } = await ensureEmployerContext(employerId);
+  const newPreferences = {
+    ...((company.preferences as object) || {}),
+    ...(payload as object),
+  };
+  const updatedCompany = await prisma.company.update({
     where: { id: employerId },
     data: { preferences: newPreferences },
   });
+  return toEmployerDto(updatedCompany, ownerUser);
 };
 
 export const updateEmployerLocationService = async (
@@ -69,7 +109,7 @@ export const updateEmployerLocationService = async (
 ): Promise<UpdateEmployerLocationResponse> => {
   const { latitude, longitude } = payload;
   await prisma.$executeRaw`
-    UPDATE employers
+    UPDATE companies
     SET company_location = ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
     WHERE id = ${employerId}::uuid
   `;
@@ -81,7 +121,7 @@ export const uploadEmployerDocumentsService = async (
   files: any,
 ): Promise<{ message: string; files: any }> => {
   console.log(`Uploading documents for employer ${employerId}`, files);
-  await prisma.employer.update({
+  await prisma.company.update({
     where: { id: employerId },
     data: { is_verified: false },
   });
@@ -91,20 +131,20 @@ export const uploadEmployerDocumentsService = async (
 export const getEmployerVerificationStatusService = async (
   employerId: string,
 ): Promise<{ is_verified: boolean }> => {
-  const employer = await prisma.employer.findUnique({
+  const company = await prisma.company.findUnique({
     where: { id: employerId },
     select: { is_verified: true },
   });
-  if (!employer) {
+  if (!company) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
-  return { is_verified: employer.is_verified };
+  return { is_verified: company.is_verified };
 };
 
 export const getPublicEmployerProfileService = async (
   employerId: string,
 ): Promise<Partial<GetPublicEmployerProfileResponse>> => {
-  const employer = await prisma.employer.findUnique({
+  const company = await prisma.company.findUnique({
     where: { id: employerId },
     select: {
       id: true,
@@ -113,10 +153,10 @@ export const getPublicEmployerProfileService = async (
       is_verified: true,
     },
   });
-  if (!employer) {
+  if (!company) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
-  return employer;
+  return company;
 };
 
 export const getCurrentUserProfileService = async (
