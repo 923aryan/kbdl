@@ -14,13 +14,18 @@
  *   OTP:   123456  (if backend login still hardcodes)
  */
 
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/index.js';
 
+/** Single source of truth: kbdl-turborepo/.env */
+loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env') });
+
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  console.error('❌ DATABASE_URL is missing');
+  console.error('❌ DATABASE_URL is missing — set it in kbdl-turborepo/.env');
   process.exit(1);
 }
 

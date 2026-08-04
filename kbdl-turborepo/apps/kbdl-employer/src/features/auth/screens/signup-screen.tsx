@@ -69,7 +69,10 @@ export default function SignupPage() {
       {
         onSuccess: (data) => {
           toast.success('OTP Verified Successfully!');
-          setAuth(data.employer);
+          setAuth(data.employer, {
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+          });
           router.replace('/verification-pending');
         },
         onError: (error: any) => {

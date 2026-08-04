@@ -23,17 +23,19 @@ Seed logins: [seed-logins.md](./seed-logins.md)
 | Landing | http://localhost:3003 |
 | Backend API | http://localhost:8000 |
 
-### Employer → API host
+### Env files (only 2)
 
-Set in `apps/kbdl-employer/.env.local` (or `.env.development`):
+| File | Purpose |
+|------|---------|
+| `kbdl-turborepo/.env` | Backend / Docker / Prisma (DB, Redis, JWT, S3, …) |
+| `apps/kbdl-employer/.env` | Employer frontend only (`NEXT_PUBLIC_API_URL`) |
 
 ```env
+# apps/kbdl-employer/.env
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-# or Azure Docker backend:
-# NEXT_PUBLIC_API_URL=http://20.197.60.119:8000/api/v1
 ```
 
-Used by `apps/kbdl-employer/src/lib/api-client.ts`. Restart `next dev` after changes.
+Restart `next dev` after changes.
 
 ## Auth (Postman / Swagger)
 

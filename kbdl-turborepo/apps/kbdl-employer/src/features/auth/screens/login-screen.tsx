@@ -64,7 +64,10 @@ export default function LoginPage() {
       {
         onSuccess: (data) => {
           toast.success('Login successful');
-          setAuth(data.employer);
+          setAuth(data.employer, {
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+          });
           if (!data.employer.is_verified) {
             router.replace('/verification-pending');
           } else {
