@@ -13,8 +13,14 @@ import { z } from 'zod';
 import { EmployerDTO, UserDTO } from './profile-type';
 
 // Assuming you have a DTO representing the joined EmployeeEmployment & User model
-export type EmployeeEmploymentDTO = EmployeeEmployment & { employee: UserDTO };
-export type EmployeeEmploymentWithEmployerDTO = EmployeeEmployment & { employer: EmployerDTO };
+export type EmployeeEmploymentDTO = EmployeeEmployment & {
+  employer_id: string;
+  employee: UserDTO;
+};
+export type EmployeeEmploymentWithEmployerDTO = EmployeeEmployment & {
+  employer_id: string;
+  employer: EmployerDTO;
+};
 
 export type GetEmployerRosterRequest = z.infer<typeof getEmployerRosterSchema>;
 export type GetEmployerRosterQuery = z.infer<typeof getEmployerRosterSchema>['query'];

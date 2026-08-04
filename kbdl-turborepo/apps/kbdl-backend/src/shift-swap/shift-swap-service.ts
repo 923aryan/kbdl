@@ -1,4 +1,11 @@
-import { prisma, Rating, safeEmployerSelect, safeUserSelect, Shift } from '@repo/db/server';
+import { PlatformType, prisma, Rating, safeUserSelect, Shift } from '@repo/db/server';
+import {
+  companyAsEmployerInclude,
+  toApiCreatedBy,
+  toEmployerDtoFromIncludedCompany,
+  toPlatformType,
+  withApiEmployerFields,
+} from '../compat/employer-compat';
 import {
   AcceptShiftPayload,
   ApplyForPublicShiftPayload,
@@ -41,6 +48,23 @@ import {
   ShiftApplicationType,
   ShiftStatus,
 } from '../utils/constants';
+
+const mapShiftWithCompanyToApi = (row: any) => {
+  const { company, ...rest } = row;
+  return {
+    ...rest,
+    employer_id: rest.company_id,
+    employer: company
+      ? toEmployerDtoFromIncludedCompany(company) ?? {
+          company_name: company.company_name,
+          company_address: company.company_address,
+          is_verified: company.is_verified,
+        }
+      : null,
+    created_by: rest.created_by != null ? toApiCreatedBy(rest.created_by) : rest.created_by,
+  };
+};
+
 // A. Create Shift Swap
 export const createShiftService = async (
   userId: string,
@@ -73,36 +97,22 @@ export const createShiftService = async (
   if (userType === 'user') {
     originalEmployeeId = userId; // Enforce that the user is the original employeeS
     console.log('origian ', userId);
-    // Validate that the user is actually employed by the specified employer
-    const user = await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-    });
-
-    employerId = user?.employer_id;
-    if (!employerId) {
-      throw new AppError(403, 'NOT_EMPLOYED', 'You are not an employee of any organization');
-    }
+    // Resolve company via active employment (User.employer_id removed)
     const employment = await prisma.employeeEmployment.findFirst({
       where: {
         employee_id: userId,
-        employer_id: employerId,
         employment_status: 'active',
       },
     });
 
-    if (!employment) {
-      throw new AppError(
-        403,
-        'NOT_EMPLOYED',
-        'You are not an active employee of this organization.',
-      );
+    employerId = employment?.company_id;
+    if (!employerId) {
+      throw new AppError(403, 'NOT_EMPLOYED', 'You are not an employee of any organization');
     }
   }
   // 2. If created by the organization (employer)
   else if (userType === ROLES.EMPLOYER) {
-    employerId = userId; // Enforce that the creator is the employer
+    employerId = userId; // Enforce that the creator is the employer (company id)
 
     if (!originalEmployeeId) {
       throw new AppError(
@@ -116,7 +126,7 @@ export const createShiftService = async (
     const employment = await prisma.employeeEmployment.findFirst({
       where: {
         employee_id: originalEmployeeId,
-        employer_id: employerId,
+        company_id: employerId,
         employment_status: 'active',
       },
     });
@@ -143,9 +153,9 @@ export const createShiftService = async (
   const newShift = await prisma.shift.create({
     data: {
       original_employee_id: originalEmployeeId,
-      employer_id: employerId,
+      company_id: employerId,
       replacement_employee_id: payload.replacement_employee_id || null, // Null implies a public shift
-      created_by: userType,
+      created_by: toPlatformType(userType),
       payType: payload.payType,
       shift_pay: payload.shift_pay,
       shift_date: new Date(payload.shift_date),
@@ -193,10 +203,8 @@ export const createShiftService = async (
     });
   }
 
-  return newShift;
+  return withApiEmployerFields(newShift) as any;
 };
-
-// A2. Withdraw Shift Application / reject private shift by employee
 export const withdrawShiftApplicationService = async (
   workerId: string,
   shift_application_id: string,
@@ -260,7 +268,7 @@ export const withdrawShiftApplicationService = async (
 
         await publicShiftQueue.add('broadcast-public-shift', {
           shiftId: shift.id,
-          employerId: shift.employer_id,
+          employerId: shift.company_id,
           originalEmployeeId: shift.original_employee_id,
           skillRequired: shift.skill_required,
         });
@@ -306,7 +314,7 @@ export const approveShiftRequestService = async (
 
   const shift = shiftApplication.shift;
 
-  if (shift.employer_id !== employerId) {
+  if (shift.company_id !== employerId) {
     throw new AppError(
       403,
       'UNAUTHORIZED',
@@ -407,7 +415,7 @@ export const approveShiftRequestService = async (
     data: {
       type: NotificationTypes.shiftApproved,
       shiftId: shift.id,
-      employerId: shift.employer_id,
+      employerId: shift.company_id,
       originalEmployeeId: shift.original_employee_id,
       replacementEmployeeId: shiftApplication.user_id,
     },
@@ -459,9 +467,7 @@ export const getEmployeeShiftsService = async (
     },
 
     include: {
-      employer: {
-        select: safeEmployerSelect,
-      },
+      company: companyAsEmployerInclude,
 
       original_employee: {
         select: safeUserSelect,
@@ -481,10 +487,12 @@ export const getEmployeeShiftsService = async (
     },
   });
 
-  const transformedShifts = shifts.map(({ shiftApplications, ...shift }) => ({
-    ...shift,
-    shiftApplication: shiftApplications[0] ?? null,
-  }));
+  const transformedShifts = shifts.map(({ shiftApplications, ...shift }) =>
+    mapShiftWithCompanyToApi({
+      ...shift,
+      shiftApplication: shiftApplications[0] ?? null,
+    }),
+  );
 
   return transformedShifts as GetEmployeeShiftsResponse;
 };
@@ -515,7 +523,7 @@ export const getEmployerShiftsService = async (
   const skip = (page - 1) * limit;
 
   const whereClause: any = {
-    employer_id: employerId,
+    company_id: employerId,
   };
 
   if (status) whereClause.status = status;
@@ -588,7 +596,11 @@ export const getEmployerShiftsService = async (
   ]);
 
   return {
-    shifts,
+    shifts: shifts.map((s) => ({
+      ...s,
+      employer_id: s.company_id,
+      created_by: toApiCreatedBy(s.created_by),
+    })) as any,
     meta: {
       total,
       page,
@@ -605,17 +617,17 @@ export const getCreatedShiftsForEmployeeService = async (
   const shifts = await prisma.shift.findMany({
     where: {
       original_employee_id: employeeId,
-      created_by: ROLES.USER,
+      created_by: PlatformType.EMPLOYEE,
     },
     include: {
-      employer: { select: { company_name: true, company_address: true } },
+      company: { select: { company_name: true, company_address: true } },
       replacement_employee: { select: { name: true, phone_no: true } },
     },
     orderBy: {
       created_at: 'desc',
     },
   });
-  return shifts as GetCreatedShiftsForEmployeeResponse;
+  return shifts.map(mapShiftWithCompanyToApi) as GetCreatedShiftsForEmployeeResponse;
 };
 
 export const getScheduledShiftsService = async (employeeId: string): Promise<Shift[]> => {
@@ -630,7 +642,7 @@ export const getScheduledShiftsService = async (employeeId: string): Promise<Shi
       },
     },
     include: {
-      employer: {
+      company: {
         select: { company_name: true, company_address: true },
       },
       original_employee: {
@@ -642,7 +654,15 @@ export const getScheduledShiftsService = async (employeeId: string): Promise<Shi
     },
   });
   console.log('shifts are ', shifts);
-  return shifts;
+  return shifts.map((s) => {
+    const { company, ...rest } = s as typeof s & { company?: any };
+    return {
+      ...rest,
+      employer_id: rest.company_id,
+      employer: company ?? null,
+      created_by: toApiCreatedBy(rest.created_by),
+    };
+  }) as any;
 };
 
 export const cancelShiftService = async (
@@ -671,7 +691,7 @@ export const cancelShiftService = async (
       throw new AppError(403, 'UNAUTHORIZED', 'Only the shift creator can cancel this shift.');
     }
   } else if (userType === ROLES.EMPLOYER) {
-    if (shift.employer_id !== userId) {
+    if (shift.company_id !== userId) {
       throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to cancel this shift.');
     }
   }
@@ -724,7 +744,7 @@ export const updateShiftService = async (
     throw new AppError(403, 'UNAUTHORIZED', 'Only the creator can update this shift.');
   }
 
-  if (userType === ROLES.EMPLOYER && shift.employer_id !== userId) {
+  if (userType === ROLES.EMPLOYER && shift.company_id !== userId) {
     throw new AppError(403, 'UNAUTHORIZED', 'Only the employer who owns this shift can update it.');
   }
 
@@ -838,7 +858,7 @@ export const updateShiftService = async (
     if (oldReplacementEmployeeId && !payload.replacement_employee_id) {
       await publicShiftQueue.add('broadcast-public-shift', {
         shiftId: shift.id,
-        employerId: shift.employer_id,
+        employerId: shift.company_id,
         originalEmployeeId: shift.original_employee_id,
         skillRequired: payload.skill_required ?? shift.skill_required,
       });
@@ -879,7 +899,7 @@ export const updateShiftService = async (
         data: {
           type: NotificationTypes.shiftSwapRequest,
           shiftId: shift.id,
-          employerId: shift.employer_id,
+          employerId: shift.company_id,
           originalEmployeeId: shift.original_employee_id,
           replacementEmployeeId: newReplacementEmployeeId,
         },
@@ -969,7 +989,7 @@ export const acceptShiftService = async (
     },
     data: {
       status:
-        shift.created_by === ROLES.EMPLOYER
+        shift.created_by === PlatformType.EMPLOYER
           ? ShiftApplicationStatus.accepted
           : ShiftApplicationStatus.pending,
     },
@@ -980,7 +1000,7 @@ export const acceptShiftService = async (
     data: {
       replacement_employee_id: workerId,
       request_accepted: true,
-      status: shift.created_by === ROLES.EMPLOYER ? ShiftStatus.approved : ShiftStatus.open, // Update status to reflect it has been accepted
+      status: shift.created_by === PlatformType.EMPLOYER ? ShiftStatus.approved : ShiftStatus.open, // Update status to reflect it has been accepted
     },
   });
 
@@ -1093,9 +1113,7 @@ export const syncSavedShiftsService = async (
       },
     },
     include: {
-      employer: {
-        select: safeEmployerSelect,
-      },
+      company: companyAsEmployerInclude,
       original_employee: {
         select: safeUserSelect,
       },
@@ -1108,10 +1126,12 @@ export const syncSavedShiftsService = async (
     },
   });
 
-  const transformedShifts = shifts.map(({ shiftApplications, ...shift }) => ({
-    ...shift,
-    shiftApplication: shiftApplications[0] ?? null,
-  }));
+  const transformedShifts = shifts.map(({ shiftApplications, ...shift }) =>
+    mapShiftWithCompanyToApi({
+      ...shift,
+      shiftApplication: shiftApplications[0] ?? null,
+    }),
+  );
 
   return transformedShifts as GetEmployeeShiftsResponse;
 };
@@ -1236,8 +1256,8 @@ export const getExtraShiftsService = async (
 
     FROM shifts s
 
-    INNER JOIN employers e
-      ON s.employer_id = e.id
+    INNER JOIN companies e
+      ON s.company_id = e.id
 
     WHERE ${conditions.join(' AND ')}
 
@@ -1249,7 +1269,11 @@ export const getExtraShiftsService = async (
     ...values,
   );
 
-  return shifts as GetExtraShiftsResponse;
+  return (shifts as any[]).map((s) => ({
+    ...s,
+    employer_id: s.company_id ?? s.employer_id,
+    created_by: s.created_by != null ? toApiCreatedBy(s.created_by) : s.created_by,
+  })) as GetExtraShiftsResponse;
 };
 
 // D. Rate Employee/Employer
@@ -1306,26 +1330,34 @@ export const rateShiftService = async (
    * Employer must own the shift
    */
   if (raterType === ROLES.EMPLOYER) {
-    if (shift.employer_id !== raterId) {
+    if (shift.company_id !== raterId) {
       throw new AppError(403, 'UNAUTHORIZED', 'You do not own this shift.');
     }
   }
 
   /*
-   * Duplicate rating check
+   * Duplicate rating check — unique on (shift_id, from_user_id, to_user_id)
    */
+  let fromUserId = raterId;
+  if (raterType === ROLES.EMPLOYER) {
+    const owner = await prisma.companyMember.findFirst({
+      where: {
+        company_id: raterId,
+        platform_type: PlatformType.EMPLOYER,
+        role: { code: 'OWNER' },
+      },
+    });
+    if (!owner) {
+      throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer owner not found.');
+    }
+    fromUserId = owner.user_id;
+  }
+
   const existingRating = await prisma.rating.findFirst({
     where: {
       shift_id: payload.shift_id,
-      user_id: payload.user_id,
-
-      ...(raterType === ROLES.EMPLOYER
-        ? {
-            employer_id: raterId,
-          }
-        : {
-            user_employer_id: raterId,
-          }),
+      from_user_id: fromUserId,
+      to_user_id: payload.user_id,
     },
   });
 
@@ -1336,12 +1368,9 @@ export const rateShiftService = async (
   const rating = await prisma.rating.create({
     data: {
       shift_id: payload.shift_id,
-      user_id: payload.user_id,
-
-      employer_id: raterType === ROLES.EMPLOYER ? raterId : null,
-
-      user_employer_id: raterType === ROLES.USER ? raterId : null,
-
+      from_user_id: fromUserId,
+      to_user_id: payload.user_id,
+      company_id: raterType === ROLES.EMPLOYER ? raterId : shift.company_id,
       score: payload.score,
       review: payload.review,
       flagged_issue: payload.flagged_issue,
@@ -1417,9 +1446,7 @@ export const getOpenShiftsForEmployeeService = async (
             select: safeUserSelect,
           },
 
-          employer: {
-            select: safeEmployerSelect,
-          },
+          company: companyAsEmployerInclude,
         },
       },
     },
@@ -1427,10 +1454,10 @@ export const getOpenShiftsForEmployeeService = async (
 
   const requestedSpecificShifts = invitedApplications.map((application) => {
     const { shift, ...shiftApp } = application;
-    return {
+    return mapShiftWithCompanyToApi({
       ...shift,
       shiftApplication: shiftApp,
-    };
+    });
   });
 
   /*
@@ -1516,9 +1543,7 @@ export const getOpenShiftsForEmployeeService = async (
               select: safeUserSelect,
             },
 
-            employer: {
-              select: safeEmployerSelect,
-            },
+            company: companyAsEmployerInclude,
 
             shiftApplications: {
               where: {
@@ -1533,11 +1558,13 @@ export const getOpenShiftsForEmployeeService = async (
   /*
     5. Attach notificationId to public shifts
   */
-  const publicShiftsWithNotificationId = publicShifts.map(({ shiftApplications, ...shift }) => ({
-    ...shift,
-    notificationId: notificationMap.get(shift.id) ?? null,
-    shiftApplication: shiftApplications[0] ?? null,
-  }));
+  const publicShiftsWithNotificationId = publicShifts.map(({ shiftApplications, ...shift }) =>
+    mapShiftWithCompanyToApi({
+      ...shift,
+      notificationId: notificationMap.get(shift.id) ?? null,
+      shiftApplication: shiftApplications[0] ?? null,
+    }),
+  );
 
   /*
     6. Merge + remove duplicates
@@ -1625,8 +1652,8 @@ export const getLatestShiftsService = async (
 
       FROM shifts s
 
-      INNER JOIN employers e
-        ON s.employer_id = e.id
+      INNER JOIN companies e
+        ON s.company_id = e.id
 
       WHERE
         s.status = 'open'
@@ -1675,8 +1702,8 @@ export const getLatestShiftsService = async (
       `
       SELECT COUNT(*) as count
       FROM shifts s
-      INNER JOIN employers e
-        ON s.employer_id = e.id
+      INNER JOIN companies e
+        ON s.company_id = e.id
       WHERE
         s.status = 'open'
         AND s.request_accepted = false
@@ -1714,7 +1741,11 @@ export const getLatestShiftsService = async (
   const total = Number(totalResult[0]?.count || 0);
 
   return {
-    shifts: shifts,
+    shifts: (shifts as any[]).map((s) => ({
+      ...s,
+      employer_id: s.company_id ?? s.employer_id,
+      created_by: s.created_by != null ? toApiCreatedBy(s.created_by) : s.created_by,
+    })),
     meta: {
       total,
       page,
@@ -1798,8 +1829,8 @@ export const getBestShiftMatchesService = async (
 
       FROM shifts s
 
-      INNER JOIN employers e
-        ON s.employer_id = e.id
+      INNER JOIN companies e
+        ON s.company_id = e.id
 
       WHERE
         s.status = 'open'
@@ -1851,8 +1882,8 @@ export const getBestShiftMatchesService = async (
       `
       SELECT COUNT(*) as count
       FROM shifts s
-      INNER JOIN employers e
-        ON s.employer_id = e.id
+      INNER JOIN companies e
+        ON s.company_id = e.id
       WHERE
         s.status = 'open'
         AND s.request_accepted = false
@@ -1892,7 +1923,11 @@ export const getBestShiftMatchesService = async (
   const total = Number(totalResult[0]?.count || 0);
 
   return {
-    shifts: shifts ,
+    shifts: (shifts as any[]).map((s) => ({
+      ...s,
+      employer_id: s.company_id ?? s.employer_id,
+      created_by: s.created_by != null ? toApiCreatedBy(s.created_by) : s.created_by,
+    })),
     meta: {
       total,
       page,
@@ -1914,14 +1949,14 @@ export const getEmployerShiftAnalyticsService = async (
     totalApplications,
     pendingApplications,
   ] = await Promise.all([
-    prisma.shift.count({ where: { employer_id: employerId } }),
-    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.open } }),
-    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.approved } }),
-    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.completed } }),
-    prisma.shift.count({ where: { employer_id: employerId, status: ShiftStatus.cancelled } }),
-    prisma.shiftApplication.count({ where: { shift: { employer_id: employerId } } }),
+    prisma.shift.count({ where: { company_id: employerId } }),
+    prisma.shift.count({ where: { company_id: employerId, status: ShiftStatus.open } }),
+    prisma.shift.count({ where: { company_id: employerId, status: ShiftStatus.approved } }),
+    prisma.shift.count({ where: { company_id: employerId, status: ShiftStatus.completed } }),
+    prisma.shift.count({ where: { company_id: employerId, status: ShiftStatus.cancelled } }),
+    prisma.shiftApplication.count({ where: { shift: { company_id: employerId } } }),
     prisma.shiftApplication.count({
-      where: { shift: { employer_id: employerId }, status: ShiftApplicationStatus.pending },
+      where: { shift: { company_id: employerId }, status: ShiftApplicationStatus.pending },
     }),
   ]);
 
@@ -1947,7 +1982,7 @@ export const getPendingShiftsForEmployerService = async (
     status: ShiftApplicationStatus.pending,
     shift: {
       ...(shift_id && { id: shift_id }),
-      employer_id: employerId,
+      company_id: employerId,
       status: ShiftStatus.open,
       organization_approved: false,
       shift_start: {
@@ -1974,9 +2009,7 @@ export const getPendingShiftsForEmployerService = async (
                 phone_no: true,
               },
             },
-            employer: {
-              select: safeEmployerSelect,
-            },
+            company: companyAsEmployerInclude,
           },
         },
       },
@@ -1990,7 +2023,10 @@ export const getPendingShiftsForEmployerService = async (
   ]);
 
   return {
-    pendingApplications,
+    pendingApplications: pendingApplications.map((app) => ({
+      ...app,
+      shift: mapShiftWithCompanyToApi(app.shift),
+    })),
     meta: {
       total,
       page,
@@ -2020,7 +2056,7 @@ export const rejectShiftApplicationService = async (
 
   const shift = shiftApplication.shift;
 
-  if (shift.employer_id !== employerId) {
+  if (shift.company_id !== employerId) {
     throw new AppError(
       403,
       'UNAUTHORIZED',
@@ -2033,7 +2069,7 @@ export const rejectShiftApplicationService = async (
   }
 
   const isEmployeeCreatedPrivateInvite =
-    shift.created_by === ROLES.USER && shiftApplication.type === ShiftApplicationType.invited;
+    shift.created_by === PlatformType.EMPLOYEE && shiftApplication.type === ShiftApplicationType.invited;
 
   const updatedApplication = await prisma.$transaction(async (tx) => {
     const application = await tx.shiftApplication.update({
@@ -2091,9 +2127,7 @@ export const getShiftDetailsService = async (
         replacement_employee: {
           select: safeUserSelect,
         },
-        employer: {
-          select: safeEmployerSelect,
-        },
+        company: companyAsEmployerInclude,
         shiftApplications: {
           include: {
             user: {
@@ -2122,7 +2156,7 @@ export const getShiftDetailsService = async (
   /*
     Employer authorization
   */
-  if (userType === ROLES.EMPLOYER && shift.employer_id !== userId) {
+  if (userType === ROLES.EMPLOYER && shift.company_id !== userId) {
     throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to view this shift.');
   }
 
@@ -2151,7 +2185,7 @@ export const getShiftDetailsService = async (
   }
 
   return {
-    shift,
+    shift: mapShiftWithCompanyToApi(shift),
     meta: {
       total: totalApplications,
       page,
@@ -2172,7 +2206,7 @@ export const approveShiftCompletionService = async (
     throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
   }
 
-  if (shift.employer_id !== employerId) {
+  if (shift.company_id !== employerId) {
     throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
   }
 
@@ -2210,7 +2244,7 @@ export const reportShiftNoShowService = async (
   if (!shift) {
     throw new AppError(404, 'SHIFT_NOT_FOUND', 'Shift not found.');
   }
-  if (shift.employer_id !== employerId) {
+  if (shift.company_id !== employerId) {
     throw new AppError(403, 'UNAUTHORIZED', 'You do not have permission to modify this shift.');
   }
 
@@ -2277,7 +2311,7 @@ export const getPublicShiftsService = async (
     prisma.shift.findMany({
       where: whereClause,
       include: {
-        employer: { select: { company_name: true, company_address: true } },
+        company: { select: { company_name: true, company_address: true } },
       },
       orderBy: { created_at: 'desc' },
       take: limit,
@@ -2286,13 +2320,16 @@ export const getPublicShiftsService = async (
     prisma.shift.count({ where: whereClause }),
   ]);
 
-  const shiftsWithTitle = shifts.map(shift => ({
-    ...shift,
-    seo_title: generateSeoTitle(shift),
-  }));
+  const shiftsWithTitle = shifts.map((shift) => {
+    const mapped = mapShiftWithCompanyToApi(shift);
+    return {
+      ...mapped,
+      seo_title: generateSeoTitle(shift),
+    };
+  });
 
   return {
-    shifts: shiftsWithTitle,
+    shifts: shiftsWithTitle as GetPublicShiftsResponse,
     meta: {
       total,
       page,
@@ -2308,7 +2345,7 @@ export const getPublicShiftDetailsService = async (
   const shift = await prisma.shift.findUnique({
     where: { id, status: ShiftStatus.open, replacement_employee_id: null },
     include: {
-      employer: { select: { company_name: true, company_address: true } },
+      company: { select: { company_name: true, company_address: true } },
     },
   });
 
@@ -2317,9 +2354,9 @@ export const getPublicShiftDetailsService = async (
   }
 
   const shiftWithTitle = {
-    ...shift,
+    ...mapShiftWithCompanyToApi(shift),
     seo_title: generateSeoTitle(shift),
   };
 
-  return shiftWithTitle;
+  return shiftWithTitle as GetPublicShiftDetailsResponse;
 };
