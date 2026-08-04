@@ -16,10 +16,12 @@ export default function FindJobsScreen() {
           <Feather name="briefcase" size={48} color={theme.primary} />
         </View>
         <Typography variant="h2" style={[styles.title, { color: theme.text }]}>
-          Coming Soon!
+          {/* Coming Soon! */}
+          Aniket Here
         </Typography>
         <Typography variant="body" style={[styles.subtitle, { color: theme.textSecondary }]}>
-          We are working hard to bring you the best job finding experience. Stay tuned!
+          {/* We are working hard to bring you the best job finding experience. Stay tuned! */}
+          Hii Its Aniket Working on this screen. Will be live soon. Thanks for your patience.
         </Typography>
       </View>
     </View>
