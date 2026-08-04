@@ -32,6 +32,10 @@ tags:
   - name: Jobs
   - name: Notifications
   - name: Leads
+  - name: Uploads
+    description: |
+      Two APIs only: POST /uploads (multipart file) and POST /uploads/read-url ({ fileKey } → 5-min URL).
+      Save `fileKey` from upload response in your DB.
 
 security:
   - bearerAuth: []
@@ -2565,6 +2569,89 @@ paths:
                       data:
                         $ref: '#/components/schemas/Lead'
 
+  # ---------------------------------------------------------------------------
+  # Uploads (only 2 APIs)
+  # ---------------------------------------------------------------------------
+  /api/v1/uploads:
+    post:
+      tags: [Uploads]
+      summary: Upload a file (choose file in Swagger)
+      description: |
+        Multipart: `type` + `file`. Stored in private S3.
+        Save returned `fileKey` in your DB. Use it later with `/uploads/read-url`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [type, file]
+              properties:
+                type:
+                  type: string
+                  enum: [userProfile, userPrivateDocs, userFiles]
+                  description: userProfile ≤2MB · userPrivateDocs ≤5MB · userFiles ≤25MB
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/UploadAsset'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+
+  /api/v1/uploads/read-url:
+    post:
+      tags: [Uploads]
+      summary: Get 5-minute signed URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fileKey]
+              properties:
+                fileKey:
+                  type: string
+                  example: profiles/user/uuid/2026/08/uuid-avatar.jpg
+      responses:
+        '200':
+          description: Temporary download URL
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          fileKey:
+                            type: string
+                          downloadUrl:
+                            type: string
+                            format: uri
+                          expiresInSeconds:
+                            type: integer
+                            example: 300
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3310,3 +3397,68 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    UploadTypeKey:
+      type: string
+      enum: [userProfile, userPrivateDocs, userFiles]
+
+    UploadTypeConfig:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/UploadTypeKey'
+        label:
+          type: string
+        description:
+          type: string
+        maxSizeBytes:
+          type: integer
+          example: 2097152
+        allowedMimeTypes:
+          type: array
+          items:
+            type: string
+          example: [image/jpeg, image/png, image/webp]
+        allowedExtensions:
+          type: array
+          items:
+            type: string
+          example: [.jpg, .jpeg, .png, .webp]
+        mediaKinds:
+          type: array
+          items:
+            type: string
+            enum: [image, document, audio, video]
+
+    UploadTypesResponse:
+      type: object
+      properties:
+        types:
+          type: array
+          items:
+            $ref: '#/components/schemas/UploadTypeConfig'
+        readUrlTtlSeconds:
+          type: integer
+          example: 300
+        flow:
+          type: array
+          items:
+            type: string
+
+    UploadAsset:
+      type: object
+      properties:
+        fileKey:
+          type: string
+          description: S3 object key — save this in DB; pass to read-url later
+          example: profiles/user/uuid/2026/08/uuid-avatar.jpg
+        fileName:
+          type: string
+          example: avatar.jpg
+        type:
+          $ref: '#/components/schemas/UploadTypeKey'
+        contentType:
+          type: string
+          example: image/jpeg
+        sizeBytes:
+          type: integer

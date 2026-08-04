@@ -1,6 +1,6 @@
 # Local stack: PostGIS + Redis + KBDL backend
 #
-# 1) copy .env.example .env   (set passwords there)
+# 1) create/edit kbdl-turborepo/.env (POSTGRES_*, REDIS_*, JWT_*, S3_*, …)
 # 2) docker compose up --build
 # 3) docker compose run --rm backend seed
 #
@@ -64,6 +64,10 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in .env}
       EMPLOYER_URL: ${EMPLOYER_URL:-http://localhost:3002}
       GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:?Set GEOAPIFY_API_KEY in .env}
+      AWS_REGION: ${AWS_REGION:-eu-north-1}
+      S3_BUCKET: ${S3_BUCKET:-hrms-documents-123456}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY in .env}
       SEED_ON_START: ${SEED_ON_START:-false}
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-kbdl}

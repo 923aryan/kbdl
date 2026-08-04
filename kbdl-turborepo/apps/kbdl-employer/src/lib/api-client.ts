@@ -1,6 +1,12 @@
-// lib/api/api-client.ts
+// lib/api-client.ts
+// Frontend-only env: apps/kbdl-employer/.env
+// Backend secrets: kbdl-turborepo/.env
+// Restart next dev after changing NEXT_PUBLIC_* values.
+
+import { getAccessToken } from './auth-tokens';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// const BASE_URL = 'http://localhost:8000/api/v1';
 
 export type ApiSuccess<T> = {
   success: true;
@@ -22,24 +28,28 @@ export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
 async function http<T>(path: string, config: RequestInit = {}): Promise<ApiSuccess<T>> {
   const url = `${BASE_URL}${path}`;
-  console.log('API CLIENT FILE LOADED');
-  console.log('PATH:', path);
-  console.log('FINAL URL:', url);
-  console.trace();
+  const token = getAccessToken();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(config.headers as Record<string, string> | undefined),
+  };
+
+  // Cookies work for same-site (localhost → localhost).
+  // Bearer works for cross-origin (localhost → remote API IP).
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const requestConfig: RequestInit = {
-    credentials: 'include', // IMPORTANT: send cookies
+    credentials: 'include',
     ...config,
-    headers: {
-      'Content-Type': 'application/json',
-      ...config.headers,
-    },
+    headers,
   };
 
   try {
     const response = await fetch(url, requestConfig);
 
-    // HTTP ERROR
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
 
@@ -53,15 +63,12 @@ async function http<T>(path: string, config: RequestInit = {}): Promise<ApiSucce
       };
 
       const customError = new Error(errorResponse.error.message);
-
       (customError as any).code = errorResponse.error.code;
       (customError as any).details = errorResponse.error.details;
       (customError as any).raw = errorResponse;
-
       throw customError;
     }
 
-    // NO CONTENT
     if (response.status === 204) {
       return {
         success: true,
@@ -70,20 +77,13 @@ async function http<T>(path: string, config: RequestInit = {}): Promise<ApiSucce
       };
     }
 
-    // SUCCESS
-    const data = await response.json();
-
-    return data as ApiSuccess<T>;
+    return (await response.json()) as ApiSuccess<T>;
   } catch (error: any) {
-    // NETWORK ERROR
     if (error instanceof TypeError && error.message.includes('fetch')) {
       const networkError = new Error('Network Error: Unable to connect to server');
-
       (networkError as any).code = 'NETWORK';
-
       throw networkError;
     }
-
     throw error;
   }
 }

@@ -14,13 +14,18 @@
  *   OTP:   123456  (if backend login still hardcodes)
  */
 
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/index.js';
 
+/** Single source of truth: kbdl-turborepo/.env */
+loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env') });
+
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-  console.error('❌ DATABASE_URL is missing');
+  console.error('❌ DATABASE_URL is missing — set it in kbdl-turborepo/.env');
   process.exit(1);
 }
 
@@ -47,6 +52,26 @@ const daysFromNow = (days) => {
 const atHour = (base, hour) => {
   const d = new Date(base);
   d.setUTCHours(hour, 0, 0, 0);
+  return d;
+};
+
+/** Time-of-day for `@db.Time` columns */
+const clockTime = (hour, minute = 0) => {
+  const d = new Date(Date.UTC(1970, 0, 1, hour, minute, 0));
+  return d;
+};
+
+/** Calendar date (UTC) for `@db.Date` columns */
+const calendarDate = (daysOffset = 0) => {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + daysOffset);
+  return d;
+};
+
+const tsOnDate = (date, hour, minute = 0) => {
+  const d = new Date(date);
+  d.setUTCHours(hour, minute, 0, 0);
   return d;
 };
 
@@ -126,6 +151,304 @@ async function ensureRoles(companyId) {
   return byCode;
 }
 
+async function seedCompanySettings(companyId, { gst, verified }) {
+  await prisma.payrollSettings.create({
+    data: {
+      company_id: companyId,
+      pay_frequency: 'monthly',
+      pay_day: 'last_working_day',
+      payroll_cutoff_day: 28,
+      financial_year_start: 'april',
+      lock_after_processing: true,
+    },
+  });
+
+  await prisma.statutorySettings.create({
+    data: {
+      company_id: companyId,
+      employee_pf_rate: 12.0,
+      employer_pf_rate: 12.0,
+      employee_esic_rate: 0.75,
+      employer_esic_rate: 3.25,
+      professional_tax: 200.0,
+      labour_welfare_fund: 6.0,
+    },
+  });
+
+  await prisma.paymentSettings.create({
+    data: {
+      company_id: companyId,
+      default_disbursement_method: 'NEFT',
+      allow_bank_transfer: true,
+      allow_upi: true,
+      allow_cash: true,
+    },
+  });
+
+  // 6-day week (Sun off), 8h/day
+  await prisma.companyWorkSchedule.create({
+    data: {
+      company_id: companyId,
+      monday_working: true,
+      tuesday_working: true,
+      wednesday_working: true,
+      thursday_working: true,
+      friday_working: true,
+      saturday_working: true,
+      sunday_working: false,
+      daily_work_hours: 8.0,
+      weekly_work_hours: 48.0,
+      half_day_percentage: 50.0,
+      absent_deduction_type: 'per_day_rate',
+    },
+  });
+
+  await prisma.overtimeSettings.create({
+    data: {
+      company_id: companyId,
+      enabled: true,
+      ot_after_hours_per_day: 8.0,
+      ot_after_hours_per_week: 48.0,
+      rate_multiplier: 2.0,
+      max_ot_hours_per_day: 4.0,
+      include_holiday_ot: true,
+      include_weekoff_ot: true,
+      approval_required: true,
+      auto_calculate_ot: true,
+    },
+  });
+
+  // Enrich company compliance fields (Settings → Company Details)
+  if (verified || gst) {
+    await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        pan: gst ? 'AABCT1234E' : null,
+        state: 'Chandigarh',
+        epf_registration_no: verified ? 'MH/MUM/123456' : null,
+        esic_code: verified ? '51-000-1234567-000' : null,
+      },
+    });
+  }
+}
+
+/** HR shift templates per company (not marketplace shifts) */
+async function seedWorkShifts(companyId) {
+  const general = await prisma.workShift.create({
+    data: {
+      company_id: companyId,
+      name: 'General',
+      start_time: clockTime(9, 0),
+      end_time: clockTime(18, 0),
+      break_minutes: 60,
+      sort_order: 10,
+    },
+  });
+  const morning = await prisma.workShift.create({
+    data: {
+      company_id: companyId,
+      name: 'Morning',
+      start_time: clockTime(6, 0),
+      end_time: clockTime(14, 0),
+      break_minutes: 30,
+      sort_order: 20,
+    },
+  });
+  const evening = await prisma.workShift.create({
+    data: {
+      company_id: companyId,
+      name: 'Evening',
+      start_time: clockTime(14, 0),
+      end_time: clockTime(22, 0),
+      break_minutes: 30,
+      sort_order: 30,
+    },
+  });
+  const night = await prisma.workShift.create({
+    data: {
+      company_id: companyId,
+      name: 'Night',
+      start_time: clockTime(22, 0),
+      end_time: clockTime(6, 0),
+      break_minutes: 30,
+      sort_order: 40,
+    },
+  });
+  return { general, morning, evening, night };
+}
+
+async function seedCompanyHolidays(companyId) {
+  const year = new Date().getUTCFullYear();
+  const holidays = [
+    { date: new Date(Date.UTC(year, 0, 26)), name: 'Republic Day' },
+    { date: new Date(Date.UTC(year, 7, 15)), name: 'Independence Day' },
+    { date: new Date(Date.UTC(year, 9, 2)), name: 'Gandhi Jayanti' },
+    { date: new Date(Date.UTC(year, 11, 25)), name: 'Christmas' },
+  ];
+  for (const h of holidays) {
+    await prisma.companyHoliday.create({
+      data: {
+        company_id: companyId,
+        date: h.date,
+        name: h.name,
+        is_optional: false,
+      },
+    });
+  }
+}
+
+/**
+ * Assign work shifts + ~14 days attendance for primary company members.
+ */
+async function seedAttendanceForCompany({
+  companyId,
+  workShifts,
+  members,
+  markedByMemberId,
+}) {
+  const from = calendarDate(-60);
+  const assignments = [];
+
+  for (let i = 0; i < members.length; i++) {
+    const shift =
+      i % 4 === 0
+        ? workShifts.general
+        : i % 4 === 1
+          ? workShifts.morning
+          : i % 4 === 2
+            ? workShifts.evening
+            : workShifts.night;
+
+    assignments.push(
+      await prisma.employeeShift.create({
+        data: {
+          company_id: companyId,
+          company_member_id: members[i].id,
+          work_shift_id: shift.id,
+          effective_from: from,
+          effective_to: null,
+        },
+      }),
+    );
+  }
+
+  const attendanceRows = [];
+  for (let dayOffset = -13; dayOffset <= 0; dayOffset++) {
+    const date = calendarDate(dayOffset);
+    const dow = date.getUTCDay(); // 0 = Sun
+
+    for (let mi = 0; mi < members.length; mi++) {
+      const member = members[mi];
+      const shift =
+        mi % 4 === 0
+          ? workShifts.general
+          : mi % 4 === 1
+            ? workShifts.morning
+            : mi % 4 === 2
+              ? workShifts.evening
+              : workShifts.night;
+
+      if (dow === 0) {
+        attendanceRows.push({
+          company_id: companyId,
+          company_member_id: member.id,
+          work_shift_id: shift.id,
+          date,
+          check_in: null,
+          check_out: null,
+          worked_minutes: 0,
+          ot_minutes: 0,
+          status: 'week_off',
+          source: 'system',
+          marked_by_company_member_id: null,
+          notes: null,
+        });
+        continue;
+      }
+
+      // Vary: some absents, half-days, OT days
+      const pattern = (mi + Math.abs(dayOffset)) % 7;
+      if (pattern === 0) {
+        attendanceRows.push({
+          company_id: companyId,
+          company_member_id: member.id,
+          work_shift_id: shift.id,
+          date,
+          check_in: null,
+          check_out: null,
+          worked_minutes: 0,
+          ot_minutes: 0,
+          status: 'absent',
+          source: 'hr_manual',
+          marked_by_company_member_id: markedByMemberId,
+          notes: 'Marked absent by HR',
+        });
+        continue;
+      }
+      if (pattern === 1) {
+        attendanceRows.push({
+          company_id: companyId,
+          company_member_id: member.id,
+          work_shift_id: shift.id,
+          date,
+          check_in: tsOnDate(date, 9, 5),
+          check_out: tsOnDate(date, 13, 0),
+          worked_minutes: 235,
+          ot_minutes: 0,
+          status: 'half_day',
+          source: 'hr_manual',
+          marked_by_company_member_id: markedByMemberId,
+          notes: null,
+        });
+        continue;
+      }
+      if (pattern === 2) {
+        // Full day + OT (09:00–21:00 → 11h − 1h break = 10h → 2h OT)
+        attendanceRows.push({
+          company_id: companyId,
+          company_member_id: member.id,
+          work_shift_id: workShifts.general.id,
+          date,
+          check_in: tsOnDate(date, 9, 0),
+          check_out: tsOnDate(date, 21, 0),
+          worked_minutes: 600,
+          ot_minutes: 120,
+          status: 'present',
+          source: 'hr_manual',
+          marked_by_company_member_id: markedByMemberId,
+          notes: 'OT approved',
+        });
+        continue;
+      }
+
+      attendanceRows.push({
+        company_id: companyId,
+        company_member_id: member.id,
+        work_shift_id: shift.id,
+        date,
+        check_in: tsOnDate(date, 9, 0),
+        check_out: tsOnDate(date, 18, 0),
+        worked_minutes: 480,
+        ot_minutes: 0,
+        status: 'present',
+        source: 'hr_manual',
+        marked_by_company_member_id: markedByMemberId,
+        notes: null,
+      });
+    }
+  }
+
+  // createMany in chunks
+  const chunk = 100;
+  for (let i = 0; i < attendanceRows.length; i += chunk) {
+    await prisma.attendance.createMany({
+      data: attendanceRows.slice(i, i + chunk),
+    });
+  }
+
+  return { assignmentCount: assignments.length, attendanceCount: attendanceRows.length };
+}
+
 async function clearAll() {
   await prisma.rating.deleteMany();
   await prisma.shiftApplication.deleteMany();
@@ -141,6 +464,10 @@ async function clearAll() {
   await prisma.employeeEmployment.deleteMany();
   await prisma.shift.deleteMany();
   await prisma.job.deleteMany();
+  await prisma.attendance.deleteMany();
+  await prisma.employeeShift.deleteMany();
+  await prisma.workShift.deleteMany();
+  await prisma.companyHoliday.deleteMany();
   await prisma.team.updateMany({ data: { lead_company_member_id: null } });
   await prisma.companyMember.updateMany({
     data: { manager_company_member_id: null, team_id: null, department_id: null },
@@ -149,6 +476,11 @@ async function clearAll() {
   await prisma.department.deleteMany();
   await prisma.companyMember.deleteMany();
   await prisma.companyRole.deleteMany();
+  await prisma.payrollSettings.deleteMany();
+  await prisma.statutorySettings.deleteMany();
+  await prisma.paymentSettings.deleteMany();
+  await prisma.companyWorkSchedule.deleteMany();
+  await prisma.overtimeSettings.deleteMany();
   await prisma.company.deleteMany();
   await prisma.lead.deleteMany();
   await prisma.admin.deleteMany();
@@ -348,7 +680,11 @@ async function main() {
       },
     });
 
-    companies.push({ company, owner, roleIds, eng, ops, hr, ownerMember });
+    await seedCompanySettings(company.id, { gst: def.gst, verified: def.verified });
+    const workShifts = await seedWorkShifts(company.id);
+    await seedCompanyHolidays(company.id);
+
+    companies.push({ company, owner, roleIds, eng, ops, hr, ownerMember, workShifts });
     owners.push(owner);
   }
 
@@ -438,6 +774,14 @@ async function main() {
       employment_status: 'active',
       joined_at: daysFromNow(-200),
     },
+  });
+
+  // HR attendance + OT sample data (primary company field staff)
+  await seedAttendanceForCompany({
+    companyId: primary.company.id,
+    workShifts: primary.workShifts,
+    members: [managerMember, ...employeeMembers],
+    markedByMemberId: primary.ownerMember.id,
   });
 
   // Office staff on primary — every system role used via role_id (not strings)
@@ -866,6 +1210,15 @@ async function main() {
   const appCount = await prisma.shiftApplication.count();
   const memberCount = await prisma.companyMember.count();
   const deptCount = await prisma.department.count();
+  const payrollSettingsCount = await prisma.payrollSettings.count();
+  const statutorySettingsCount = await prisma.statutorySettings.count();
+  const paymentSettingsCount = await prisma.paymentSettings.count();
+  const workScheduleCount = await prisma.companyWorkSchedule.count();
+  const overtimeSettingsCount = await prisma.overtimeSettings.count();
+  const workShiftCount = await prisma.workShift.count();
+  const employeeShiftCount = await prisma.employeeShift.count();
+  const attendanceCount = await prisma.attendance.count();
+  const holidayCount = await prisma.companyHoliday.count();
 
   console.log('');
   console.log('✅ Seed complete');
@@ -874,9 +1227,18 @@ async function main() {
   console.log(`Departments          : ${deptCount}  (per-company)`);
   console.log(`Company roles        : ${roleCount}  (8 system + 3 custom × companies)`);
   console.log(`Company members      : ${memberCount}  (all via role_id)`);
+  console.log(`Payroll settings     : ${payrollSettingsCount}`);
+  console.log(`Statutory settings   : ${statutorySettingsCount}`);
+  console.log(`Payment settings     : ${paymentSettingsCount}`);
+  console.log(`Work schedules       : ${workScheduleCount}`);
+  console.log(`Overtime settings    : ${overtimeSettingsCount}`);
+  console.log(`Work shifts (HR)     : ${workShiftCount}`);
+  console.log(`Employee shifts      : ${employeeShiftCount}`);
+  console.log(`Attendances          : ${attendanceCount}`);
+  console.log(`Company holidays     : ${holidayCount}`);
   console.log(`Workers              : ${workers.length}`);
   console.log(`Jobs                 : ${jobs.length}`);
-  console.log(`Shifts               : ${shiftCount}`);
+  console.log(`Marketplace shifts   : ${shiftCount}`);
   console.log(`Shift applications   : ${appCount}`);
   console.log('Employer login email : employer@kbdl.dev');
   console.log('Employer phone       : +919876543210');
@@ -885,6 +1247,7 @@ async function main() {
   console.log('────────────────────────────────────────');
   console.log('Departments & roles are per-company catalogs.');
   console.log('Members store role_id only — rename CompanyRole.name without rewriting members.');
+  console.log('HR: work_shifts ≠ marketplace shifts. Attendance keyed by company_member_id + date.');
 }
 
 main()

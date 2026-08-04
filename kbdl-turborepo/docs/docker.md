@@ -9,15 +9,13 @@ Employer / admin / landing frontends stay on your machine and call `http://local
   (`docker` must work in PowerShell — restart the terminal after install)
 - Ports free: **5432**, **6379**, **8000** (or change them in `.env`)
 
-## Passwords live in `.env`
+## Env: `kbdl-turborepo/.env` (backend only)
 
-Compose does **not** hardcode secrets. It reads `kbdl-turborepo/.env`.
+Compose, local backend (`pnpm dev:backend`), and Prisma (`pnpm db:push` / `db:seed`) use this file.  
+Employer UI uses `apps/kbdl-employer/.env` separately.  
+Do not create `apps/kbdl-backend/.env` or `packages/db/.env`.
 
-```powershell
-cd kbdl-turborepo
-copy .env.example .env
-# edit .env — set POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_*, etc.
-```
+Create/edit `kbdl-turborepo/.env` with at least: `POSTGRES_*`, `REDIS_*`, `DATABASE_URL`, `REDIS_URL`, `JWT_*`, `RESEND_API_KEY`, `GEOAPIFY_API_KEY`, `S3_*`, `PORT`, `EMPLOYER_URL`.
 
 | Variable | Used for |
 |----------|----------|
@@ -68,7 +66,7 @@ User:     POSTGRES_USER
 Password: POSTGRES_PASSWORD
 ```
 
-Example if you kept `.env.example` defaults:
+Example with typical local defaults:
 
 ```text
 postgresql://kbdl:kbdl@localhost:5432/kbdl?schema=public
@@ -107,14 +105,14 @@ docker compose down -v       # wipe Postgres + Redis volumes
 docker compose up postgres redis -d
 ```
 
-Then point `apps/kbdl-backend/.env` / `packages/db/.env` at:
+Then set (in `kbdl-turborepo/.env` only):
 
 ```env
 DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/DB?schema=public
 REDIS_URL=redis://:REDIS_PASSWORD@localhost:6379
 ```
 
-(use the same values as in `kbdl-turborepo/.env`)
+Backend and Prisma both read that single file — no `apps/kbdl-backend/.env` or `packages/db/.env`.
 
 ## Useful commands
 

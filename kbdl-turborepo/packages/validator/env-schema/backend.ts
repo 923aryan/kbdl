@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { dbEnvSchema } from './db';
+import { loadMonorepoEnv } from './load-monorepo-env';
+
+loadMonorepoEnv();
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
@@ -19,12 +23,18 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1),
   EMPLOYER_URL: z.string().min(1),
   GEOAPIFY_API_KEY: z.string().min(1),
+
+  /** Private S3 uploads */
+  AWS_REGION: z.string().min(1),
+  S3_BUCKET: z.string().min(1),
+  S3_ACCESS_KEY_ID: z.string().min(1),
+  S3_SECRET_ACCESS_KEY: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error('❌ Invalid environment variables:');
+  console.error('❌ Invalid environment variables (expected in kbdl-turborepo/.env):');
   console.error(JSON.stringify(z.treeifyError(parsed.error), null, 2));
   process.exit(1);
 }
