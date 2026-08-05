@@ -1,30 +1,34 @@
-// src/features/auth/store/auth.store.ts
-
 'use client';
 
 import { GetCurrentEmployerProfileResponse } from '@repo/types';
 import { create } from 'zustand';
 import { api } from '../../../lib/api-client';
+import { clearAuthTokens, setAuthTokens } from '../../../lib/auth-tokens';
 import { EmployerDTO } from '../types/employer';
+
 type AuthState = {
   employer: EmployerDTO | null;
   isHydrated: boolean;
 
-  setAuth: (employer: EmployerDTO) => void;
+  setAuth: (employer: EmployerDTO, tokens?: { accessToken: string; refreshToken: string }) => void;
   logout: () => void;
   hydrateAuth: () => Promise<void>;
 };
 
 export const useAuthStore = create<AuthState>((set) => ({
   employer: null,
-  isHydrated: false, // <-- Initial state
+  isHydrated: false,
 
-  setAuth: (employer) => {
+  setAuth: (employer, tokens) => {
+    if (tokens?.accessToken && tokens?.refreshToken) {
+      setAuthTokens(tokens.accessToken, tokens.refreshToken);
+    }
     localStorage.setItem('employer', JSON.stringify(employer));
     set({ employer });
   },
 
   logout: () => {
+    clearAuthTokens();
     localStorage.removeItem('employer');
     set({ employer: null });
   },
@@ -35,15 +39,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await api.get<GetCurrentEmployerProfileResponse>('/profile/employers/me');
       const employerData = response.data;
-      console.log('data is ', employerData);
       set({
         employer: employerData || null,
-        isHydrated: true, // <-- Mark as done
+        isHydrated: true,
       });
-      console.log('in src/features/auth/store/auth.store.ts, its hydrated');
-    } catch (error) {
-      console.error('Failed to fetch employer profile', error);
-      set({ employer: null, isHydrated: true }); // <-- Mark as done even on error
+    } catch {
+      clearAuthTokens();
+      localStorage.removeItem('employer');
+      set({ employer: null, isHydrated: true });
     }
   },
 }));

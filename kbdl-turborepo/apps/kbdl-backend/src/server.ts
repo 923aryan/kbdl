@@ -2,7 +2,6 @@ import { prisma } from '@repo/db/server';
 import { env } from '@repo/validator/server';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import http from 'http';
@@ -19,6 +18,7 @@ import notificationRouter from './notifications/notification-routes';
 import operationsRouter from './operations/operation-routes';
 import profileRouter from './profile/profile-routes';
 import shiftSwapRouter from './shift-swap/shift-swap-routes';
+import uploadRouter from './uploads/upload-routes';
 import { errorHandler } from './utils/send-error';
 import { sendSuccess } from './utils/send-success';
 
@@ -79,6 +79,7 @@ app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/profile', profileRouter);
 app.use('/api/v1/operations', operationsRouter);
 app.use('/api/v1/jobs', jobRouter);
+app.use('/api/v1/uploads', uploadRouter);
 app.get('/health', (_req: Request, res: Response) => {
   sendSuccess<null>(res, 'Server is running', null, 200);
 });
