@@ -7,7 +7,7 @@ import { parse as parseYaml } from 'yaml';
 const openApiPath = path.resolve(process.cwd(), 'docs/openapi.yaml');
 const openApiDocument = parseYaml(readFileSync(openApiPath, 'utf8'));
 
-const swaggerRouter = Router();
+const swaggerRouter: Router = Router();
 
 swaggerRouter.use('/', swaggerUi.serve);
 swaggerRouter.get(

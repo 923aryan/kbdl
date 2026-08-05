@@ -133,6 +133,14 @@ enum EmploymentStatus {
   @@map("employment_status")
 }
 
+enum OnboardingStage {
+  draft
+  onboard
+  probation
+
+  @@map("onboarding_stage")
+}
+
 enum AttendanceStatus {
   present
   absent
@@ -269,6 +277,7 @@ model Company {
 
   // Relations
   departments   Department[]
+  designations  CompanyDesignation[]
   roles         CompanyRole[]
   members       CompanyMember[]
   jobs          Job[]
@@ -582,6 +591,28 @@ model Department {
   @@index([company_id])
   @@index([parent_department_id])
   @@map("departments")
+}
+
+/// Job-title catalog per company (NOT RBAC — that is CompanyRole).
+model CompanyDesignation {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  name        String  @db.VarChar
+  description String? @db.Text
+  is_active   Boolean @default(true)
+  sort_order  Int     @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company     Company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  hr_profiles EmployeeHrProfile[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@map("company_designations")
 }
 
 model Team {
@@ -963,11 +994,71 @@ model EmployeeEmployment {
 
   company  Company @relation(fields: [company_id], references: [id])
   employee User    @relation(fields: [employee_id], references: [id])
+  hr_profile EmployeeHrProfile?
 
   @@unique([company_id, employee_id])
   @@index([company_id])
   @@index([employee_id])
   @@map("employee_employments")
+}
+
+/// Employer HR onboard / profile fields for an employment row.
+/// Document fields store https URLs (no multipart on create API).
+model EmployeeHrProfile {
+  id String @id @default(uuid()) @db.Uuid
+
+  employment_id String @unique @db.Uuid
+
+  onboarding_stage OnboardingStage @default(onboard)
+
+  // Personal
+  full_name                   String  @db.VarChar
+  email                       String? @db.VarChar
+  date_of_birth               DateTime? @db.Date
+  gender                      String? @db.VarChar
+  address                     String? @db.Text
+  blood_group                 String? @db.VarChar
+  emergency_contact_name      String? @db.VarChar
+  emergency_contact_relation  String? @db.VarChar
+  emergency_contact_phone     String? @db.VarChar
+
+  // Job / work — department / manager / shift live on CompanyMember + EmployeeShift (no name snapshots)
+  designation_id           String?  @db.Uuid
+  branch_location          String?  @db.VarChar
+  employee_type            String?  @db.VarChar
+  work_location            String?  @db.VarChar
+  skill_trade              String?  @db.VarChar
+  experience_years         Decimal? @db.Decimal(5, 2)
+  certification_licenses   String?  @db.Text
+  safety_training_completed Boolean?
+
+  // Payment / salary
+  payment_method             String?  @db.VarChar
+  payment_details            Json?
+  basic_salary               Decimal? @db.Decimal(12, 2)
+  salary_type                String?  @db.VarChar
+  salary_payment_frequency   String?  @db.VarChar
+  overtime_eligible          Boolean?
+  pf_applicable              Boolean?
+  esi_applicable             Boolean?
+
+  // Identity — document links only (URLs)
+  aadhaar_number           String? @db.VarChar
+  pan_number               String? @db.VarChar
+  driving_license_number   String? @db.VarChar
+  identity_document_url    String? @db.Text
+  additional_document_url  String? @db.Text
+
+  notes String? @db.Text
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  employment  EmployeeEmployment  @relation(fields: [employment_id], references: [id], onDelete: Cascade)
+  designation CompanyDesignation? @relation(fields: [designation_id], references: [id], onDelete: SetNull)
+
+  @@index([designation_id])
+  @@map("employee_hr_profiles")
 }
 
 // ---------------------------------------------------------------------------

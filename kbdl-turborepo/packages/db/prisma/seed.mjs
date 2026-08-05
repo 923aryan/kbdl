@@ -232,6 +232,34 @@ async function seedCompanySettings(companyId, { gst, verified }) {
   }
 }
 
+const DEFAULT_DESIGNATIONS = [
+  'Electrician',
+  'Helper',
+  'Machine Operator',
+  'Operator',
+  'Assembly Worker',
+  'Production worker',
+  'Senior Technician',
+  'Supervisor',
+];
+
+/** Job-title catalog per company (not RBAC CompanyRole) */
+async function seedDesignations(companyId) {
+  const rows = [];
+  for (let i = 0; i < DEFAULT_DESIGNATIONS.length; i++) {
+    const row = await prisma.companyDesignation.create({
+      data: {
+        company_id: companyId,
+        name: DEFAULT_DESIGNATIONS[i],
+        sort_order: (i + 1) * 10,
+        is_active: true,
+      },
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
 /** HR shift templates per company (not marketplace shifts) */
 async function seedWorkShifts(companyId) {
   const general = await prisma.workShift.create({
@@ -461,6 +489,7 @@ async function clearAll() {
   await prisma.order.deleteMany();
   await prisma.subscriptions.deleteMany();
   await prisma.subscriptionPlan.deleteMany();
+  await prisma.employeeHrProfile.deleteMany().catch(() => {});
   await prisma.employeeEmployment.deleteMany();
   await prisma.shift.deleteMany();
   await prisma.job.deleteMany();
@@ -468,6 +497,7 @@ async function clearAll() {
   await prisma.employeeShift.deleteMany();
   await prisma.workShift.deleteMany();
   await prisma.companyHoliday.deleteMany();
+  await prisma.companyDesignation.deleteMany().catch(() => {});
   await prisma.team.updateMany({ data: { lead_company_member_id: null } });
   await prisma.companyMember.updateMany({
     data: { manager_company_member_id: null, team_id: null, department_id: null },
@@ -681,10 +711,21 @@ async function main() {
     });
 
     await seedCompanySettings(company.id, { gst: def.gst, verified: def.verified });
+    const designations = await seedDesignations(company.id);
     const workShifts = await seedWorkShifts(company.id);
     await seedCompanyHolidays(company.id);
 
-    companies.push({ company, owner, roleIds, eng, ops, hr, ownerMember, workShifts });
+    companies.push({
+      company,
+      owner,
+      roleIds,
+      eng,
+      ops,
+      hr,
+      ownerMember,
+      designations,
+      workShifts,
+    });
     owners.push(owner);
   }
 
