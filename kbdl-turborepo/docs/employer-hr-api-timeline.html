@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KBDL Employer HR Backend Delivery Plan</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+    <style>
+      :root {
+        --bg: #f4f6f8;
+        --card: #ffffff;
+        --text: #1a1d21;
+        --muted: #5c6570;
+        --border: #e2e8f0;
+        --accent: #1d4ed8;
+        --accent-soft: #eff6ff;
+        --warn: #9a3412;
+        --warn-bg: #fff7ed;
+        --ok: #166534;
+        --ok-bg: #f0fdf4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        background: var(--bg);
+        line-height: 1.55;
+      }
+
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.85rem 1.25rem;
+        background: rgba(255, 255, 255, 0.95);
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(8px);
+      }
+
+      .toolbar h1 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+      }
+
+      .toolbar .actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 0.65rem 1rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      button.primary:hover {
+        background: #1e40af;
+      }
+
+      button.secondary {
+        background: #e2e8f0;
+        color: var(--text);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      #report {
+        max-width: 920px;
+        margin: 1.25rem auto 3rem;
+        padding: 2rem 2.25rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+      }
+
+      .hero {
+        border-bottom: 2px solid var(--accent);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .hero h2 {
+        margin: 0 0 0.35rem;
+        font-size: 1.65rem;
+        letter-spacing: -0.02em;
+      }
+
+      .hero .meta {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .callout {
+        background: var(--warn-bg);
+        border: 1px solid #fed7aa;
+        border-left: 4px solid #ea580c;
+        padding: 0.9rem 1rem;
+        border-radius: 8px;
+        margin: 1rem 0 1.5rem;
+        color: var(--warn);
+        font-size: 0.95rem;
+      }
+
+      .ok-callout {
+        background: var(--ok-bg);
+        border: 1px solid #bbf7d0;
+        border-left: 4px solid #16a34a;
+        color: var(--ok);
+      }
+
+      h3 {
+        margin: 1.75rem 0 0.65rem;
+        font-size: 1.2rem;
+        color: #0f172a;
+      }
+
+      h4 {
+        margin: 1.25rem 0 0.5rem;
+        font-size: 1.05rem;
+      }
+
+      p,
+      li {
+        font-size: 0.95rem;
+      }
+
+      ul {
+        padding-left: 1.25rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.75rem 0 1.25rem;
+        font-size: 0.88rem;
+      }
+
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 0.55rem 0.65rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: var(--accent-soft);
+        color: #1e3a8a;
+        font-weight: 700;
+      }
+
+      tr:nth-child(even) td {
+        background: #fafbfc;
+      }
+
+      code {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 0.84em;
+        background: #f1f5f9;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+
+      .phase {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem 1.15rem;
+        margin: 1.25rem 0;
+        background: #fcfcfd;
+        page-break-inside: avoid;
+      }
+
+      .phase.heavy {
+        border-color: #fdba74;
+        background: linear-gradient(180deg, #fff7ed 0%, #ffffff 40%);
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        margin-right: 0.35rem;
+      }
+
+      .badge.hot {
+        background: #ffedd5;
+        color: #c2410c;
+      }
+
+      .footer-note {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      @media print {
+        .toolbar {
+          display: none !important;
+        }
+
+        body {
+          background: #fff;
+        }
+
+        #report {
+          margin: 0;
+          padding: 0;
+          border: none;
+          box-shadow: none;
+          max-width: none;
+        }
+
+        .phase {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <h1>KBDL · Employer HR Backend Plan</h1>
+      <div class="actions">
+        <button type="button" class="secondary" onclick="window.print()">Print / Save as PDF</button>
+        <button type="button" class="primary" id="downloadPdfBtn" onclick="downloadPdf()">
+          Download PDF
+        </button>
+      </div>
+    </div>
+
+    <main id="report">
+      <header class="hero">
+        <h2>Employer HR Backend Delivery Plan</h2>
+        <p class="meta">
+          <strong>Audience:</strong> Manager / stakeholders<br />
+          <strong>Scope:</strong> KBDL Employer — Employees, Attendance / OT, Payroll, Leave<br />
+          <strong>Context:</strong> UI already exists (mostly static/mock). Backend must deliver data models,
+          business rules, secure APIs, and FE contracts.
+        </p>
+      </header>
+
+   
+
+      <h3>Estimate</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Calendar effort</th>
+            <th>Why it is heavy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Employees (list + onboard)</td>
+            <td><strong>5 working days</strong></td>
+            <td>Multi-table writes, draft/submit, meta dropdowns, filters</td>
+          </tr>
+          <tr>
+            <td>Employee profile (6 tabs)</td>
+            <td><strong>5 working days</strong></td>
+            <td>Nested profile, docs upload, attendance, payment history</td>
+          </tr>
+          <tr>
+            <td><strong>Payroll core</strong></td>
+            <td><strong>10 working days</strong></td>
+            <td>Multi-stage workflow, wage/deduction engine, disbursement, payslips</td>
+          </tr>
+          <tr>
+            <td>Leave + settings + harden</td>
+            <td><strong>5 working days</strong></td>
+            <td>Approval workflow + policy + polish</td>
+          </tr>
+          <tr>
+            <td><strong>Total</strong></td>
+            <td><strong>~25 working days (~5 weeks)</strong></td>
+            <td>Parallel FE integration from week 1</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Why “just APIs” is misleading</h3>
+      <p>For every screen, backend work includes:</p>
+      <ol>
+        <li>
+          <strong>Domain / DB design</strong> — new tables or extensions aligned to Company / CompanyMember /
+          Department / roles
+        </li>
+        <li>
+          <strong>Authorization</strong> — every call scoped to employer <code>company_id</code>; role checks
+          (OWNER/ADMIN/HR/FINANCE)
+        </li>
+        <li>
+          <strong>Validation &amp; contracts</strong> — Zod/OpenAPI request-response; FE contract freeze meetings
+        </li>
+        <li>
+          <strong>Business rules</strong> — status machines; payroll stage locks; leave balance math
+        </li>
+        <li>
+          <strong>Transactions &amp; consistency</strong> — onboard atomic writes; no double-disburse
+        </li>
+        <li>
+          <strong>Integrations</strong> — file storage for documents/payslips; optional notify on send
+        </li>
+        <li>
+          <strong>Seed + migration</strong> — demo data matching UI for FE integration
+        </li>
+        <li>
+          <strong>Testing &amp; docs</strong> — edge cases; Swagger; Postman; FE handoff
+        </li>
+      </ol>
+
+      <h3>Current frontend audit (effort driver)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Screens (already built in UI)</th>
+            <th>Backend today</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Employees</strong></td>
+            <td>List, Details (6 tabs), Add Onboard</td>
+            <td>Only thin onboard API (phone/karigari/employee_no)</td>
+          </tr>
+          <tr>
+            <td><strong>Attendance / OT</strong></td>
+            <td>Employee Attendance tab; payroll Run stage 1; dashboard shift labels</td>
+            <td>
+              Schema + seed ready (<code>attendances</code>, work schedule, OT, <code>work_shifts</code>) —
+              <strong>APIs not yet</strong>
+            </td>
+          </tr>
+          <tr>
+            <td><strong>Payroll</strong></td>
+            <td>4-step Run Payroll, Worker Wages, Payslips, Statutory, Settings</td>
+            <td><strong>Zero</strong> APIs — 100% mock</td>
+          </tr>
+          <tr>
+            <td><strong>Leave</strong></td>
+            <td>Nav Apply / Requests (pages not built); Leave tab in details</td>
+            <td><strong>Zero</strong> APIs</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="phase">
+        <h3>
+          <span class="badge">Phase A</span> Week 1 (5 days): Employee directory + onboarding
+        </h3>
+        <p><strong>Goal:</strong> Replace employee list mock + make “Add New Onboard” production-capable.</p>
+        <h4>Day-by-day backend work</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Work package (not just “one API”)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>D1</strong></td>
+              <td>
+                Map UI list columns → DB (User, CompanyMember, EmployeeEmployment, ratings). Design list DTO.
+                Company-scoped query plan + indexes. Auth middleware path for employer.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D2</strong></td>
+              <td>
+                Implement <code>GET .../employees</code> with search, multi designation, multi status, pagination,
+                sort. Empty/error states. Tests for filters.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D3</strong></td>
+              <td>
+                Meta APIs for dropdowns: designations, departments, branches, supervisors,
+                <code>work_shifts</code> (HR templates — not marketplace shifts). Align with CompanyRole /
+                Department catalogs.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D4</strong></td>
+              <td>
+                Expand onboard domain: draft vs submit; field mapping for personal + job + payment + identity +
+                salary; unique employee_no / phone; status Onboard / Probation.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D5</strong></td>
+              <td>
+                Transactional <code>POST .../onboard</code>. OpenAPI + seed 20–50 employees. FE contract review.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <h4>APIs delivered</h4>
+        <ul>
+          <li><code>GET /api/v1/operations/employer/employees</code></li>
+          <li>
+            <code>GET /api/v1/operations/employer/meta/designations|departments|branches|supervisors|shifts</code>
+          </li>
+          <li><code>POST /api/v1/operations/employer/onboard</code> (full body, draft/submit)</li>
+        </ul>
+        <h4>Exit criteria</h4>
+        <ul>
+          <li>List + filters work against real DB</li>
+          <li>Onboard form creates a real employee end-to-end</li>
+          <li>Swagger + Postman handed to FE</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h3>
+          <span class="badge">Phase B</span> Week 2 (5 days): Employee profile (all detail tabs)
+        </h3>
+        <p>
+          <strong>Goal:</strong> Eye icon → full profile from API; edit/save; docs; attendance MVP; payment
+          history.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Work package</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>D1</strong></td>
+              <td>
+                Aggregate profile read model. <code>GET .../employees/:id</code>. Handle missing optional
+                sections.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D2</strong></td>
+              <td>
+                Section-wise PATCH, concurrency, field-level permissions.
+                <code>PATCH .../employees/:id</code>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D3</strong></td>
+              <td>
+                Documents table + upload (multipart / signed URL). Validation.
+                <code>GET/POST .../documents</code>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D4</strong></td>
+              <td>
+                Attendance MVP on <code>attendances</code>: month grid (P/A/L/H/OF / week_off),
+                check-in/out + worked/OT minutes; HR mark/edit;
+                <code>GET/PUT .../employees/:id/attendance</code>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D5</strong></td>
+              <td>
+                Payment history API; payslip stub; OpenAPI; seed rich profiles; FE tab wiring support
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <h4>Exit criteria</h4>
+        <ul>
+          <li>All detail tabs can load from API (Leave tab stub OK until Phase D)</li>
+          <li>Edit personal/job persists</li>
+          <li>Document upload path works in staging</li>
+        </ul>
+      </div>
+
+      <div class="phase heavy">
+        <h3>
+          <span class="badge hot">Phase C · Heaviest</span> 10 working days: Payroll core
+        </h3>
+        <p>
+          <strong>Goal:</strong> Power Run Payroll (4 stages), Worker Wages, Payslips.<br />
+          <strong>Why 10 days:</strong> This is a <em>workflow + calculation product</em>, not a CRUD list.
+        </p>
+
+        <h4>What must be built under the hood</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Concrete work</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Schema</strong></td>
+              <td>
+                payroll_runs, run employees, attendance snapshots (from <code>attendances</code>),
+                wage/deduction lines, disbursements, wage masters, payslips — reuse
+                <code>company_work_schedules</code> / <code>overtime_settings</code> / <code>work_shifts</code>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>State machine</strong></td>
+              <td>
+                Stages <code>attendance → wages → deductions → disburse</code> with <strong>lock</strong> after
+                confirm
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Calculation engine</strong></td>
+              <td>
+                Present/leave/absent/OT → payable days → basic + OT + allowances → gross → EPF/ESIC/TDS/LWF/advance
+                → net
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Config</strong></td>
+              <td>
+                Pay-cycle + statutory % + work schedule (which days off) + OT rules (threshold, multiplier,
+                holiday/weekoff OT)
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Idempotency</strong></td>
+              <td>Disburse once; safe payslip regenerate; prevent double submit</td>
+            </tr>
+            <tr>
+              <td><strong>Money safety</strong></td>
+              <td>Decimal precision, rounding, audit (who confirmed which stage)</td>
+            </tr>
+            <tr>
+              <td><strong>Auth</strong></td>
+              <td>FINANCE/OWNER/ADMIN for disburse; HR for attendance edits</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Day-by-day (10 days)</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Work package</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>D1</strong></td>
+              <td>Domain workshop + ERD. Map every UI column on 4 Run steps. Period key, statuses.</td>
+            </tr>
+            <tr>
+              <td><strong>D2</strong></td>
+              <td>Migrations + indexes. Seed wage masters. Repository layer.</td>
+            </tr>
+            <tr>
+              <td><strong>D3</strong></td>
+              <td>
+                <code>POST/GET payroll/runs</code> — create month run; pull baseline from
+                <code>attendances</code> (present / OT / absent / week_off); summary stats.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D4</strong></td>
+              <td>
+                Attendance stage APIs + confirm (locks stage). OT pay uses
+                <code>overtime_settings.rate_multiplier</code> + worked hours vs shift / schedule.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D5</strong></td>
+              <td>Wage calculation service + confirm; recalc after edits.</td>
+            </tr>
+            <tr>
+              <td><strong>D6</strong></td>
+              <td>Deduction engine (EPF/ESIC/TDS/LWF/advance) + custom add + confirm.</td>
+            </tr>
+            <tr>
+              <td><strong>D7</strong></td>
+              <td>Disburse NEFT/UPI/Cash; draft vs confirm; rollback cases.</td>
+            </tr>
+            <tr>
+              <td><strong>D8</strong></td>
+              <td>Worker Wages master list/filter/patch.</td>
+            </tr>
+            <tr>
+              <td><strong>D9</strong></td>
+              <td>Payslips generate/list/download/send.</td>
+            </tr>
+            <tr>
+              <td><strong>D10</strong></td>
+              <td>
+                OpenAPI, Postman, integration tests (happy path + double-disburse guard), FE walkthrough, bugfix.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Exit criteria</h4>
+        <ul>
+          <li>Full month path: Attendance → Wages → Deductions → Disburse against API</li>
+          <li>Net pay matches engine rules for seeded workers</li>
+          <li>Payslips after disburse; Swagger complete for payroll core</li>
+        </ul>
+      </div>
+
+      <div class="phase">
+        <h3>
+          <span class="badge">Phase D</span> 5 working days: Leave + settings + statutory + buffer
+        </h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Work package</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>D1</strong></td>
+              <td>Leave schema: types, balances, policy, requests; allocation rules.</td>
+            </tr>
+            <tr>
+              <td><strong>D2</strong></td>
+              <td>Apply leave; balance/overlap validation; list requests.</td>
+            </tr>
+            <tr>
+              <td><strong>D3</strong></td>
+              <td>Approve/reject with balance commit; Leave tab APIs.</td>
+            </tr>
+            <tr>
+              <td><strong>D4</strong></td>
+              <td>
+                Settings GET/PUT (pay cycle, statutory, payment, work schedule, OT);
+                statutory list + mark filed + history MVP.
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D5</strong></td>
+              <td>Cross-module bugfix, demo seed, OpenAPI polish, joint FE UAT.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Calendar view</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Week</th>
+            <th>Phase</th>
+            <th>Focus</th>
+            <th>Backend outcome</th>
+            <th>Demoable</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Week 1</strong></td>
+            <td>A (5d)</td>
+            <td>Employees list + onboard</td>
+            <td>Directory + full onboard</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><strong>Week 2</strong></td>
+            <td>B (5d)</td>
+            <td>Employee profile tabs</td>
+            <td>View/edit + docs + attendance MVP</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td><strong>Week 3</strong></td>
+            <td>C days 1–5</td>
+            <td>Payroll foundation + attendance + wages</td>
+            <td>Run created; stages 1–2 live</td>
+            <td>Partial payroll</td>
+          </tr>
+          <tr>
+            <td><strong>Week 4</strong></td>
+            <td>C days 6–10</td>
+            <td>Deductions, disburse, wages master, payslips</td>
+            <td>Full payroll core</td>
+            <td>Yes — full run</td>
+          </tr>
+          <tr>
+            <td><strong>Week 5</strong></td>
+            <td>D (5d)</td>
+            <td>Leave + settings + statutory + harden</td>
+            <td>Leave + polish</td>
+            <td>Full HR path</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout ok-callout">
+        If leadership needs a hard <strong>4-week</strong> cut: keep Phases A–C (employees +
+        <strong>10-day payroll</strong>), move Leave/statutory to the next sprint.
+      </div>
+
+      <h3>Collaboration model</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Cadence</th>
+            <th>Activity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Mon</td>
+            <td>Contract freeze for that week’s DTOs (backend + FE)</td>
+          </tr>
+          <tr>
+            <td>Tue–Thu</td>
+            <td>Backend implementation + FE integrates as endpoints land</td>
+          </tr>
+          <tr>
+            <td>Fri</td>
+            <td>Joint demo + bug list + next week risk review</td>
+          </tr>
+          <tr>
+            <td>Ongoing</td>
+            <td>Swagger is source of truth</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Risk register</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Risk</th>
+            <th>Impact</th>
+            <th>Mitigation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Payroll rules debated mid-sprint</td>
+            <td>Slip</td>
+            <td>Freeze formula sheet Day 1 of Phase C; settings-driven rates</td>
+          </tr>
+          <tr>
+            <td>Treating payroll as “CRUD APIs”</td>
+            <td>Underestimate / quality issues</td>
+            <td>Keep 10-day allocation; stage locks + calc tests mandatory</td>
+          </tr>
+          <tr>
+            <td>File/PDF generation slow</td>
+            <td>Payslip delay</td>
+            <td>Metadata first; PDF iteration in buffer</td>
+          </tr>
+          <tr>
+            <td>Leave UI pages missing</td>
+            <td>FE blocked</td>
+            <td>APIs ready Week 5; FE builds pages in parallel</td>
+          </tr>
+          <tr>
+            <td>Attendance vs marketplace shifts</td>
+            <td>Scope creep / wrong table</td>
+            <td>
+              HR uses <code>work_shifts</code> + <code>attendances</code>; marketplace
+              <code>shifts</code> stay separate. Payroll MVP = confirmed attendance snapshot for the run.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Payroll &amp; Attendance data model (agreed)</h3>
+      <p>
+        UI settings: <code>/payroll/settings</code> — separate table per domain, one row per
+        <code>company_id</code> where noted. Aggregate API
+        <code>GET/PUT .../payroll/settings</code> (transaction).
+      </p>
+      <p>
+        Reuse <code>companies</code> for name/GST/address + compliance (<code>pan</code>, <code>state</code>,
+        <code>epf_registration_no</code>, <code>esic_code</code>).
+      </p>
+      <p>
+        <strong>Effort unchanged:</strong> attendance APIs land in Phase B (profile tab) + Phase C (payroll
+        stage); settings/schedule/OT GET-PUT in Phase D — still within the same 5-week calendar.
+      </p>
+
+      <h4>Settings (1 row / company)</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Table</th>
+            <th>Purpose / key fields</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>payroll_settings</code></td>
+            <td>
+              pay_frequency, pay_day, payroll_cutoff_day, financial_year_start,
+              lock_after_processing
+            </td>
+          </tr>
+          <tr>
+            <td><code>statutory_settings</code></td>
+            <td>
+              employee/employer PF &amp; ESIC rates, professional_tax, labour_welfare_fund
+            </td>
+          </tr>
+          <tr>
+            <td><code>payment_settings</code></td>
+            <td>
+              default_disbursement_method, allow_bank_transfer, allow_upi, allow_cash
+            </td>
+          </tr>
+          <tr>
+            <td><code>company_work_schedules</code></td>
+            <td>
+              mon–sun working flags, daily_work_hours, weekly_work_hours, half_day_percentage,
+              absent_deduction_type
+            </td>
+          </tr>
+          <tr>
+            <td><code>overtime_settings</code></td>
+            <td>
+              enabled, ot_after_hours_per_day/week, rate_multiplier, max_ot_hours_per_day,
+              include_holiday_ot, include_weekoff_ot, approval_required, auto_calculate_ot
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Attendance &amp; HR shifts (operational)</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Table</th>
+            <th>Purpose / key fields</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>work_shifts</code></td>
+            <td>
+              HR templates (General / Morning / Evening / Night): name, start_time, end_time,
+              break_minutes — <em>not</em> marketplace <code>shifts</code>
+            </td>
+          </tr>
+          <tr>
+            <td><code>employee_shifts</code></td>
+            <td>
+              company_member_id → work_shift_id, effective_from / effective_to
+            </td>
+          </tr>
+          <tr>
+            <td><code>attendances</code></td>
+            <td>
+              company_member_id + date (unique): check_in, check_out, worked_minutes, ot_minutes,
+              status (present/absent/half_day/leave/holiday/week_off), source, marked_by
+            </td>
+          </tr>
+          <tr>
+            <td><code>company_holidays</code></td>
+            <td>date, name, is_optional — drives holiday OT + attendance status</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        <strong>OT example:</strong> shift 09:00–18:00 (8h after break), check-out 21:00 → 3h OT × hourly ×
+        <code>rate_multiplier</code>. Week-off work uses schedule + <code>include_weekoff_ot</code>.
+      </p>
+      <p>
+        On company create (or first GET settings): seed defaults for settings tables + standard
+        <code>work_shifts</code>. Seed already includes sample <code>attendances</code> for demo.
+      </p>
+
+      <h3>One-slide summary for manager</h3>
+      <p>
+        <strong>Problem:</strong> Employer Employees / Payroll / Leave UIs are built on
+        <strong>static data</strong>. Backend must deliver a real HR + payroll system behind them.
+      </p>
+      <p><strong>Effort:</strong></p>
+      <ul>
+        <li>Employees list + onboard: <strong>1 week</strong></li>
+        <li>Employee profile: <strong>1 week</strong></li>
+        <li>
+          <strong>Payroll core: 10 working days</strong> (workflow + wage/deduction engine + disburse + payslips —
+          not “a few APIs”)
+        </li>
+        <li>Leave + settings + hardening: <strong>1 week</strong></li>
+      </ul>
+      <p>
+        <strong>Total: ~5 weeks</strong> with weekly demos.<br />
+        <strong>FE integrates in parallel</strong> once Week 1 contracts ship.
+      </p>
+      <p>
+        <strong>Success:</strong> Employer can onboard employees, mark/view attendance &amp; OT, run a full
+        monthly payroll, issue payslips, and process leave — all against production-shaped APIs documented in
+        Swagger.
+      </p>
+
+      <p class="footer-note">
+        KBDL · Internal delivery brief · Source also available as
+        <code>docs/employer-hr-api-timeline.md</code>
+      </p>
+    </main>
+
+    <script>
+      async function downloadPdf() {
+        const btn = document.getElementById("downloadPdfBtn");
+        const element = document.getElementById("report");
+        if (!window.html2pdf) {
+          alert("PDF library failed to load. Use “Print / Save as PDF” instead.");
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Preparing PDF…";
+        try {
+          const opt = {
+            margin: [10, 10, 12, 10],
+            filename: "KBDL-Employer-HR-Backend-Delivery-Plan.pdf",
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+            pagebreak: { mode: ["css", "legacy"] },
+          };
+          await html2pdf().set(opt).from(element).save();
+        } catch (e) {
+          console.error(e);
+          alert("Download failed. Try “Print / Save as PDF” and choose Save as PDF.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Download PDF";
+        }
+      }
+    </script>
+  </body>
+</html>

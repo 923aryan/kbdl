@@ -6,7 +6,7 @@
  *   pnpm --filter @repo/db clone-db -- --from=kbdl --to=kbdl_dev
  *   pnpm --filter @repo/db clone-db -- --to=kbdl_dev --drop
  *
- * Requires DATABASE_URL in packages/db/.env (or apps/kbdl-backend/.env via --env-file).
+ * Requires DATABASE_URL in kbdl-turborepo/.env
  * Connects to the `postgres` maintenance DB, then:
  *   CREATE DATABASE <to> WITH TEMPLATE <from> OWNER <user>
  *
@@ -16,8 +16,12 @@
  * - The DB user must have CREATEDB (or be superuser).
  */
 
-import 'dotenv/config';
+import { config as loadEnv } from 'dotenv';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+
+loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env') });
 
 const { Client } = pg;
 
@@ -46,7 +50,7 @@ async function main() {
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    console.error('❌ DATABASE_URL is missing. Set it in packages/db/.env');
+    console.error('❌ DATABASE_URL is missing. Set it in kbdl-turborepo/.env');
     process.exit(1);
   }
 

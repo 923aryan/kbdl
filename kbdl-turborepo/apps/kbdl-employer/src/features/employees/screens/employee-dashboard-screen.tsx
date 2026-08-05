@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Briefcase,
@@ -37,6 +37,19 @@ import {
 } from 'lucide-react';
 
 import { useFilteredEmployees } from '../hooks/use-employee-hook';
+import { useMetaSearch } from '../hooks/use-meta-search';
+import { AsyncSearchSelect } from '../components/async-search-select';
+import {
+  fetchDepartmentsMeta,
+  fetchDesignationsMeta,
+  fetchOnboardMetaInitial,
+  fetchSupervisorsMeta,
+  fetchWorkShiftsMeta,
+  type MetaDepartment,
+  type MetaDesignation,
+  type MetaSupervisor,
+  type MetaWorkShift,
+} from '../api';
 import { api } from '@/lib/api-client';
 import {
   designations,
@@ -81,13 +94,17 @@ type OnboardFormState = {
   emergencyContactName: string;
   emergencyContactRelation: string;
   emergencyContactNumber: string;
-  designation: string;
-  department: string;
+  designationId: string;
+  designationLabel: string;
+  departmentId: string;
+  departmentLabel: string;
   branchLocation: string;
-  reportingSupervisor: string;
+  reportingSupervisorId: string;
+  reportingSupervisorLabel: string;
   employeeType: string;
   joiningDate: string;
-  shiftAssignment: string;
+  workShiftId: string;
+  workShiftLabel: string;
   workLocation: string;
   skillTrade: string;
   experienceYears: string;
@@ -128,13 +145,17 @@ const emptyOnboardForm: OnboardFormState = {
   emergencyContactName: '',
   emergencyContactRelation: '',
   emergencyContactNumber: '',
-  designation: '',
-  department: '',
+  designationId: '',
+  designationLabel: '',
+  departmentId: '',
+  departmentLabel: '',
   branchLocation: '',
-  reportingSupervisor: '',
+  reportingSupervisorId: '',
+  reportingSupervisorLabel: '',
   employeeType: '',
   joiningDate: '',
-  shiftAssignment: '',
+  workShiftId: '',
+  workShiftLabel: '',
   workLocation: '',
   skillTrade: '',
   experienceYears: '',
@@ -183,6 +204,185 @@ const normalizePhoneNumber = (value: string) => {
   return trimmed;
 };
 
+const mapGender = (value: string) => {
+  const key = value.trim().toLowerCase();
+  if (key === 'male' || key === 'female' || key === 'other') return key;
+  return undefined;
+};
+
+const mapEmployeeType = (value: string) => {
+  const map: Record<string, string> = {
+    'full time': 'full_time',
+    contract: 'contract',
+    worker: 'worker',
+    trainee: 'trainee',
+  };
+  return map[value.trim().toLowerCase()];
+};
+
+const mapSalaryType = (value: string) => {
+  const map: Record<string, string> = {
+    monthly: 'monthly',
+    'daily wage': 'daily_wage',
+    hourly: 'hourly',
+  };
+  return map[value.trim().toLowerCase()];
+};
+
+const mapFrequency = (value: string) => {
+  const map: Record<string, string> = {
+    daily: 'daily',
+    weekly: 'weekly',
+    'bi-weekly': 'biweekly',
+    biweekly: 'biweekly',
+    monthly: 'monthly',
+  };
+  return map[value.trim().toLowerCase()];
+};
+
+const toYesNoBoolean = (value: string) => value.trim().toLowerCase() === 'yes';
+
+const parseNonNegativeNumber = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const num = Number(trimmed);
+  return Number.isFinite(num) ? num : undefined;
+};
+
+/** Build JSON body for POST /operations/employer/onboard (document fields are https URLs). */
+const buildOnboardApiPayload = (
+  form: OnboardFormState,
+  paymentMethod: PaymentMethod,
+  action: 'draft' | 'submit',
+) => {
+  const phoneDigits = form.mobileNumber.replace(/\D/g, '');
+  const phone_no =
+    phoneDigits.length === 10
+      ? phoneDigits
+      : phoneDigits.length === 12 && phoneDigits.startsWith('91')
+        ? phoneDigits.slice(2)
+        : form.mobileNumber.trim() || undefined;
+
+  const emergencyPhoneDigits = form.emergencyContactNumber.replace(/\D/g, '');
+  const emergencyPhone =
+    emergencyPhoneDigits.length === 10
+      ? emergencyPhoneDigits
+      : emergencyPhoneDigits.length === 12 && emergencyPhoneDigits.startsWith('91')
+        ? emergencyPhoneDigits.slice(2)
+        : form.emergencyContactNumber.trim() || undefined;
+
+  const personal = {
+    ...(form.fullName.trim() ? { full_name: form.fullName.trim() } : {}),
+    ...(form.email.trim() ? { email: form.email.trim() } : {}),
+    ...(form.dateOfBirth.trim() ? { date_of_birth: form.dateOfBirth.trim() } : {}),
+    ...(mapGender(form.gender) ? { gender: mapGender(form.gender) } : {}),
+    ...(form.address.trim() ? { address: form.address.trim() } : {}),
+    ...(form.bloodGroup.trim() ? { blood_group: form.bloodGroup.trim() } : {}),
+    ...((form.emergencyContactName.trim() ||
+      form.emergencyContactRelation.trim() ||
+      emergencyPhone) && {
+      emergency_contact: {
+        ...(form.emergencyContactName.trim()
+          ? { name: form.emergencyContactName.trim() }
+          : {}),
+        ...(form.emergencyContactRelation.trim()
+          ? { relation: form.emergencyContactRelation.trim() }
+          : {}),
+        ...(emergencyPhone ? { phone_no: emergencyPhone } : {}),
+      },
+    }),
+  };
+
+  const job = {
+    ...(form.designationId.trim() ? { designation_id: form.designationId.trim() } : {}),
+    ...(form.departmentId.trim() ? { department_id: form.departmentId.trim() } : {}),
+    ...(form.branchLocation.trim() ? { branch_location: form.branchLocation.trim() } : {}),
+    ...(form.reportingSupervisorId.trim()
+      ? { reporting_supervisor_id: form.reportingSupervisorId.trim() }
+      : {}),
+    ...(mapEmployeeType(form.employeeType)
+      ? { employee_type: mapEmployeeType(form.employeeType) }
+      : {}),
+    ...(form.joiningDate.trim() ? { joining_date: form.joiningDate.trim() } : {}),
+    ...(form.workShiftId.trim() ? { work_shift_id: form.workShiftId.trim() } : {}),
+    ...(form.workLocation.trim() ? { work_location: form.workLocation.trim() } : {}),
+    ...(form.skillTrade.trim() ? { skill_trade: form.skillTrade.trim() } : {}),
+    ...(parseNonNegativeNumber(form.experienceYears) !== undefined
+      ? { experience_years: parseNonNegativeNumber(form.experienceYears) }
+      : {}),
+    ...(form.certificationLicenses.trim()
+      ? { certification_licenses: form.certificationLicenses.trim() }
+      : {}),
+    ...(form.safetyTrainingCompleted
+      ? { safety_training_completed: toYesNoBoolean(form.safetyTrainingCompleted) }
+      : {}),
+  };
+
+  const payment: Record<string, unknown> = {
+    method: paymentMethod,
+    ...(parseNonNegativeNumber(form.basicSalary) !== undefined
+      ? { basic_salary: parseNonNegativeNumber(form.basicSalary) }
+      : {}),
+    ...(mapSalaryType(form.salaryType) ? { salary_type: mapSalaryType(form.salaryType) } : {}),
+    ...(mapFrequency(form.salaryPaymentFrequency)
+      ? { payment_frequency: mapFrequency(form.salaryPaymentFrequency) }
+      : {}),
+    overtime_eligible: toYesNoBoolean(form.overtimeEligible),
+    pf_applicable: toYesNoBoolean(form.pfApplicable),
+    esi_applicable: toYesNoBoolean(form.esiApplicable),
+  };
+
+  if (paymentMethod === 'upi') {
+    payment.upi = {
+      ...(form.upiId.trim() ? { upi_id: form.upiId.trim() } : {}),
+      ...(form.upiName.trim() ? { name: form.upiName.trim() } : {}),
+      ...(parseNonNegativeNumber(form.wageAmount) !== undefined
+        ? { wage_amount: parseNonNegativeNumber(form.wageAmount) }
+        : {}),
+      ...(mapFrequency(form.upiPaymentFrequency)
+        ? { frequency: mapFrequency(form.upiPaymentFrequency) }
+        : {}),
+    };
+  }
+
+  if (paymentMethod === 'bank') {
+    payment.bank = {
+      ...(form.accountHolderName.trim()
+        ? { account_holder_name: form.accountHolderName.trim() }
+        : {}),
+      ...(form.accountNumber.trim() ? { account_number: form.accountNumber.trim() } : {}),
+      ...(form.bankName.trim() ? { bank_name: form.bankName.trim() } : {}),
+      ...(form.ifscCode.trim() ? { ifsc_code: form.ifscCode.trim().toUpperCase() } : {}),
+    };
+  }
+
+  const identity = {
+    ...(form.aadhaarNumber.trim() ? { aadhaar_number: form.aadhaarNumber.trim() } : {}),
+    ...(form.panNumber.trim() ? { pan_number: form.panNumber.trim().toUpperCase() } : {}),
+    ...(form.drivingLicenseNumber.trim()
+      ? { driving_license_number: form.drivingLicenseNumber.trim() }
+      : {}),
+    ...(form.identityDocuments.trim()
+      ? { identity_document_url: form.identityDocuments.trim() }
+      : {}),
+    ...(form.additionalDocuments.trim()
+      ? { additional_document_url: form.additionalDocuments.trim() }
+      : {}),
+  };
+
+  return {
+    action,
+    ...(phone_no ? { phone_no } : {}),
+    ...(form.karigariId.trim() ? { karigari_id: form.karigariId.trim() } : {}),
+    ...(form.employeeNumber.trim() ? { employee_no: form.employeeNumber.trim() } : {}),
+    ...(form.notes.trim() ? { notes: form.notes.trim() } : {}),
+    ...(Object.keys(personal).length ? { personal } : {}),
+    ...(Object.keys(job).length ? { job } : {}),
+    ...(action === 'submit' || Object.keys(payment).length > 4 ? { payment } : {}),
+    ...(Object.keys(identity).length ? { identity } : {}),
+  };
+};
+
 const formatSalary = (amount: string, type: string) => {
   if (!amount.trim()) {
     return '-';
@@ -220,8 +420,8 @@ const createOnboardDetails = (form: OnboardFormState, paymentMethod: PaymentMeth
     ['Safety Training Completed', form.safetyTrainingCompleted],
   ],
   job: [
-    ['Department', form.department],
-    ['Job Title', form.designation],
+    ['Department', form.departmentLabel],
+    ['Job Title', form.designationLabel],
     ['Job Role', form.skillTrade],
     ['Job Type', form.employeeType],
     ['Work Location', form.branchLocation],
@@ -229,13 +429,13 @@ const createOnboardDetails = (form: OnboardFormState, paymentMethod: PaymentMeth
     ['Employee Status', ''],
   ],
   work: [
-    ['Shift', form.shiftAssignment],
+    ['Shift', form.workShiftLabel],
     ['Work Location / Site', form.workLocation],
     ['Experience (Years)', form.experienceYears],
     ['Certification / Licenses', form.certificationLicenses],
   ],
   payroll: [
-    ['Reporting Manager', form.reportingSupervisor],
+    ['Reporting Manager', form.reportingSupervisorLabel],
     ['Payment Mode', paymentMethod === 'bank' ? 'Bank Transfer' : paymentMethod === 'upi' ? 'UPI Transfer' : 'Cash Payment'],
     ['Basic Salary / Wage', form.basicSalary],
     ['Salary / Wage Type', form.salaryType],
@@ -281,12 +481,12 @@ const createEmployeeFromForm = (form: OnboardFormState, paymentMethod: PaymentMe
     name: displayOrDash(form.fullName),
     email: displayOrDash(form.email),
     phone: displayOrDash(normalizePhoneNumber(form.mobileNumber)),
-    designation: displayOrDash(form.designation),
+    designation: displayOrDash(form.designationLabel),
     status,
     rating: 0,
     joined: displayOrDash(form.joiningDate),
     location: displayOrDash(form.branchLocation || form.workLocation),
-    department: displayOrDash(form.department),
+    department: displayOrDash(form.departmentLabel),
     salary: formatSalary(form.basicSalary || form.wageAmount, form.salaryType || form.upiPaymentFrequency),
     onboardDetails: createOnboardDetails(form, paymentMethod),
   };
@@ -1357,31 +1557,83 @@ function AddEmployee({
   const [form, setForm] = useState<OnboardFormState>(emptyOnboardForm);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [metaLoading, setMetaLoading] = useState(true);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  const [initialDepartments, setInitialDepartments] = useState<MetaDepartment[]>([]);
+  const [initialDesignations, setInitialDesignations] = useState<MetaDesignation[]>([]);
+  const [initialSupervisors, setInitialSupervisors] = useState<MetaSupervisor[]>([]);
+  const [initialWorkShifts, setInitialWorkShifts] = useState<MetaWorkShift[]>([]);
+
   const setValue = (key: keyof OnboardFormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
     setMessage('');
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    setMetaLoading(true);
+    setMetaError(null);
+
+    fetchOnboardMetaInitial(40)
+      .then((meta) => {
+        if (cancelled) return;
+        setInitialDepartments(meta.departments);
+        setInitialDesignations(meta.designations);
+        setInitialSupervisors(meta.supervisors);
+        setInitialWorkShifts(meta.workShifts);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setMetaError(
+          err instanceof Error ? err.message : 'Failed to load departments / designations / supervisors',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setMetaLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const designationSearch = useMetaSearch(
+    async (search) => (await fetchDesignationsMeta({ search, limit: 40 })).data,
+    initialDesignations,
+  );
+  const departmentSearch = useMetaSearch(
+    async (search) => (await fetchDepartmentsMeta({ search, limit: 40 })).data,
+    initialDepartments,
+  );
+  const supervisorSearch = useMetaSearch(
+    async (search) => (await fetchSupervisorsMeta({ search, limit: 40 })).data,
+    initialSupervisors,
+  );
+  const workShiftSearch = useMetaSearch(
+    async (search) => (await fetchWorkShiftsMeta({ search, limit: 40 })).data,
+    initialWorkShifts,
+  );
 
   const saveEmployee = async (action: 'draft' | 'submit') => {
     setSubmitting(true);
     setMessage('');
 
     try {
-      const phone_no = normalizePhoneNumber(form.mobileNumber);
-      const payload = {
-        ...(phone_no && phone_no !== '-' ? { phone_no } : {}),
-        ...(form.karigariId.trim() ? { karigari_id: form.karigariId.trim() } : {}),
-        ...(form.employeeNumber.trim() ? { employee_no: form.employeeNumber.trim() } : {}),
-      };
-
-      if (payload.phone_no || payload.karigari_id) {
-        await api.post('/operations/employer/onboard', payload);
-      }
-
+      const payload = buildOnboardApiPayload(form, paymentMethod, action);
+      await api.post('/operations/employer/onboard', payload);
       onAddEmployee(createEmployeeFromForm(form, paymentMethod, action));
     } catch (error) {
-      const fallbackMessage = 'Unable to onboard employee. Please check worker phone number or Karigari ID.';
-      setMessage(error instanceof Error ? error.message : fallbackMessage);
+      const details = (error as { details?: Array<{ field?: string; message?: string }> })?.details;
+      const firstIssue = Array.isArray(details) ? details[0] : undefined;
+      const detailMsg = firstIssue?.message
+        ? `${firstIssue.field ? `${firstIssue.field}: ` : ''}${firstIssue.message}`
+        : undefined;
+      setMessage(
+        detailMsg ||
+          (error instanceof Error
+            ? error.message
+            : 'Unable to onboard employee. Check validation errors and try again.'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -1392,7 +1644,13 @@ function AddEmployee({
         <Field label="Aadhaar Number" required placeholder="Enter Aadhaar Number" value={form.aadhaarNumber} onChange={(value) => setValue('aadhaarNumber', value)} />
         <Field label="PAN Number" required placeholder="Enter PAN Number" value={form.panNumber} onChange={(value) => setValue('panNumber', value)} />
         <Field label="Driving License Number (if applicable)" placeholder="Enter Driving License Number" value={form.drivingLicenseNumber} onChange={(value) => setValue('drivingLicenseNumber', value)} />
-        <UploadBox label="Upload Documents" required onFileSelect={(file) => setValue('identityDocuments', file.name)} fileName={form.identityDocuments} />
+        <Field
+          label="Identity Document Link"
+          required
+          placeholder="https://… (document URL, not file upload)"
+          value={form.identityDocuments}
+          onChange={(value) => setValue('identityDocuments', value)}
+        />
       </FormPanel>
       <FormPanel title="Salary Details" icon={WalletCards} columns="single">
         <Field label="Basic Salary / Wage" required placeholder="Enter amount" value={form.basicSalary} onChange={(value) => setValue('basicSalary', value)} />
@@ -1415,7 +1673,7 @@ function AddEmployee({
           <Field label="Full Name" required placeholder="Enter full name" value={form.fullName} onChange={(value) => setValue('fullName', value)} />
           <Field label="Mobile Number" required placeholder="Enter mobile number" value={form.mobileNumber} onChange={(value) => setValue('mobileNumber', value)} />
           <Field label="Email" placeholder="Enter email" value={form.email} onChange={(value) => setValue('email', value)} />
-          <Field label="Date of Birth" required placeholder="15 June 2026" icon={Calendar} value={form.dateOfBirth} onChange={(value) => setValue('dateOfBirth', value)} />
+          <Field label="Date of Birth" required type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.dateOfBirth} onChange={(value) => setValue('dateOfBirth', value)} />
           <SelectField label="Gender" required placeholder="Select Gender" options={dropdownOptions.gender} value={form.gender} onChange={(value) => setValue('gender', value)} />
           <Field label="Address" required placeholder="Enter complete address" value={form.address} onChange={(value) => setValue('address', value)} />
           <SelectField label="Blood Group" required placeholder="Select Blood Group" options={dropdownOptions.blood} value={form.bloodGroup} onChange={(value) => setValue('bloodGroup', value)} />
@@ -1427,13 +1685,133 @@ function AddEmployee({
         <FormPanel title="Job Information" icon={Briefcase}>
           <Field label="Employee Number" placeholder="Enter employee number" value={form.employeeNumber} onChange={(value) => setValue('employeeNumber', value)} />
           <Field label="Karigari ID" placeholder="Enter Karigari ID" value={form.karigariId} onChange={(value) => setValue('karigariId', value)} />
-          <SelectField label="Designation" required placeholder="Select Designation" options={designations} value={form.designation} onChange={(value) => setValue('designation', value)} />
-          <SelectField label="Department" required placeholder="Select Department" options={dropdownOptions.department} value={form.department} onChange={(value) => setValue('department', value)} />
+          <AsyncSearchSelect
+            label="Designation"
+            required
+            placeholder={metaLoading ? 'Loading designations…' : 'Search designation'}
+            valueId={form.designationId}
+            valueLabel={form.designationLabel}
+            search={designationSearch.search}
+            onSearchChange={designationSearch.setSearch}
+            loading={metaLoading || designationSearch.loading}
+            error={metaError || designationSearch.error}
+            options={designationSearch.items.map((item) => ({
+              id: item.id,
+              label: item.name,
+              sublabel: item.description || undefined,
+            }))}
+            onSelect={(option) => {
+              setForm((current) => ({
+                ...current,
+                designationId: option.id,
+                designationLabel: option.label,
+              }));
+              setMessage('');
+            }}
+            onClear={() =>
+              setForm((current) => ({
+                ...current,
+                designationId: '',
+                designationLabel: '',
+              }))
+            }
+          />
+          <AsyncSearchSelect
+            label="Department"
+            required
+            placeholder={metaLoading ? 'Loading departments…' : 'Search department'}
+            valueId={form.departmentId}
+            valueLabel={form.departmentLabel}
+            search={departmentSearch.search}
+            onSearchChange={departmentSearch.setSearch}
+            loading={metaLoading || departmentSearch.loading}
+            error={metaError || departmentSearch.error}
+            options={departmentSearch.items.map((item) => ({
+              id: item.id,
+              label: item.name,
+              sublabel: item.description || undefined,
+            }))}
+            onSelect={(option) => {
+              setForm((current) => ({
+                ...current,
+                departmentId: option.id,
+                departmentLabel: option.label,
+              }));
+              setMessage('');
+            }}
+            onClear={() =>
+              setForm((current) => ({
+                ...current,
+                departmentId: '',
+                departmentLabel: '',
+              }))
+            }
+          />
           <SelectField label="Branch / Location" required placeholder="Select Branch" options={dropdownOptions.branch} value={form.branchLocation} onChange={(value) => setValue('branchLocation', value)} />
-          <SelectField label="Reporting Supervisor" required placeholder="Select Supervisor" options={dropdownOptions.supervisor} value={form.reportingSupervisor} onChange={(value) => setValue('reportingSupervisor', value)} />
+          <AsyncSearchSelect
+            label="Reporting Supervisor"
+            required
+            placeholder={metaLoading ? 'Loading supervisors…' : 'Search supervisor'}
+            valueId={form.reportingSupervisorId}
+            valueLabel={form.reportingSupervisorLabel}
+            search={supervisorSearch.search}
+            onSearchChange={supervisorSearch.setSearch}
+            loading={metaLoading || supervisorSearch.loading}
+            error={metaError || supervisorSearch.error}
+            options={supervisorSearch.items.map((item) => ({
+              id: item.id,
+              label: item.name || item.phone_no,
+              sublabel: [item.role_name, item.department_name, item.phone_no].filter(Boolean).join(' · '),
+            }))}
+            onSelect={(option) => {
+              setForm((current) => ({
+                ...current,
+                reportingSupervisorId: option.id,
+                reportingSupervisorLabel: option.label,
+              }));
+              setMessage('');
+            }}
+            onClear={() =>
+              setForm((current) => ({
+                ...current,
+                reportingSupervisorId: '',
+                reportingSupervisorLabel: '',
+              }))
+            }
+          />
           <SelectField label="Employee Type" required placeholder="Select Employee Type" options={dropdownOptions.type} value={form.employeeType} onChange={(value) => setValue('employeeType', value)} />
-          <Field label="Joining Date" required placeholder="15 June 2026" icon={Calendar} value={form.joiningDate} onChange={(value) => setValue('joiningDate', value)} />
-          <SelectField label="Shift Assignment" required placeholder="Select Shift" options={dropdownOptions.shift} value={form.shiftAssignment} onChange={(value) => setValue('shiftAssignment', value)} />
+          <Field label="Joining Date" required type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.joiningDate} onChange={(value) => setValue('joiningDate', value)} />
+          <AsyncSearchSelect
+            label="Shift Assignment"
+            required
+            placeholder={metaLoading ? 'Loading shifts…' : 'Search work shift'}
+            valueId={form.workShiftId}
+            valueLabel={form.workShiftLabel}
+            search={workShiftSearch.search}
+            onSearchChange={workShiftSearch.setSearch}
+            loading={metaLoading || workShiftSearch.loading}
+            error={metaError || workShiftSearch.error}
+            options={workShiftSearch.items.map((item) => ({
+              id: item.id,
+              label: item.name,
+              sublabel: `${item.start_time?.slice(0, 5) ?? ''} – ${item.end_time?.slice(0, 5) ?? ''}`,
+            }))}
+            onSelect={(option) => {
+              setForm((current) => ({
+                ...current,
+                workShiftId: option.id,
+                workShiftLabel: option.label,
+              }));
+              setMessage('');
+            }}
+            onClear={() =>
+              setForm((current) => ({
+                ...current,
+                workShiftId: '',
+                workShiftLabel: '',
+              }))
+            }
+          />
           <Field label="Work Location / Site" placeholder="Enter work location or site" value={form.workLocation} onChange={(value) => setValue('workLocation', value)} />
         </FormPanel>
 
@@ -1481,7 +1859,12 @@ function AddEmployee({
         {paymentMethod !== 'bank' && identitySalaryPanels}
 
         <FormPanel title="Additional Documents & Notes" icon={FileText}>
-          <UploadBox label="Additional Documents" onFileSelect={(file) => setValue('additionalDocuments', file.name)} fileName={form.additionalDocuments} />
+          <Field
+            label="Additional Document Link"
+            placeholder="https://… (required for Probation on submit)"
+            value={form.additionalDocuments}
+            onChange={(value) => setValue('additionalDocuments', value)}
+          />
           <label className="block">
             <span className="mb-2 block text-sm font-semibold">Notes (Optional)</span>
             <textarea
@@ -1590,6 +1973,7 @@ function Field({
   icon: Icon,
   value,
   onChange,
+  type = 'text',
 }: {
   label: string;
   placeholder: string;
@@ -1597,6 +1981,7 @@ function Field({
   icon?: typeof User;
   value?: string;
   onChange?: (value: string) => void;
+  type?: string;
 }) {
   return (
     <label className="block">
@@ -1605,6 +1990,7 @@ function Field({
       </span>
       <span className="relative block">
         <input
+          type={type}
           value={value}
           onChange={(event) => onChange?.(event.target.value)}
           className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 pr-11 text-sm outline-none focus:border-[#0658C2]"

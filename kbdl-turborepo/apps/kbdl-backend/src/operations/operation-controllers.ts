@@ -3,7 +3,11 @@ import {
   GetEmployeeDetailsRequest,
   GetEmployeeEmploymentRequest,
   GetEmployeePendingEmploymentsRequest,
+  GetEmployerDepartmentsMetaRequest,
+  GetEmployerDesignationsMetaRequest,
   GetEmployerRosterRequest,
+  GetEmployerSupervisorsMetaRequest,
+  GetEmployerWorkShiftsMetaRequest,
   OnboardEmployeeRequest,
   SearchAddressRequest,
   UpdateEmploymentStatusRequest,
@@ -13,7 +17,11 @@ import {
   getEmployeeDetailsSchema,
   getEmployeeEmploymentSchema,
   getEmployeePendingEmploymentsSchema,
+  getEmployerDepartmentsMetaSchema,
+  getEmployerDesignationsMetaSchema,
   getEmployerRosterSchema,
+  getEmployerSupervisorsMetaSchema,
+  getEmployerWorkShiftsMetaSchema,
   onboardEmployeeSchema,
   searchAddressSchema,
   updateEmploymentStatusSchema,
@@ -29,7 +37,11 @@ import {
   getEmployeeDetailsService,
   getEmployeeEmploymentService,
   getEmployeePendingEmploymentsService,
+  getEmployerDepartmentsMetaService,
+  getEmployerDesignationsMetaService,
   getEmployerRosterService,
+  getEmployerSupervisorsMetaService,
+  getEmployerWorkShiftsMetaService,
   onboardEmployeeService,
   updateEmploymentStatusService,
 } from './operation-services';
@@ -40,6 +52,37 @@ export const getEmployerRoster = async (req: Request, res: Response) => {
 
   const { roster, meta } = await getEmployerRosterService(employerId, input.query);
   sendSuccess(res, 'Employer roster retrieved successfully', roster, 200, meta);
+};
+
+export const getEmployerDepartmentsMeta = async (req: Request, res: Response) => {
+  const input: GetEmployerDepartmentsMetaRequest = validate(getEmployerDepartmentsMetaSchema, req);
+  const companyId = req.payload.employer.id;
+  const { items, meta } = await getEmployerDepartmentsMetaService(companyId, input.query);
+  sendSuccess(res, 'Departments retrieved successfully', items, 200, meta);
+};
+
+export const getEmployerSupervisorsMeta = async (req: Request, res: Response) => {
+  const input: GetEmployerSupervisorsMetaRequest = validate(getEmployerSupervisorsMetaSchema, req);
+  const companyId = req.payload.employer.id;
+  const { items, meta } = await getEmployerSupervisorsMetaService(companyId, input.query);
+  sendSuccess(res, 'Supervisors retrieved successfully', items, 200, meta);
+};
+
+export const getEmployerWorkShiftsMeta = async (req: Request, res: Response) => {
+  const input: GetEmployerWorkShiftsMetaRequest = validate(getEmployerWorkShiftsMetaSchema, req);
+  const companyId = req.payload.employer.id;
+  const { items, meta } = await getEmployerWorkShiftsMetaService(companyId, input.query);
+  sendSuccess(res, 'Work shifts retrieved successfully', items, 200, meta);
+};
+
+export const getEmployerDesignationsMeta = async (req: Request, res: Response) => {
+  const input: GetEmployerDesignationsMetaRequest = validate(
+    getEmployerDesignationsMetaSchema,
+    req,
+  );
+  const companyId = req.payload.employer.id;
+  const { items, meta } = await getEmployerDesignationsMetaService(companyId, input.query);
+  sendSuccess(res, 'Designations retrieved successfully', items, 200, meta);
 };
 
 export const getEmployeeDetails = async (req: Request, res: Response) => {
@@ -56,7 +99,11 @@ export const onboardEmployee = async (req: Request, res: Response) => {
   const employerId = req.payload.employer.id;
 
   const newEmployee = await onboardEmployeeService(employerId, input.body);
-  sendSuccess(res, 'Employee onboarded successfully', newEmployee, 201);
+  const message =
+    input.body.action === 'draft'
+      ? 'Employee draft saved successfully'
+      : 'Employee onboarded successfully';
+  sendSuccess(res, message, newEmployee, 201);
 };
 
 export const updateEmploymentStatus = async (req: Request, res: Response) => {
