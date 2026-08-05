@@ -606,7 +606,12 @@ export const getRecommendedJobsService = async (
 
   if (location) {
     const nearbyIds = await getNearbyJobIds(location.latitude, location.longitude, query.radius);
-    where.id = { in: nearbyIds };
+    // Employer-created jobs can have an address without latitude/longitude.
+    // In that case, do not hide otherwise relevant skill matches merely because
+    // there are no geocoded jobs to intersect with.
+    if (nearbyIds.length > 0) {
+      where.id = { in: nearbyIds };
+    }
   }
 
   return getPaginatedJobs(where, limit, page, { created_at: 'desc' });
