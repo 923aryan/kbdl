@@ -10,7 +10,11 @@ import {
   getEmployeeDetails,
   getEmployeeEmployment,
   getEmployeePendingEmployments,
+  getEmployerDepartmentsMeta,
+  getEmployerDesignationsMeta,
   getEmployerRoster,
+  getEmployerSupervisorsMeta,
+  getEmployerWorkShiftsMeta,
   onboardEmployee,
   searchAddress,
   updateEmploymentStatus,
@@ -18,47 +22,41 @@ import {
 
 const operationsRouter: Router = Router();
 
-// --- Roster Queries ---
-// Retrieves historical rows from the EmployeeEmployment model tied to the employer context
-operationsRouter.get('/employer', authenticate([ROLES.EMPLOYER]), getEmployerRoster);
+const employerAuth = authenticate([ROLES.EMPLOYER]);
 
-// Returns complete structural details joining the User entity attributes and company data
-operationsRouter.get('/employer/:id', authenticate([ROLES.EMPLOYER]), getEmployeeDetails);
+// --- Roster + meta (meta MUST be registered before /employer/:id) ---
+operationsRouter.get('/employer', employerAuth, getEmployerRoster);
 
-// POST /api/employees/onboard
-// Verifies user identifier parameters and pushes a record to the mapping registry
-operationsRouter.post('/employer/onboard', authenticate([ROLES.EMPLOYER]), onboardEmployee);
+operationsRouter.get('/employer/meta/departments', employerAuth, getEmployerDepartmentsMeta);
+operationsRouter.get('/employer/meta/designations', employerAuth, getEmployerDesignationsMeta);
+operationsRouter.get('/employer/meta/supervisors', employerAuth, getEmployerSupervisorsMeta);
+operationsRouter.get('/employer/meta/work-shifts', employerAuth, getEmployerWorkShiftsMeta);
 
-// Handles updates to the EmploymentStatus enum (active, inactive, terminated, resigned)
-operationsRouter.patch(
-  '/employer/:id/status',
-  authenticate([ROLES.EMPLOYER]),
-  updateEmploymentStatus,
-);
+operationsRouter.post('/employer/onboard', employerAuth, onboardEmployee);
 
-// Handles retrieval of EmployeeEmployment model with pending status tied to the employer context
+operationsRouter.get('/employer/:id', employerAuth, getEmployeeDetails);
+
+operationsRouter.patch('/employer/:id/status', employerAuth, updateEmploymentStatus);
+
+// --- Employee (worker app) ---
 operationsRouter.get(
   '/employee/pending',
   authenticate([ROLES.USER]),
   getEmployeePendingEmployments,
 );
 
-// Handles retrieval of all EmployeeEmployment model tied to the employer context
 operationsRouter.get('/employee', authenticate([ROLES.USER]), getAllEmployeeEmployment);
 
-// Handles retrieval of EmployeeEmployment model tied to the employer context
 operationsRouter.get('/employee/:id', authenticate([ROLES.USER]), getEmployeeEmployment);
 
-// Handles accepting an onboard job request
 operationsRouter.patch('/employee/:id/accept', authenticate([ROLES.USER]), acceptEmploymentRequest);
 
-// Handles declining an onboard job request
 operationsRouter.patch(
   '/employee/:id/decline',
   authenticate([ROLES.USER]),
   declineEmploymentRequest,
 );
 
-// Handles address autocomplete search
 operationsRouter.get('/addresses/search', authenticate([ROLES.USER]), searchAddress);
+
 export default operationsRouter;
