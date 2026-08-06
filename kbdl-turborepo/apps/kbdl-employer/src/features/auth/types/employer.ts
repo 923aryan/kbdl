@@ -1,6 +1,6 @@
 import { Prisma, safeEmployerSelect } from '@repo/db';
 
-export type EmployerDTO = Prisma.EmployerGetPayload<{
+export type EmployerDTO = Prisma.CompanyGetPayload<{
   select: typeof safeEmployerSelect;
 }>;
 

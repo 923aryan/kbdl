@@ -12,6 +12,7 @@ import {
   getEmployeePendingEmployments,
   getEmployerDepartmentsMeta,
   getEmployerDesignationsMeta,
+  getEmployerEmployeesList,
   getEmployerRoster,
   getEmployerSupervisorsMeta,
   getEmployerWorkShiftsMeta,
@@ -33,6 +34,8 @@ operationsRouter.get('/employer/meta/supervisors', employerAuth, getEmployerSupe
 operationsRouter.get('/employer/meta/work-shifts', employerAuth, getEmployerWorkShiftsMeta);
 
 operationsRouter.post('/employer/onboard', employerAuth, onboardEmployee);
+
+operationsRouter.get('/employer/employees', employerAuth, getEmployerEmployeesList);
 
 operationsRouter.get('/employer/:id', employerAuth, getEmployeeDetails);
 

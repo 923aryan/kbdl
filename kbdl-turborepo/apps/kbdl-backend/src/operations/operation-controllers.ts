@@ -5,6 +5,7 @@ import {
   GetEmployeePendingEmploymentsRequest,
   GetEmployerDepartmentsMetaRequest,
   GetEmployerDesignationsMetaRequest,
+  GetEmployerEmployeesListRequest,
   GetEmployerRosterRequest,
   GetEmployerSupervisorsMetaRequest,
   GetEmployerWorkShiftsMetaRequest,
@@ -19,6 +20,7 @@ import {
   getEmployeePendingEmploymentsSchema,
   getEmployerDepartmentsMetaSchema,
   getEmployerDesignationsMetaSchema,
+  getEmployerEmployeesListSchema,
   getEmployerRosterSchema,
   getEmployerSupervisorsMetaSchema,
   getEmployerWorkShiftsMetaSchema,
@@ -45,6 +47,7 @@ import {
   onboardEmployeeService,
   updateEmploymentStatusService,
 } from './operation-services';
+import { getEmployerEmployeesListService } from './employee-list-service';
 
 export const getEmployerRoster = async (req: Request, res: Response) => {
   const input: GetEmployerRosterRequest = validate(getEmployerRosterSchema, req);
@@ -52,6 +55,14 @@ export const getEmployerRoster = async (req: Request, res: Response) => {
 
   const { roster, meta } = await getEmployerRosterService(employerId, input.query);
   sendSuccess(res, 'Employer roster retrieved successfully', roster, 200, meta);
+};
+
+export const getEmployerEmployeesList = async (req: Request, res: Response) => {
+  const input: GetEmployerEmployeesListRequest = validate(getEmployerEmployeesListSchema, req);
+  const employerId = req.payload.employer.id;
+
+  const { items, meta } = await getEmployerEmployeesListService(employerId, input.query);
+  sendSuccess(res, 'Employees retrieved successfully', items, 200, meta);
 };
 
 export const getEmployerDepartmentsMeta = async (req: Request, res: Response) => {
