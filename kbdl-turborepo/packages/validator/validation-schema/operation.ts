@@ -411,10 +411,52 @@ export const onboardEmployeeSchema = z.object({
     }),
 });
 
+const csvQueryStrings = z.preprocess((val) => {
+  if (val === undefined || val === null || val === '') return undefined;
+  if (Array.isArray(val)) {
+    return val.flatMap((entry) =>
+      String(entry)
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean),
+    );
+  }
+  return String(val)
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}, z.array(z.string()).optional());
+
 export const getEmployerRosterSchema = z.object({
   query: z.object({
     status: z.enum(['active', 'inactive', 'terminated', 'resigned']).optional(),
     search: z.string().optional(),
+    limit: z
+      .string()
+      .regex(/^\d+$/, 'Limit must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 10)),
+    page: z
+      .string()
+      .regex(/^\d+$/, 'Page must be a number')
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) : 1)),
+  }),
+});
+
+export const getEmployerEmployeesListSchema = z.object({
+  query: z.object({
+    search: z.string().optional(),
+    designation: csvQueryStrings,
+    department: csvQueryStrings,
+    status: csvQueryStrings,
+    gender: csvQueryStrings,
+    employee_type: csvQueryStrings,
+    sort: z
+      .enum(['name', 'joined_at', 'designation', 'status', 'rating'])
+      .optional()
+      .default('joined_at'),
+    sort_dir: z.enum(['asc', 'desc']).optional().default('desc'),
     limit: z
       .string()
       .regex(/^\d+$/, 'Limit must be a number')

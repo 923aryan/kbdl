@@ -6,6 +6,7 @@ import {
   getEmployeePendingEmploymentsSchema,
   getEmployerDepartmentsMetaSchema,
   getEmployerDesignationsMetaSchema,
+  getEmployerEmployeesListSchema,
   getEmployerRosterSchema,
   getEmployerSupervisorsMetaSchema,
   getEmployerWorkShiftsMetaSchema,
@@ -51,6 +52,40 @@ export type EmployeeEmploymentWithEmployerDTO = EmployeeEmployment & {
 export type GetEmployerRosterRequest = z.infer<typeof getEmployerRosterSchema>;
 export type GetEmployerRosterQuery = z.infer<typeof getEmployerRosterSchema>['query'];
 export type GetEmployerRosterResponse = EmployeeEmploymentDTO[];
+
+export type GetEmployerEmployeesListRequest = z.infer<typeof getEmployerEmployeesListSchema>;
+export type GetEmployerEmployeesListQuery = z.infer<
+  typeof getEmployerEmployeesListSchema
+>['query'];
+
+export type EmployerEmployeeListItem = {
+  employment_id: string;
+  employee_no: string | null;
+  user_id: string;
+  karigari_id: string | null;
+  name: string;
+  email: string | null;
+  phone_no: string;
+  designation: string;
+  designation_id: string | null;
+  department: string | null;
+  department_id: string | null;
+  gender: string | null;
+  employee_type: string | null;
+  rating: number | null;
+  joined_at: string;
+  status: EmployeeStatusView;
+};
+
+export type EmployerEmployeeFacets = {
+  designation: Record<string, number>;
+  status: Record<string, number>;
+  gender: Record<string, number>;
+  department: Record<string, number>;
+  employee_type: Record<string, number>;
+};
+
+export type GetEmployerEmployeesListResponse = EmployerEmployeeListItem[];
 
 export type GetEmployeeDetailsRequest = z.infer<typeof getEmployeeDetailsSchema>;
 export type GetEmployeeDetailsResponse = EmployeeEmploymentDTO;

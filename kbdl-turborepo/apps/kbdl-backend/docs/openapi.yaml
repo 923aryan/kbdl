@@ -1716,6 +1716,77 @@ paths:
                       data:
                         $ref: '#/components/schemas/EmployeeEmployment'
 
+  /api/v1/operations/employer/employees:
+    get:
+      tags: [Operations]
+      summary: List employees with faceted filters
+      description: |
+        Paginated lean employee rows plus facet counts for filter dropdowns.
+
+        Facet rule: when filter X is active, counts for X ignore X (so other options stay visible).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: designation
+          in: query
+          description: Comma-separated designation names
+          schema:
+            type: string
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Comma-separated UI status labels (Onboard, Probation, etc.)
+          schema:
+            type: string
+        - name: gender
+          in: query
+          schema:
+            type: string
+        - name: employee_type
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [name, joined_at, designation, status, rating]
+            default: joined_at
+        - name: sort_dir
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Employee list + pagination + facets
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiSuccess'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/EmployerEmployeeListItem'
+                      meta:
+                        allOf:
+                          - $ref: '#/components/schemas/PaginationMeta'
+                          - type: object
+                            properties:
+                              facets:
+                                $ref: '#/components/schemas/EmployerEmployeeFacets'
+
   /api/v1/operations/employer/{id}:
     get:
       tags: [Operations]
@@ -3728,6 +3799,80 @@ components:
         ui_status:
           type: string
           description: Employer UI badge (Onboard, Probation, Inactive, …)
+
+    EmployerEmployeeFacets:
+      type: object
+      properties:
+        designation:
+          type: object
+          additionalProperties:
+            type: integer
+        status:
+          type: object
+          additionalProperties:
+            type: integer
+        gender:
+          type: object
+          additionalProperties:
+            type: integer
+        department:
+          type: object
+          additionalProperties:
+            type: integer
+        employee_type:
+          type: object
+          additionalProperties:
+            type: integer
+
+    EmployerEmployeeListItem:
+      type: object
+      properties:
+        employment_id:
+          type: string
+          format: uuid
+        employee_no:
+          type: string
+          nullable: true
+        user_id:
+          type: string
+          format: uuid
+        karigari_id:
+          type: string
+          nullable: true
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone_no:
+          type: string
+        designation:
+          type: string
+        designation_id:
+          type: string
+          format: uuid
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        department_id:
+          type: string
+          format: uuid
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        employee_type:
+          type: string
+          nullable: true
+        rating:
+          type: number
+          nullable: true
+        joined_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/EmployeeStatusView'
 
     EmployeeEmployment:
       type: object

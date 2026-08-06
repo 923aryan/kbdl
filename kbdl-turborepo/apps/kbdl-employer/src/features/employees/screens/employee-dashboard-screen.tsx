@@ -36,7 +36,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { useFilteredEmployees } from '../hooks/use-employee-hook';
+import { useEmployeesList } from '../hooks/use-employees-list';
 import { useMetaSearch } from '../hooks/use-meta-search';
 import { AsyncSearchSelect } from '../components/async-search-select';
 import {
@@ -52,7 +52,6 @@ import {
 } from '../api';
 import { api } from '@/lib/api-client';
 import {
-  designations,
   dropdownOptions,
   statuses,
   useEmployeeStore,
@@ -514,12 +513,31 @@ export const EmployeeDashboardScreen = () => {
     addOnboardEmployee,
   } = useEmployeeStore();
 
-  const filteredEmployees = useFilteredEmployees({
+  const [page, setPage] = useState(1);
+
+  const { employees, facets, pagination, isFetching, isInitialLoading, error } = useEmployeesList({
     search,
     selectedDesignations,
     selectedStatuses,
+    page,
     refreshKey: employeeVersion,
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedDesignations, selectedStatuses]);
+
+  const designationOptions = useMemo(() => {
+    const fromFacets = facets?.designation ? Object.keys(facets.designation) : [];
+    const merged = new Set([...fromFacets, ...selectedDesignations]);
+    return [...merged].sort((a, b) => a.localeCompare(b));
+  }, [facets?.designation, selectedDesignations]);
+
+  const statusOptions = useMemo(() => {
+    const fromFacets = facets?.status ? Object.keys(facets.status) : [];
+    const merged = new Set([...fromFacets, ...statuses, ...selectedStatuses]);
+    return [...merged].sort((a, b) => a.localeCompare(b));
+  }, [facets?.status, selectedStatuses]);
 
   const openDetails = (employee: Employee, tab: DetailTab = 'Personal Info') => {
     setSelectedEmployee(employee);
@@ -533,13 +551,24 @@ export const EmployeeDashboardScreen = () => {
       <main className="p-[20px]">
         {mode === 'list' && (
           <EmployeeList
-            employees={filteredEmployees}
+            employees={employees}
             search={search}
             selectedDesignations={selectedDesignations}
             selectedStatuses={selectedStatuses}
+            designationOptions={designationOptions}
+            statusOptions={statusOptions}
+            designationFacetCounts={facets?.designation}
+            statusFacetCounts={facets?.status}
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            isFetching={isFetching}
+            isInitialLoading={isInitialLoading}
+            error={error}
             onSearch={setSearch}
             onDesignations={setSelectedDesignations}
             onStatuses={setSelectedStatuses}
+            onPageChange={setPage}
             onAdd={() => setMode('add')}
             onView={openDetails}
           />
@@ -606,9 +635,20 @@ function EmployeeList({
   search,
   selectedDesignations,
   selectedStatuses,
+  designationOptions,
+  statusOptions,
+  designationFacetCounts,
+  statusFacetCounts,
+  page,
+  totalPages,
+  total,
+  isFetching,
+  isInitialLoading,
+  error,
   onSearch,
   onDesignations,
   onStatuses,
+  onPageChange,
   onAdd,
   onView,
 }: {
@@ -616,20 +656,27 @@ function EmployeeList({
   search: string;
   selectedDesignations: string[];
   selectedStatuses: Status[];
+  designationOptions: string[];
+  statusOptions: string[];
+  designationFacetCounts?: Record<string, number>;
+  statusFacetCounts?: Record<string, number>;
+  page: number;
+  totalPages: number;
+  total: number;
+  isFetching: boolean;
+  isInitialLoading: boolean;
+  error: string | null;
   onSearch: (value: string) => void;
   onDesignations: (value: string[]) => void;
   onStatuses: (value: Status[]) => void;
+  onPageChange: (page: number) => void;
   onAdd: () => void;
   onView: (employee: Employee) => void;
 }) {
-  const pageSize = 10;
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(employees.length / pageSize));
-  const activePage = Math.min(currentPage, totalPages);
-  const paginatedEmployees = employees.slice((activePage - 1) * pageSize, activePage * pageSize);
+  const activePage = Math.min(page, totalPages);
 
   return (
-    <section className="rounded-[20px] border border-[#D3D3D3] bg-white p-[20px] shadow-sm ">
+    <section className={`rounded-[20px] border border-[#D3D3D3] bg-white p-[20px] shadow-sm ${isFetching && !isInitialLoading ? 'opacity-90' : ''}`}>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal">EMPLOYEES</h1>
@@ -658,19 +705,27 @@ function EmployeeList({
           <MultiSelect
             label="All Designations"
             selectedLabel="Designation"
-            options={designations}
+            options={designationOptions}
             selected={selectedDesignations}
+            facetCounts={designationFacetCounts}
             onChange={onDesignations}
           />
           <MultiSelect
             label="All Status"
             selectedLabel="Status"
-            options={statuses}
+            options={statusOptions}
             selected={selectedStatuses}
+            facetCounts={statusFacetCounts}
             onChange={(items) => onStatuses(items as Status[])}
           />
         </div>
       </div>
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-left rounded-t-[12px] overflow-hidden">
@@ -686,7 +741,20 @@ function EmployeeList({
             </tr>
           </thead>
           <tbody>
-            {paginatedEmployees.map((employee) => (
+            {isInitialLoading ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#676767]">
+                  Loading employees…
+                </td>
+              </tr>
+            ) : employees.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#676767]">
+                  No employees found
+                </td>
+              </tr>
+            ) : (
+              employees.map((employee) => (
               <tr key={employee.id} className="border-b border-[#D3D3D3] text-sm">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
@@ -722,11 +790,21 @@ function EmployeeList({
                   </button>
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
-      <Pagination currentPage={activePage} totalPages={totalPages} onPageChange={setCurrentPage} />
+      <Pagination
+        currentPage={activePage}
+        totalPages={Math.max(1, totalPages)}
+        onPageChange={onPageChange}
+      />
+      {!isInitialLoading && total > 0 && (
+        <p className="mt-2 text-center text-xs text-[#676767]">
+          Showing page {activePage} of {Math.max(1, totalPages)} ({total} employees)
+        </p>
+      )}
     </section>
   );
 }
@@ -736,12 +814,14 @@ function MultiSelect({
   selectedLabel,
   options,
   selected,
+  facetCounts,
   onChange,
 }: {
   label: string;
   selectedLabel: string;
   options: string[];
   selected: string[];
+  facetCounts?: Record<string, number>;
   onChange: (items: string[]) => void;
 }) {
   const { openDropdown, setOpenDropdown } = useEmployeeStore();
@@ -759,6 +839,11 @@ function MultiSelect({
       !selected.includes(option) &&
       option.toLowerCase().includes(search.toLowerCase())
   );
+
+  const formatOption = (option: string) => {
+    const count = facetCounts?.[option];
+    return count != null ? `${option} (${count})` : option;
+  };
 
   return (
     <div className="relative">
@@ -828,7 +913,7 @@ function MultiSelect({
                     onClick={() => toggle(option)}
                     className="flex w-full items-center justify-between rounded-md bg-[#DBEAFF] px-[16px] py-[9px] text-[14px] text-left text-[#0658C2] cursor-pointer"
                   >
-                    {option}
+                    {formatOption(option)}
 
                     <span className="relative h-4 w-4 rounded bg-white">
                       <span className="absolute inset-0 bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] top-[-2px] left-[2px] bg-no-repeat w-[22px]" />
@@ -851,7 +936,7 @@ function MultiSelect({
                   onClick={() => toggle(option)}
                   className="group flex w-full items-center justify-between rounded-md border border-[#D3D3D3] px-[16px] py-[9px] text-[14px] text-left hover:bg-[#DBEAFF] cursor-pointer hover:border-transparent hover:text-[#0658C2]"
                 >
-                  {option}
+                  {formatOption(option)}
 
                   <span className="h-4 w-4 rounded border border-[#D3D3D3] group-hover:bg-white group-hover:border-transparent" />
                 </button>
