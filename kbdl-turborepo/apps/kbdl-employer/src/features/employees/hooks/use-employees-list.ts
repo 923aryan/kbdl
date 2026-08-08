@@ -36,6 +36,7 @@ function mapListItemToEmployee(row: EmployeesListResult['data'][number]): Employ
 }
 
 export type UseEmployeesListArgs = {
+  roster?: 'active' | 'past' | 'all';
   search: string;
   selectedDesignations: string[];
   selectedStatuses: Status[];
@@ -45,6 +46,7 @@ export type UseEmployeesListArgs = {
 };
 
 export function useEmployeesList({
+  roster = 'active',
   search,
   selectedDesignations,
   selectedStatuses,
@@ -63,6 +65,7 @@ export function useEmployeesList({
     setIsFetching(true);
 
     const params: EmployeesListParams = {
+      roster,
       search: debouncedSearch,
       designation: selectedDesignations,
       status: selectedStatuses,
@@ -85,6 +88,7 @@ export function useEmployeesList({
         setIsFetching(false);
       });
   }, [
+    roster,
     debouncedSearch,
     selectedDesignations,
     selectedStatuses,

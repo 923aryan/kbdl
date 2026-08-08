@@ -123,14 +123,13 @@ enum SubscriptionStatus {
   @@map("subscription_status")
 }
 
-enum EmploymentStatus {
-  pending
-  active
-  inactive
+enum SeparationReason {
   terminated
   resigned
+  absconded
+  inactive
 
-  @@map("employment_status")
+  @@map("separation_reason")
 }
 
 enum OnboardingStage {
@@ -139,6 +138,22 @@ enum OnboardingStage {
   probation
 
   @@map("onboarding_stage")
+}
+
+enum HrAddressType {
+  present
+  permanent
+
+  @@map("hr_address_type")
+}
+
+enum MaritalStatus {
+  unmarried
+  married
+  divorced
+  widowed
+
+  @@map("marital_status")
 }
 
 enum AttendanceStatus {
@@ -238,7 +253,7 @@ model User {
   jobApplications   JobApplication[]
   shiftApplications ShiftApplication[]
 
-  employments EmployeeEmployment[]
+  workforce_person WorkforcePerson?
 
   subscriptions Subscriptions[]
   transactions  Transaction[]
@@ -582,10 +597,11 @@ model Department {
   parent_department Department?  @relation("DepartmentHierarchy", fields: [parent_department_id], references: [id])
   child_departments Department[] @relation("DepartmentHierarchy")
 
-  teams   Team[]
-  members CompanyMember[]
-  jobs    Job[]
-  shifts  Shift[]
+  teams              Team[]
+  members            CompanyMember[]
+  hr_profile_depts   EmployeeHrProfile[] @relation("HrProfileDepartment")
+  jobs               Job[]
+  shifts             Shift[]
 
   @@unique([company_id, name])
   @@index([company_id])
@@ -644,8 +660,11 @@ model Team {
 model CompanyMember {
   id String @id @default(uuid()) @db.Uuid
 
-  user_id       String  @db.Uuid
+  /// Nullable for HR-only worker rows until app account links via WorkforcePerson.
+  user_id       String? @db.Uuid
   company_id    String  @db.Uuid
+  /// Worker rows link to one employment stint; null for owner/HR/staff.
+  employment_id String? @unique @db.Uuid
   department_id String? @db.Uuid
   team_id       String? @db.Uuid
 
@@ -663,9 +682,10 @@ model CompanyMember {
   updated_at DateTime @updatedAt @db.Timestamptz()
 
   // Relations
-  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  company    Company     @relation(fields: [company_id], references: [id], onDelete: Cascade)
-  department Department? @relation(fields: [department_id], references: [id])
+  user       User?               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  company    Company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  employment EmployeeEmployment? @relation(fields: [employment_id], references: [id], onDelete: Cascade)
+  department Department?         @relation(fields: [department_id], references: [id])
   team       Team?       @relation("TeamMembers", fields: [team_id], references: [id])
   /// Restrict: cannot delete a role while members still reference it
   role       CompanyRole @relation(fields: [role_id], references: [id], onDelete: Restrict)
@@ -686,11 +706,9 @@ model CompanyMember {
   attendances            Attendance[]     @relation("MemberAttendance")
   attendances_marked     Attendance[]     @relation("AttendanceMarkedBy")
 
-  // One company per user for now.
-  // To allow multi-company later: remove @@unique([user_id]) only.
-  @@unique([user_id])
-  @@unique([company_id, user_id])
   @@index([company_id])
+  @@index([company_id, user_id])
+  @@index([employment_id])
   @@index([department_id])
   @@index([team_id])
   @@index([role_id])
@@ -974,17 +992,42 @@ model Subscriptions {
 }
 
 // ---------------------------------------------------------------------------
+// HR workforce identity (employer-managed; separate from app User)
+// ---------------------------------------------------------------------------
+
+model WorkforcePerson {
+  id String @id @default(uuid()) @db.Uuid
+
+  phone_no    String  @unique @db.VarChar
+  karigari_id String? @unique @db.VarChar
+
+  /// Set when worker registers / logs into the employee app (phone OTP match).
+  linked_user_id String? @unique @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  linked_user User?                @relation(fields: [linked_user_id], references: [id], onDelete: SetNull)
+  employments EmployeeEmployment[]
+
+  @@map("workforce_persons")
+}
+
+// ---------------------------------------------------------------------------
 // Employment history (HRMS)
 // ---------------------------------------------------------------------------
 
 model EmployeeEmployment {
   id String @id @default(uuid()) @db.Uuid
 
-  company_id  String @db.Uuid
-  employee_id String @db.Uuid
+  company_id          String @db.Uuid
+  workforce_person_id String @db.Uuid
 
-  employee_no       String?          @db.VarChar
-  employment_status EmploymentStatus
+  employee_no        String?            @db.VarChar
+  /// Filter flag — only one active row per (company_id, workforce_person_id); see partial unique index in migrations.
+  is_active          Boolean            @default(true)
+  /// Set when is_active=false: why the stint ended.
+  separation_reason  SeparationReason?
 
   joined_at DateTime  @db.Timestamptz()
   left_at   DateTime? @db.Timestamptz()
@@ -992,13 +1035,15 @@ model EmployeeEmployment {
   created_at DateTime @default(now()) @db.Timestamptz()
   updated_at DateTime @updatedAt @db.Timestamptz()
 
-  company  Company @relation(fields: [company_id], references: [id])
-  employee User    @relation(fields: [employee_id], references: [id])
-  hr_profile EmployeeHrProfile?
+  company          Company         @relation(fields: [company_id], references: [id])
+  workforce_person WorkforcePerson @relation(fields: [workforce_person_id], references: [id])
+  hr_profile       EmployeeHrProfile?
+  company_member   CompanyMember?
 
-  @@unique([company_id, employee_id])
+  @@index([company_id, workforce_person_id])
   @@index([company_id])
-  @@index([employee_id])
+  @@index([workforce_person_id])
+  @@index([is_active])
   @@map("employee_employments")
 }
 
@@ -1016,14 +1061,23 @@ model EmployeeHrProfile {
   email                       String? @db.VarChar
   date_of_birth               DateTime? @db.Date
   gender                      String? @db.VarChar
+  /// Legacy free-text; prefer employee_hr_addresses.present
   address                     String? @db.Text
   blood_group                 String? @db.VarChar
+  alternate_phone             String? @db.VarChar
+  marital_status              MaritalStatus?
+  father_name                 String? @db.VarChar
+  mother_name                 String? @db.VarChar
+  nationality                 String? @default("Indian") @db.VarChar
+  religion                    String? @db.VarChar
+  languages_known             String? @db.VarChar
   emergency_contact_name      String? @db.VarChar
   emergency_contact_relation  String? @db.VarChar
   emergency_contact_phone     String? @db.VarChar
 
-  // Job / work — department / manager / shift live on CompanyMember + EmployeeShift (no name snapshots)
+  // Job / work — per-stint snapshots; live manager/shift on CompanyMember + EmployeeShift
   designation_id           String?  @db.Uuid
+  department_id            String?  @db.Uuid
   branch_location          String?  @db.VarChar
   employee_type            String?  @db.VarChar
   work_location            String?  @db.VarChar
@@ -1031,6 +1085,11 @@ model EmployeeHrProfile {
   experience_years         Decimal? @db.Decimal(5, 2)
   certification_licenses   String?  @db.Text
   safety_training_completed Boolean?
+  probation_period_months   Int?
+  notice_period_days        Int?
+  weekly_off                String?  @db.VarChar
+  confirmation_date         DateTime? @db.Date
+  working_hours             String?  @db.VarChar
 
   // Payment / salary
   payment_method             String?  @db.VarChar
@@ -1046,6 +1105,10 @@ model EmployeeHrProfile {
   aadhaar_number           String? @db.VarChar
   pan_number               String? @db.VarChar
   driving_license_number   String? @db.VarChar
+  voter_id                 String? @db.VarChar
+  uan_number               String? @db.VarChar
+  esi_number               String? @db.VarChar
+  pf_number                String? @db.VarChar
   identity_document_url    String? @db.Text
   additional_document_url  String? @db.Text
 
@@ -1056,9 +1119,56 @@ model EmployeeHrProfile {
 
   employment  EmployeeEmployment  @relation(fields: [employment_id], references: [id], onDelete: Cascade)
   designation CompanyDesignation? @relation(fields: [designation_id], references: [id], onDelete: SetNull)
+  department  Department?         @relation("HrProfileDepartment", fields: [department_id], references: [id], onDelete: SetNull)
+  addresses   EmployeeHrAddress[]
+  documents   EmployeeHrDocument[]
 
   @@index([designation_id])
+  @@index([department_id])
   @@map("employee_hr_profiles")
+}
+
+/// Company-scoped address snapshot per employment HR profile (present + permanent).
+model EmployeeHrAddress {
+  id String @id @default(uuid()) @db.Uuid
+
+  hr_profile_id String        @db.Uuid
+  type          HrAddressType
+  line1         String?       @db.VarChar
+  line2         String?       @db.VarChar
+  city          String?       @db.VarChar
+  state         String?       @db.VarChar
+  pincode       String?       @db.VarChar(10)
+  country       String        @default("IN") @db.VarChar(2)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  hr_profile EmployeeHrProfile @relation(fields: [hr_profile_id], references: [id], onDelete: Cascade)
+
+  @@unique([hr_profile_id, type])
+  @@index([hr_profile_id])
+  @@map("employee_hr_addresses")
+}
+
+/// Extra HR documents uploaded after onboard (education cert, police verification, etc.)
+model EmployeeHrDocument {
+  id String @id @default(uuid()) @db.Uuid
+
+  hr_profile_id   String  @db.Uuid
+  document_type   String  @db.VarChar(120)
+  document_number String? @db.VarChar(80)
+  file_key        String  @db.Text
+  file_name       String? @db.VarChar(255)
+  expiry_date     DateTime? @db.Date
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  hr_profile EmployeeHrProfile @relation(fields: [hr_profile_id], references: [id], onDelete: Cascade)
+
+  @@index([hr_profile_id])
+  @@map("employee_hr_documents")
 }
 
 // ---------------------------------------------------------------------------

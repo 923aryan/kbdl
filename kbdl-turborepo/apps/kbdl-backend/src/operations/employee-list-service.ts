@@ -1,5 +1,4 @@
 import { prisma } from '@repo/db/server';
-import type { EmployeeEmployment } from '@repo/db';
 import {
   EmployerEmployeeFacets,
   EmployerEmployeeListItem,
@@ -17,9 +16,12 @@ import {
 type ListRow = {
   employment_id: string;
   employee_no: string | null;
-  employment_status: string;
+  is_active: boolean;
+  separation_reason: string | null;
   joined_at: Date;
-  user_id: string;
+  left_at: Date | null;
+  workforce_person_id: string;
+  user_id: string | null;
   karigari_id: string | null;
   phone_no: string;
   rating_avg: { toNumber?: () => number } | number | null;
@@ -57,6 +59,7 @@ function mapListRow(row: ListRow): EmployerEmployeeListItem {
   return {
     employment_id: row.employment_id,
     employee_no: row.employee_no,
+    workforce_person_id: row.workforce_person_id,
     user_id: row.user_id,
     karigari_id: row.karigari_id,
     name: row.name,
@@ -70,8 +73,10 @@ function mapListRow(row: ListRow): EmployerEmployeeListItem {
     employee_type: row.employee_type,
     rating: toNumber(row.rating_avg),
     joined_at: row.joined_at.toISOString(),
+    left_at: row.left_at?.toISOString() ?? null,
     status: {
-      employment_status: row.employment_status as EmployeeEmployment['employment_status'],
+      is_active: row.is_active,
+      separation_reason: row.separation_reason as EmployerEmployeeListItem['status']['separation_reason'],
       onboarding_stage: row.onboarding_stage,
       ui_status: row.ui_status,
     },
@@ -81,6 +86,7 @@ function mapListRow(row: ListRow): EmployerEmployeeListItem {
 function toFilters(companyId: string, query: GetEmployerEmployeesListQuery): EmployeeListFilters {
   return {
     companyId,
+    roster: query.roster,
     search: query.search,
     designations: query.designation,
     departments: query.department,

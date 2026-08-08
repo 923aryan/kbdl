@@ -10,8 +10,10 @@ import {
   GetEmployerSupervisorsMetaRequest,
   GetEmployerWorkShiftsMetaRequest,
   OnboardEmployeeRequest,
+  AddEmployeeDocumentRequest,
   SearchAddressRequest,
   UpdateEmploymentStatusRequest,
+  UpdateEmployeeProfileRequest,
 } from '@repo/types';
 import {
   getAllEmployeeEmploymentSchema,
@@ -25,8 +27,10 @@ import {
   getEmployerSupervisorsMetaSchema,
   getEmployerWorkShiftsMetaSchema,
   onboardEmployeeSchema,
+  addEmployeeDocumentSchema,
   searchAddressSchema,
   updateEmploymentStatusSchema,
+  updateEmployeeProfileSchema,
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
 import { sendSuccess } from '../utils/send-success';
@@ -44,9 +48,12 @@ import {
   getEmployerRosterService,
   getEmployerSupervisorsMetaService,
   getEmployerWorkShiftsMetaService,
+  getNextEmployeeNumberService,
   onboardEmployeeService,
   updateEmploymentStatusService,
+  updateEmployeeProfileService,
 } from './operation-services';
+import { addEmployeeDocumentService } from './employee-document-service';
 import { getEmployerEmployeesListService } from './employee-list-service';
 
 export const getEmployerRoster = async (req: Request, res: Response) => {
@@ -96,6 +103,14 @@ export const getEmployerDesignationsMeta = async (req: Request, res: Response) =
   sendSuccess(res, 'Designations retrieved successfully', items, 200, meta);
 };
 
+export const getNextEmployeeNumber = async (req: Request, res: Response) => {
+  const companyId = req.payload.employer.id;
+  const nextEmployeeNo = await getNextEmployeeNumberService(companyId);
+  sendSuccess(res, 'Next employee number retrieved successfully', {
+    employee_no: nextEmployeeNo,
+  });
+};
+
 export const getEmployeeDetails = async (req: Request, res: Response) => {
   const input: GetEmployeeDetailsRequest = validate(getEmployeeDetailsSchema, req);
   const employerId = req.payload.employer.id;
@@ -115,6 +130,26 @@ export const onboardEmployee = async (req: Request, res: Response) => {
       ? 'Employee draft saved successfully'
       : 'Employee onboarded successfully';
   sendSuccess(res, message, newEmployee, 201);
+};
+
+export const updateEmployeeProfile = async (req: Request, res: Response) => {
+  const input: UpdateEmployeeProfileRequest = validate(updateEmployeeProfileSchema, req);
+  const employerId = req.payload.employer.id;
+
+  const updated = await updateEmployeeProfileService(
+    employerId,
+    input.params.id,
+    input.body,
+  );
+  sendSuccess(res, 'Employee profile updated successfully', updated);
+};
+
+export const addEmployeeDocument = async (req: Request, res: Response) => {
+  const input: AddEmployeeDocumentRequest = validate(addEmployeeDocumentSchema, req);
+  const employerId = req.payload.employer.id;
+
+  const updated = await addEmployeeDocumentService(employerId, input.params.id, input.body);
+  sendSuccess(res, 'Document saved successfully', updated, 201);
 };
 
 export const updateEmploymentStatus = async (req: Request, res: Response) => {

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 
 export type Status = 'Active' | 'Inactive' | 'On Boarding' | 'Onboard' | 'On Leave' | 'Probation' | 'Absent';
-export type ViewMode = 'list' | 'details' | 'add';
 export type DetailTab =
   | 'Personal Info'
   | 'Job & Work Info'
@@ -215,6 +214,7 @@ export const statuses: Status[] = ['Active', 'Inactive', 'On Boarding', 'Onboard
 
 export const dropdownOptions = {
   gender: ['Male', 'Female', 'Other'],
+  maritalStatus: ['Unmarried', 'Married', 'Divorced', 'Widowed'],
   blood: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
   department: ['Maintenance', 'Production', 'Operations', 'Assembly', 'Packaging'],
   branch: ['Chandigarh Plant 1', 'Delhi Unit', 'Gujrat Factory', 'Noida Site'],
@@ -228,9 +228,6 @@ export const dropdownOptions = {
 };
 
 interface EmployeeState {
-  mode: ViewMode;
-  selectedEmployee: Employee;
-  activeTab: DetailTab;
   search: string;
   selectedDesignations: string[];
   selectedStatuses: Status[];
@@ -238,22 +235,16 @@ interface EmployeeState {
   paymentMethod: PaymentMethod;
   uploadOpen: boolean;
   openDropdown: string | null;
-  setMode: (mode: ViewMode) => void;
-  setSelectedEmployee: (employee: Employee) => void;
-  setActiveTab: (tab: DetailTab) => void;
   setSearch: (search: string) => void;
   setSelectedDesignations: (designations: string[]) => void;
   setSelectedStatuses: (statuses: Status[]) => void;
   setPaymentMethod: (method: PaymentMethod) => void;
   setUploadOpen: (open: boolean) => void;
   setOpenDropdown: (dropdown: string | null) => void;
-  addOnboardEmployee: (employee: Employee) => void;
+  bumpEmployeeListVersion: () => void;
 }
 
 export const useEmployeeStore = create<EmployeeState>((set) => ({
-  mode: 'list',
-  selectedEmployee: employees[0]!,
-  activeTab: 'Attendance',
   search: '',
   selectedDesignations: [],
   selectedStatuses: [],
@@ -261,17 +252,13 @@ export const useEmployeeStore = create<EmployeeState>((set) => ({
   paymentMethod: 'cash',
   uploadOpen: false,
   openDropdown: null,
-  setMode: (mode) => set({ mode }),
-  setSelectedEmployee: (selectedEmployee) => set({ selectedEmployee }),
-  setActiveTab: (activeTab) => set({ activeTab }),
   setSearch: (search) => set({ search }),
   setSelectedDesignations: (selectedDesignations) => set({ selectedDesignations }),
   setSelectedStatuses: (selectedStatuses) => set({ selectedStatuses }),
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
   setUploadOpen: (uploadOpen) => set({ uploadOpen }),
   setOpenDropdown: (openDropdown) => set({ openDropdown }),
-  addOnboardEmployee: (employee) => {
-    employees.unshift(employee);
-    set((state) => ({ selectedEmployee: employee, mode: 'list', employeeVersion: state.employeeVersion + 1 }));
+  bumpEmployeeListVersion: () => {
+    set((state) => ({ employeeVersion: state.employeeVersion + 1 }));
   },
 }));

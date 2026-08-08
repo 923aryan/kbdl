@@ -19,11 +19,55 @@ import {
 } from '../compat/employer-compat';
 import { resendClient } from '../config/resend';
 import { AppError } from '../utils/api-error';
+import { linkWorkforcePersonToUser } from '../operations/workforce-person-service';
 import { OTP_ROLES, ROLES } from '../utils/constants';
 import { JwtPayload } from '../utils/jwt-payload';
 const generateOtp = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
+
+type OtpLookup = { phone_no: string; role: string } | { email: string; role: string };
+
+function otpWhere(lookup: OtpLookup) {
+  return 'phone_no' in lookup
+    ? { phone_no: lookup.phone_no, role: lookup.role }
+    : { email: lookup.email, role: lookup.role };
+}
+
+async function findOtpRecord(lookup: OtpLookup) {
+  return prisma.otpVerification.findFirst({ where: otpWhere(lookup) });
+}
+
+async function deleteOtpRecord(lookup: OtpLookup) {
+  await prisma.otpVerification.deleteMany({ where: otpWhere(lookup) });
+}
+
+/** Replace prior row for same phone/email + role (no upsert — works even if unique index missing). */
+async function saveOtpRecord(data: {
+  phone_no?: string;
+  email?: string;
+  role: string;
+  otp: string;
+  expires_at: Date;
+  payload?: unknown;
+}) {
+  const where =
+    data.phone_no != null
+      ? { phone_no: data.phone_no, role: data.role }
+      : { email: data.email!, role: data.role };
+
+  await prisma.otpVerification.deleteMany({ where });
+  await prisma.otpVerification.create({
+    data: {
+      phone_no: data.phone_no ?? null,
+      email: data.email ?? null,
+      otp: data.otp,
+      role: data.role,
+      expires_at: data.expires_at,
+      payload: (data.payload ?? {}) as object,
+    },
+  });
+}
 
 const sendOtpEmail = async (email: string, otp: string): Promise<void> => {
   try {
@@ -151,33 +195,12 @@ export const registerUserService = async (payload: UserRegisterPayload): Promise
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
   // 2. Temporarily save registration payload WITH otp
-  await prisma.otpVerification.upsert({
-    where: {
-      phone_no_role: {
-        phone_no,
-        role: OTP_ROLES.USER_REGISTER,
-      },
-    },
-
-    update: {
-      otp,
-      expires_at: expiresAt,
-
-      payload: {
-        ...payload,
-      },
-    },
-
-    create: {
-      phone_no,
-      otp,
-      role: OTP_ROLES.USER_REGISTER,
-      expires_at: expiresAt,
-
-      payload: {
-        ...payload,
-      },
-    },
+  await saveOtpRecord({
+    phone_no,
+    role: OTP_ROLES.USER_REGISTER,
+    otp,
+    expires_at: expiresAt,
+    payload: { ...payload },
   });
 
   // TODO: sendOtpSMS(phone_no, otp);
@@ -191,13 +214,9 @@ export const verifyUserRegistrationOtpService = async (
 ): Promise<{ accessToken: string; user: User; refreshToken: string }> => {
   const { phone_no, otp } = payload;
 
-  const otpRecord = await prisma.otpVerification.findUnique({
-    where: {
-      phone_no_role: {
-        phone_no,
-        role: OTP_ROLES.USER_REGISTER,
-      },
-    },
+  const otpRecord = await findOtpRecord({
+    phone_no,
+    role: OTP_ROLES.USER_REGISTER,
   });
 
   if (!otpRecord) {
@@ -209,14 +228,7 @@ export const verifyUserRegistrationOtpService = async (
   }
 
   if (new Date() > otpRecord.expires_at) {
-    await prisma.otpVerification.delete({
-      where: {
-        phone_no_role: {
-          phone_no,
-          role: OTP_ROLES.USER_REGISTER,
-        },
-      },
-    });
+    await deleteOtpRecord({ phone_no, role: OTP_ROLES.USER_REGISTER });
 
     throw new AppError(400, 'EXPIRED_OTP', 'OTP has expired');
   }
@@ -242,15 +254,10 @@ export const verifyUserRegistrationOtpService = async (
     },
   });
 
+  await linkWorkforcePersonToUser(newUser.id, newUser.phone_no);
+
   // Delete OTP record after successful verification
-  await prisma.otpVerification.delete({
-    where: {
-      phone_no_role: {
-        phone_no,
-        role: OTP_ROLES.USER_REGISTER,
-      },
-    },
-  });
+  await deleteOtpRecord({ phone_no, role: OTP_ROLES.USER_REGISTER });
 
   // 4. Generate JWTs
   const accessToken = jwt.sign(
@@ -319,25 +326,11 @@ export const sendUserOtpService = async (payload: { phone: string }): Promise<nu
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-  await prisma.otpVerification.upsert({
-    where: {
-      phone_no_role: {
-        phone_no: phone,
-        role: 'USER_LOGIN',
-      },
-    },
-
-    update: {
-      otp,
-      expires_at: expiresAt,
-    },
-
-    create: {
-      phone_no: phone,
-      otp,
-      role: 'USER_LOGIN',
-      expires_at: expiresAt,
-    },
+  await saveOtpRecord({
+    phone_no: phone,
+    role: OTP_ROLES.USER_LOGIN,
+    otp,
+    expires_at: expiresAt,
   });
 
   // TODO:
@@ -356,28 +349,14 @@ export const verifyUserOtpService = async (payload: {
 }> => {
   const { phone, otp } = payload;
 
-  const otpRecord = await prisma.otpVerification.findUnique({
-    where: {
-      phone_no_role: {
-        phone_no: phone,
-        role: 'USER_LOGIN',
-      },
-    },
-  });
+  const otpRecord = await findOtpRecord({ phone_no: phone, role: OTP_ROLES.USER_LOGIN });
 
   if (!otpRecord) {
     throw new AppError(400, 'INVALID_OTP', 'No OTP found for this number');
   }
 
   if (new Date() > otpRecord.expires_at) {
-    await prisma.otpVerification.delete({
-      where: {
-        phone_no_role: {
-          phone_no: phone,
-          role: 'USER_LOGIN',
-        },
-      },
-    });
+    await deleteOtpRecord({ phone_no: phone, role: OTP_ROLES.USER_LOGIN });
 
     throw new AppError(400, 'EXPIRED_OTP', 'OTP has expired');
   }
@@ -386,14 +365,7 @@ export const verifyUserOtpService = async (payload: {
     throw new AppError(401, 'INVALID_OTP', 'Incorrect OTP');
   }
 
-  await prisma.otpVerification.delete({
-    where: {
-      phone_no_role: {
-        phone_no: phone,
-        role: 'USER_LOGIN',
-      },
-    },
-  });
+  await deleteOtpRecord({ phone_no: phone, role: OTP_ROLES.USER_LOGIN });
 
   const existingUser = await prisma.user.findUnique({
     where: {
@@ -404,6 +376,8 @@ export const verifyUserOtpService = async (payload: {
   if (!existingUser) {
     throw new AppError(404, 'NON_EXISTENT_USER', 'User not found');
   }
+
+  await linkWorkforcePersonToUser(existingUser.id, existingUser.phone_no);
 
   const accessToken = jwt.sign(
     {
@@ -479,33 +453,12 @@ export const registerEmployerService = async (payload: EmployerRegisterPayload):
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-  await prisma.otpVerification.upsert({
-    where: {
-      email_role: {
-        email: payload.email,
-        role: OTP_ROLES.EMPLOYER_REGISTER,
-      },
-    },
-
-    update: {
-      otp,
-      expires_at: expiresAt,
-
-      payload: {
-        ...payload,
-      },
-    },
-
-    create: {
-      email: payload.email,
-      otp,
-      role: OTP_ROLES.EMPLOYER_REGISTER,
-      expires_at: expiresAt,
-
-      payload: {
-        ...payload,
-      },
-    },
+  await saveOtpRecord({
+    email: payload.email,
+    role: OTP_ROLES.EMPLOYER_REGISTER,
+    otp,
+    expires_at: expiresAt,
+    payload: { ...payload },
   });
 
   await sendOtpEmail(payload.email, otp);
@@ -523,13 +476,9 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
 }> => {
   const { email, otp } = payload;
 
-  const otpRecord = await prisma.otpVerification.findUnique({
-    where: {
-      email_role: {
-        email,
-        role: 'EMPLOYER_REGISTER',
-      },
-    },
+  const otpRecord = await findOtpRecord({
+    email,
+    role: OTP_ROLES.EMPLOYER_REGISTER,
   });
 
   if (!otpRecord) {
@@ -541,14 +490,7 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
   }
 
   if (new Date() > otpRecord.expires_at) {
-    await prisma.otpVerification.delete({
-      where: {
-        email_role: {
-          email,
-          role: 'EMPLOYER_REGISTER',
-        },
-      },
-    });
+    await deleteOtpRecord({ email, role: OTP_ROLES.EMPLOYER_REGISTER });
 
     throw new AppError(400, 'EXPIRED_OTP', 'OTP has expired');
   }
@@ -618,14 +560,7 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
     return { company, ownerUser: user };
   });
 
-  await prisma.otpVerification.delete({
-    where: {
-      email_role: {
-        email,
-        role: 'EMPLOYER_REGISTER',
-      },
-    },
-  });
+  await deleteOtpRecord({ email, role: OTP_ROLES.EMPLOYER_REGISTER });
 
   const accessToken = jwt.sign(
     {
@@ -689,25 +624,11 @@ export const sendEmployerOtpService = async (payload: { email: string }): Promis
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-  await prisma.otpVerification.upsert({
-    where: {
-      email_role: {
-        email,
-        role: 'EMPLOYER_LOGIN',
-      },
-    },
-
-    update: {
-      otp,
-      expires_at: expiresAt,
-    },
-
-    create: {
-      email,
-      otp,
-      role: 'EMPLOYER_LOGIN',
-      expires_at: expiresAt,
-    },
+  await saveOtpRecord({
+    email,
+    role: OTP_ROLES.EMPLOYER_LOGIN,
+    otp,
+    expires_at: expiresAt,
   });
 
   await sendOtpEmail(email, otp);
@@ -725,28 +646,14 @@ export const verifyEmployerOtpService = async (payload: {
 }> => {
   const { email, otp } = payload;
 
-  const otpRecord = await prisma.otpVerification.findUnique({
-    where: {
-      email_role: {
-        email,
-        role: 'EMPLOYER_LOGIN',
-      },
-    },
-  });
+  const otpRecord = await findOtpRecord({ email, role: OTP_ROLES.EMPLOYER_LOGIN });
 
   if (!otpRecord) {
     throw new AppError(400, 'INVALID_OTP', 'No OTP found for this email');
   }
 
   if (new Date() > otpRecord.expires_at) {
-    await prisma.otpVerification.delete({
-      where: {
-        email_role: {
-          email,
-          role: 'EMPLOYER_LOGIN',
-        },
-      },
-    });
+    await deleteOtpRecord({ email, role: OTP_ROLES.EMPLOYER_LOGIN });
 
     throw new AppError(400, 'EXPIRED_OTP', 'OTP has expired');
   }
@@ -755,14 +662,7 @@ export const verifyEmployerOtpService = async (payload: {
     throw new AppError(401, 'INVALID_OTP', 'Incorrect OTP');
   }
 
-  await prisma.otpVerification.delete({
-    where: {
-      email_role: {
-        email,
-        role: 'EMPLOYER_LOGIN',
-      },
-    },
-  });
+  await deleteOtpRecord({ email, role: OTP_ROLES.EMPLOYER_LOGIN });
 
   const ownerUser = await prisma.user.findUnique({
     where: { email },
@@ -891,7 +791,7 @@ export const generateRefreshTokenService = async (
       });
       console.log('existin here');
 
-      if (!ownerMember || ownerMember.user.refresh_token !== oldRefreshToken) {
+      if (!ownerMember?.user || ownerMember.user.refresh_token !== oldRefreshToken) {
         throw new AppError(401, 'INVALID_TOKEN', 'Invalid refresh token');
       }
       console.log('after employer here');

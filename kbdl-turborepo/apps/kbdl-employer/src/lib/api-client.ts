@@ -65,7 +65,6 @@ async function http<T>(path: string, config: RequestInit = {}): Promise<ApiSucce
       const customError = new Error(errorResponse.error.message);
       (customError as any).code = errorResponse.error.code;
       (customError as any).details = errorResponse.error.details;
-      (customError as any).raw = errorResponse;
       throw customError;
     }
 
@@ -127,4 +126,30 @@ export const api = {
       method: 'DELETE',
       ...config,
     }),
+
+  /** Multipart upload — do not set Content-Type; browser adds boundary */
+  upload: async <T>(path: string, formData: FormData): Promise<ApiSuccess<T>> => {
+    const url = `${BASE_URL}${path}`;
+    const token = getAccessToken();
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      const customError = new Error(
+        errorBody.error?.message || response.statusText || 'Upload failed',
+      );
+      (customError as { code?: string }).code = errorBody.error?.code;
+      throw customError;
+    }
+
+    return (await response.json()) as ApiSuccess<T>;
+  },
 };

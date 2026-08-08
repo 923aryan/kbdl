@@ -1,4 +1,4 @@
-import { EmployeeEmployment, EmployeeHrProfile } from '@repo/db';
+import { EmployeeEmployment, EmployeeHrProfile, EmployeeHrAddress } from '@repo/db';
 import {
   getAllEmployeeEmploymentSchema,
   getEmployeeDetailsSchema,
@@ -12,7 +12,9 @@ import {
   getEmployerWorkShiftsMetaSchema,
   onboardEmployeeSchema,
   searchAddressSchema,
+  addEmployeeDocumentSchema,
   updateEmploymentStatusSchema,
+  updateEmployeeProfileSchema,
 } from '@repo/validator/shared';
 import { z } from 'zod';
 import { EmployerDTO, UserDTO } from './profile-type';
@@ -26,11 +28,45 @@ export type EmployeeOrgContext = {
     name: string | null;
     phone_no: string;
   } | null;
-  work_shift: { id: string; name: string } | null;
+  work_shift: {
+    id: string;
+    name: string;
+    start_time?: string;
+    end_time?: string;
+    break_minutes?: number;
+  } | null;
+};
+
+export type EmployeeProfileSections = {
+  personal: string[][];
+  contact: string[][];
+  emergency: string[][];
+  identity: string[][];
+  other: string[][];
+  job: string[][];
+  work: string[][];
+  payroll: string[][];
+  bank: string[][];
+  payment: string[][];
+  documents: string[][];
+  notes?: string;
+  addresses: {
+    present: EmployeeHrAddress | null;
+    permanent: EmployeeHrAddress | null;
+  };
+};
+
+export type WorkforcePersonDTO = {
+  id: string;
+  phone_no: string;
+  karigari_id: string | null;
+  linked_user_id: string | null;
+  linked_user?: UserDTO | null;
 };
 
 export type EmployeeStatusView = {
-  employment_status: EmployeeEmployment['employment_status'];
+  is_active: boolean;
+  separation_reason: EmployeeEmployment['separation_reason'];
   onboarding_stage: string | null;
   /** Employer UI badge label */
   ui_status: string;
@@ -39,10 +75,19 @@ export type EmployeeStatusView = {
 // Assuming you have a DTO representing the joined EmployeeEmployment & User model
 export type EmployeeEmploymentDTO = EmployeeEmployment & {
   employer_id: string;
+  workforce_person: WorkforcePersonDTO;
+  /** Linked app user view, or HR identity snapshot when not registered on app */
   employee: UserDTO;
-  hr_profile?: EmployeeHrProfile | null;
+  hr_profile?: (EmployeeHrProfile & {
+    designation?: { id: string; name: string } | null;
+    department?: { id: string; name: string } | null;
+    addresses?: EmployeeHrAddress[];
+    documents?: EmployeeHrDocumentDTO[];
+  }) | null;
   organization?: EmployeeOrgContext;
   status?: EmployeeStatusView;
+  /** UI-ready label/value rows for employer detail tabs */
+  profile_sections?: EmployeeProfileSections;
 };
 export type EmployeeEmploymentWithEmployerDTO = EmployeeEmployment & {
   employer_id: string;
@@ -61,7 +106,8 @@ export type GetEmployerEmployeesListQuery = z.infer<
 export type EmployerEmployeeListItem = {
   employment_id: string;
   employee_no: string | null;
-  user_id: string;
+  workforce_person_id: string;
+  user_id: string | null;
   karigari_id: string | null;
   name: string;
   email: string | null;
@@ -74,6 +120,7 @@ export type EmployerEmployeeListItem = {
   employee_type: string | null;
   rating: number | null;
   joined_at: string;
+  left_at: string | null;
   status: EmployeeStatusView;
 };
 
@@ -97,6 +144,24 @@ export type OnboardEmployeeResponse = EmployeeEmploymentDTO;
 export type UpdateEmploymentStatusRequest = z.infer<typeof updateEmploymentStatusSchema>;
 export type UpdateEmploymentStatusPayload = z.infer<typeof updateEmploymentStatusSchema>['body'];
 export type UpdateEmploymentStatusResponse = EmployeeEmploymentDTO;
+
+export type UpdateEmployeeProfileRequest = z.infer<typeof updateEmployeeProfileSchema>;
+export type UpdateEmployeeProfilePayload = z.infer<typeof updateEmployeeProfileSchema>['body'];
+export type UpdateEmployeeProfileResponse = EmployeeEmploymentDTO;
+
+export type EmployeeHrDocumentDTO = {
+  id: string;
+  document_type: string;
+  document_number: string | null;
+  file_key: string;
+  file_name: string | null;
+  expiry_date: string | null;
+  created_at: string;
+};
+
+export type AddEmployeeDocumentRequest = z.infer<typeof addEmployeeDocumentSchema>;
+export type AddEmployeeDocumentPayload = z.infer<typeof addEmployeeDocumentSchema>['body'];
+export type AddEmployeeDocumentResponse = EmployeeEmploymentDTO;
 
 export type GetAllEmployeeEmploymentRequest = z.infer<typeof getAllEmployeeEmploymentSchema>;
 export type GetAllEmployeeEmploymentQuery = z.infer<typeof getAllEmployeeEmploymentSchema>['query'];

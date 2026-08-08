@@ -1727,6 +1727,15 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
+        - name: roster
+          in: query
+          description: |
+            Roster scope. `active` (default) = current employees (active + pending).
+            `past` = left/terminated/inactive. `all` = every employment row.
+          schema:
+            type: string
+            enum: [active, past, all]
+            default: active
         - name: search
           in: query
           schema:
@@ -1818,11 +1827,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [status]
+              required: [is_active]
               properties:
-                status:
+                is_active:
+                  type: boolean
+                separation_reason:
                   type: string
-                  enum: [active, inactive, terminated, resigned]
+                  enum: [terminated, resigned, absconded, inactive]
+                  description: Required when is_active is false
       responses:
         '200':
           description: Updated employment
@@ -3727,6 +3739,10 @@ components:
           type: string
           format: uuid
           nullable: true
+        department_id:
+          type: string
+          format: uuid
+          nullable: true
         full_name:
           type: string
         identity_document_url:
@@ -3789,9 +3805,12 @@ components:
     EmployeeStatusView:
       type: object
       properties:
-        employment_status:
+        is_active:
+          type: boolean
+        separation_reason:
           type: string
-          enum: [pending, active, inactive, terminated, resigned]
+          nullable: true
+          enum: [terminated, resigned, absconded, inactive]
         onboarding_stage:
           type: string
           nullable: true
@@ -3871,6 +3890,10 @@ components:
         joined_at:
           type: string
           format: date-time
+        left_at:
+          type: string
+          format: date-time
+          nullable: true
         status:
           $ref: '#/components/schemas/EmployeeStatusView'
 
@@ -3890,9 +3913,12 @@ components:
         employee_no:
           type: string
           nullable: true
-        employment_status:
+        is_active:
+          type: boolean
+        separation_reason:
           type: string
-          enum: [pending, active, inactive, terminated, resigned]
+          nullable: true
+          enum: [terminated, resigned, absconded, inactive]
         joined_at:
           type: string
           format: date-time

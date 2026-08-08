@@ -41,6 +41,10 @@ import { publicShiftQueue } from '../config/queues/public-shift-queue';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
 import {
+  findActiveEmploymentForAppUserAtCompany,
+  findPrimaryActiveEmploymentForAppUser,
+} from '../operations/workforce-person-service';
+import {
   NotificationTypes,
   Role,
   ROLES,
@@ -49,53 +53,20 @@ import {
   ShiftStatus,
 } from '../utils/constants';
 
-const ROSTER_EMPLOYMENT_STATUSES = ['active', 'pending'] as const;
-
-/** Company for shift-swap: roster employment first, then active company membership. */
+/** Company for shift-swap — most recent active employment when worker has several. */
 async function resolveUserCompanyIdForShift(userId: string): Promise<string | null> {
-  const employment = await prisma.employeeEmployment.findFirst({
-    where: {
-      employee_id: userId,
-      employment_status: { in: [...ROSTER_EMPLOYMENT_STATUSES] },
-    },
-    orderBy: [{ employment_status: 'asc' }, { joined_at: 'desc' }],
-    select: { company_id: true },
-  });
-  if (employment) return employment.company_id;
-
-  const membership = await prisma.companyMember.findFirst({
-    where: { user_id: userId, is_active: true },
-    select: { company_id: true },
-  });
-  return membership?.company_id ?? null;
+  const employment = await findPrimaryActiveEmploymentForAppUser(userId);
+  return employment?.company_id ?? null;
 }
 
-/** Employer roster check — active or pending onboard counts. */
+/** Employer roster check — membership comes from active employment only. */
 async function assertUserOnEmployerRoster(
   employeeUserId: string,
   companyId: string,
 ): Promise<void> {
-  const employment = await prisma.employeeEmployment.findFirst({
-    where: {
-      employee_id: employeeUserId,
-      company_id: companyId,
-      employment_status: { in: [...ROSTER_EMPLOYMENT_STATUSES] },
-    },
-    select: { id: true },
-  });
+  const employment = await findActiveEmploymentForAppUserAtCompany(employeeUserId, companyId);
 
-  if (employment) return;
-
-  const membership = await prisma.companyMember.findFirst({
-    where: {
-      user_id: employeeUserId,
-      company_id: companyId,
-      is_active: true,
-    },
-    select: { id: true },
-  });
-
-  if (!membership) {
+  if (!employment) {
     throw new AppError(
       403,
       'INVALID_EMPLOYEE',
@@ -1365,7 +1336,7 @@ export const rateShiftService = async (
         role: { code: 'OWNER' },
       },
     });
-    if (!owner) {
+    if (!owner?.user_id) {
       throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer owner not found.');
     }
     fromUserId = owner.user_id;

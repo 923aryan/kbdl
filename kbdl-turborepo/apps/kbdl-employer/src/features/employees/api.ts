@@ -1,5 +1,10 @@
 import { api } from '@/lib/api-client';
-import type { EmployerEmployeeFacets, EmployerEmployeeListItem } from '@repo/types';
+import type {
+  EmployeeEmploymentDTO,
+  EmployerEmployeeFacets,
+  EmployerEmployeeListItem,
+  UpdateEmployeeProfilePayload,
+} from '@repo/types';
 
 export type MetaDepartment = {
   id: string;
@@ -64,13 +69,18 @@ export async function fetchWorkShiftsMeta(params: MetaListParams = {}) {
   return api.get<MetaWorkShift[]>(`/operations/employer/meta/work-shifts${toQuery(params)}`);
 }
 
+export async function fetchNextEmployeeNumber() {
+  return api.get<{ employee_no: string }>('/operations/employer/meta/next-employee-no');
+}
+
 /** Initial onboard dropdown data — parallel fetch */
 export async function fetchOnboardMetaInitial(limit = 30) {
-  const [departments, designations, supervisors, workShifts] = await Promise.all([
+  const [departments, designations, supervisors, workShifts, nextEmployeeNo] = await Promise.all([
     fetchDepartmentsMeta({ limit }),
     fetchDesignationsMeta({ limit }),
     fetchSupervisorsMeta({ limit }),
     fetchWorkShiftsMeta({ limit }),
+    fetchNextEmployeeNumber(),
   ]);
 
   return {
@@ -78,10 +88,12 @@ export async function fetchOnboardMetaInitial(limit = 30) {
     designations: designations.data,
     supervisors: supervisors.data,
     workShifts: workShifts.data,
+    nextEmployeeNo: nextEmployeeNo.data.employee_no,
   };
 }
 
 export type EmployeesListParams = {
+  roster?: 'active' | 'past' | 'all';
   search?: string;
   designation?: string[];
   department?: string[];
@@ -113,6 +125,7 @@ export async function fetchEmployeesList(
   params: EmployeesListParams = {},
 ): Promise<EmployeesListResult> {
   const query = new URLSearchParams();
+  if (params.roster) query.set('roster', params.roster);
   if (params.search?.trim()) query.set('search', params.search.trim());
   appendCsv(query, 'designation', params.designation);
   appendCsv(query, 'department', params.department);
@@ -147,4 +160,68 @@ export async function fetchEmployeesList(
       },
     },
   };
+}
+
+export async function fetchEmployeeDetails(employmentId: string): Promise<EmployeeEmploymentDTO> {
+  const response = await api.get<EmployeeEmploymentDTO>(`/operations/employer/${employmentId}`);
+  return response.data;
+}
+
+export async function updateEmployeeProfile(
+  employmentId: string,
+  payload: UpdateEmployeeProfilePayload,
+): Promise<EmployeeEmploymentDTO> {
+  const response = await api.patch<EmployeeEmploymentDTO>(
+    `/operations/employer/${employmentId}/profile`,
+    payload,
+  );
+  return response.data;
+}
+
+export type UploadFileResult = {
+  fileKey: string;
+  fileName: string;
+  type: string;
+  contentType: string;
+  sizeBytes: number;
+};
+
+export type DocumentReadUrlResult = {
+  fileKey: string;
+  downloadUrl: string;
+  expiresInSeconds: number;
+};
+
+/** POST /uploads — private employee docs (PAN, Aadhaar, etc.) */
+export async function uploadEmployeeDocument(file: File): Promise<UploadFileResult> {
+  const formData = new FormData();
+  formData.append('type', 'userPrivateDocs');
+  formData.append('file', file);
+  const response = await api.upload<UploadFileResult>('/uploads', formData);
+  return response.data;
+}
+
+/** POST /uploads/read-url — temporary 5-minute view/download URL */
+export async function fetchDocumentReadUrl(fileKey: string): Promise<DocumentReadUrlResult> {
+  const response = await api.post<DocumentReadUrlResult>('/uploads/read-url', { fileKey });
+  return response.data;
+}
+
+export type AddEmployeeDocumentInput = {
+  document_type: string;
+  document_number?: string;
+  file_key: string;
+  file_name?: string;
+  expiry_date?: string;
+};
+
+export async function addEmployeeDocument(
+  employmentId: string,
+  payload: AddEmployeeDocumentInput,
+): Promise<EmployeeEmploymentDTO> {
+  const response = await api.post<EmployeeEmploymentDTO>(
+    `/operations/employer/${employmentId}/documents`,
+    payload,
+  );
+  return response.data;
 }

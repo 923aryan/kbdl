@@ -16,9 +16,12 @@ import {
   getEmployerRoster,
   getEmployerSupervisorsMeta,
   getEmployerWorkShiftsMeta,
+  getNextEmployeeNumber,
   onboardEmployee,
   searchAddress,
   updateEmploymentStatus,
+  updateEmployeeProfile,
+  addEmployeeDocument,
 } from './operation-controllers';
 
 const operationsRouter: Router = Router();
@@ -32,12 +35,17 @@ operationsRouter.get('/employer/meta/departments', employerAuth, getEmployerDepa
 operationsRouter.get('/employer/meta/designations', employerAuth, getEmployerDesignationsMeta);
 operationsRouter.get('/employer/meta/supervisors', employerAuth, getEmployerSupervisorsMeta);
 operationsRouter.get('/employer/meta/work-shifts', employerAuth, getEmployerWorkShiftsMeta);
+operationsRouter.get('/employer/meta/next-employee-no', employerAuth, getNextEmployeeNumber);
 
 operationsRouter.post('/employer/onboard', employerAuth, onboardEmployee);
 
 operationsRouter.get('/employer/employees', employerAuth, getEmployerEmployeesList);
 
+operationsRouter.post('/employer/:id/documents', employerAuth, addEmployeeDocument);
+
 operationsRouter.get('/employer/:id', employerAuth, getEmployeeDetails);
+
+operationsRouter.patch('/employer/:id/profile', employerAuth, updateEmployeeProfile);
 
 operationsRouter.patch('/employer/:id/status', employerAuth, updateEmploymentStatus);
 

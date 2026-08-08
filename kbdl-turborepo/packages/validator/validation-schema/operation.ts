@@ -72,14 +72,20 @@ const joiningDateSchema = isoDateString('joining_date').superRefine((val, ctx) =
   }
 });
 
-const documentUrlSchema = z
+/** S3 object key returned from POST /uploads — stored in identity_document_url columns */
+const UPLOAD_FILE_KEY_PREFIXES = ['profiles/', 'private-docs/', 'files/'] as const;
+
+const documentFileKeySchema = z
   .string()
   .trim()
-  .url('Must be a valid URL')
-  .refine((val) => /^https?:\/\//i.test(val), {
-    message: 'Document link must start with http:// or https://',
+  .min(3, 'Document file is required')
+  .max(1024, 'Document file key is too long')
+  .refine((val) => !val.includes('..') && !val.startsWith('/') && !val.startsWith('s3://'), {
+    message: 'Invalid document file key',
   })
-  .max(2048, 'Document URL is too long');
+  .refine((val) => UPLOAD_FILE_KEY_PREFIXES.some((prefix) => val.startsWith(prefix)), {
+    message: 'Upload the document first using the file upload control',
+  });
 
 const nonNegativeNumber = (fieldName: string, max = 99999999.99) =>
   z
@@ -103,6 +109,37 @@ const employeeTypeValues = ['full_time', 'contract', 'worker', 'trainee'] as con
 const salaryTypeValues = ['monthly', 'daily_wage', 'hourly'] as const;
 const frequencyValues = ['daily', 'weekly', 'biweekly', 'monthly'] as const;
 const bloodGroupValues = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const;
+const maritalStatusValues = ['unmarried', 'married', 'divorced', 'widowed'] as const;
+
+const addressEntrySchema = z.object({
+  line1: z.string().trim().min(1, 'line1 is required').max(200),
+  line2: z.string().trim().max(200).optional(),
+  city: z.string().trim().min(1, 'city is required').max(80),
+  state: z.string().trim().min(1, 'state is required').max(80),
+  pincode: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'pincode must be exactly 6 digits'),
+  country: z
+    .string()
+    .trim()
+    .length(2, 'country must be a 2-letter ISO code')
+    .optional()
+    .default('IN'),
+});
+
+const addressesSchema = z.object({
+  present: addressEntrySchema,
+  permanent: addressEntrySchema.optional(),
+});
+
+const employmentTermsSchema = z.object({
+  probation_period_months: z.number().int().min(0).max(24).optional(),
+  notice_period_days: z.number().int().min(0).max(180).optional(),
+  weekly_off: z.string().trim().max(60).optional(),
+  confirmation_date: isoDateString('confirmation_date').optional(),
+  working_hours: z.string().trim().max(120).optional(),
+});
 
 const emergencyContactSchema = z.object({
   name: z.string().trim().min(1, 'Emergency contact name is required').max(120),
@@ -110,18 +147,38 @@ const emergencyContactSchema = z.object({
   phone_no: phoneValidation,
 });
 
-const personalSchema = z.object({
-  full_name: z.string().trim().min(1, 'full_name is required').max(120),
-  email: z
-    .union([z.string().trim().email('Invalid email').max(255), z.literal('')])
-    .optional()
-    .transform((v) => (v ? v : undefined)),
-  date_of_birth: dateOfBirthSchema,
-  gender: z.enum(genderValues, { message: 'gender must be male, female, or other' }),
-  address: z.string().trim().min(1, 'address is required').max(500),
-  blood_group: z.enum(bloodGroupValues, { message: 'Invalid blood_group' }),
-  emergency_contact: emergencyContactSchema,
-});
+const personalSchema = z
+  .object({
+    full_name: z.string().trim().min(1, 'full_name is required').max(120),
+    email: z
+      .union([z.string().trim().email('Invalid email').max(255), z.literal('')])
+      .optional()
+      .transform((v) => (v ? v : undefined)),
+    date_of_birth: dateOfBirthSchema,
+    gender: z.enum(genderValues, { message: 'gender must be male, female, or other' }),
+    /** Legacy single-line address — maps to present.line1 when addresses absent */
+    address: z.string().trim().min(1, 'address is required').max(500).optional(),
+    addresses: addressesSchema.optional(),
+    blood_group: z.enum(bloodGroupValues, { message: 'Invalid blood_group' }),
+    alternate_phone: optionalPhoneValidation,
+    marital_status: z.enum(maritalStatusValues).optional(),
+    father_name: z.string().trim().max(120).optional(),
+    mother_name: z.string().trim().max(120).optional(),
+    nationality: z.string().trim().max(60).optional(),
+    religion: z.string().trim().max(60).optional(),
+    languages_known: z.string().trim().max(200).optional(),
+    employment_terms: employmentTermsSchema.optional(),
+    emergency_contact: emergencyContactSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (!data.address && !data.addresses?.present) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Either address or addresses.present is required',
+        path: ['address'],
+      });
+    }
+  });
 
 const uuidField = (fieldName: string) =>
   z.string().uuid(`${fieldName} must be a valid UUID`);
@@ -202,7 +259,7 @@ const bankPaymentSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code'),
+    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Please enter a valid IFSC code (example: SBIN0001234).'),
 });
 
 const paymentSchema = z
@@ -243,14 +300,58 @@ const identitySchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, 'pan_number must be a valid PAN (e.g. ABCDE1234F)'),
   driving_license_number: z.string().trim().max(40).optional(),
-  /** Public https link to identity docs — not multipart */
-  identity_document_url: documentUrlSchema,
-  additional_document_url: documentUrlSchema.optional(),
+  voter_id: z.string().trim().max(40).optional(),
+  uan_number: z
+    .string()
+    .trim()
+    .regex(/^\d{12}$/, 'uan_number must be exactly 12 digits')
+    .optional(),
+  esi_number: z.string().trim().max(20).optional(),
+  pf_number: z.string().trim().max(30).optional(),
+  /** Private S3 fileKey from POST /uploads (type=userPrivateDocs) — Aadhaar scan/photo */
+  identity_document_url: documentFileKeySchema,
+  additional_document_url: documentFileKeySchema.optional(),
 });
 
-/** Partial versions for draft saves */
-const personalDraftSchema = personalSchema.partial().extend({
-  emergency_contact: emergencyContactSchema.partial().optional(),
+/** Partial field schemas for draft saves (Zod v4: no .partial() on refined objects) */
+const addressEntryDraftSchema = z.object({
+  line1: z.string().trim().max(200).optional(),
+  line2: z.string().trim().max(200).optional(),
+  city: z.string().trim().max(80).optional(),
+  state: z.string().trim().max(80).optional(),
+  pincode: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, 'pincode must be exactly 6 digits')
+    .optional(),
+  country: z.string().trim().length(2, 'country must be a 2-letter ISO code').optional(),
+});
+
+const addressesDraftSchema = z.object({
+  present: addressEntryDraftSchema.optional(),
+  permanent: addressEntryDraftSchema.optional(),
+});
+
+const emergencyContactDraftSchema = z.object({
+  name: z.string().trim().max(120).optional(),
+  relation: z.string().trim().max(60).optional(),
+  phone_no: optionalPhoneValidation,
+});
+
+const employmentTermsDraftSchema = z.object({
+  probation_period_months: z.number().int().min(0).max(24).optional(),
+  notice_period_days: z.number().int().min(0).max(180).optional(),
+  weekly_off: z.string().trim().max(60).optional(),
+  confirmation_date: isoDateString('confirmation_date').optional(),
+  working_hours: z.string().trim().max(120).optional(),
+});
+
+const personalDraftSchema = z.object({
+  full_name: z.string().trim().max(120).optional(),
+  email: z
+    .union([z.string().trim().email('Invalid email').max(255), z.literal('')])
+    .optional()
+    .transform((v) => (v ? v : undefined)),
   date_of_birth: isoDateString('date_of_birth')
     .superRefine((val, ctx) => {
       const dob = parseIsoDate(val);
@@ -259,11 +360,34 @@ const personalDraftSchema = personalSchema.partial().extend({
       }
     })
     .optional(),
+  gender: z.enum(genderValues).optional(),
+  address: z.string().trim().max(500).optional(),
+  addresses: addressesDraftSchema.optional(),
+  blood_group: z.enum(bloodGroupValues).optional(),
+  alternate_phone: optionalPhoneValidation,
+  marital_status: z.enum(maritalStatusValues).optional(),
+  father_name: z.string().trim().max(120).optional(),
+  mother_name: z.string().trim().max(120).optional(),
+  nationality: z.string().trim().max(60).optional(),
+  religion: z.string().trim().max(60).optional(),
+  languages_known: z.string().trim().max(200).optional(),
+  employment_terms: employmentTermsDraftSchema.optional(),
+  emergency_contact: emergencyContactDraftSchema.optional(),
 });
 
-const jobDraftSchema = jobSchema.partial().extend({
-  experience_years: nonNegativeNumber('experience_years', 60).optional(),
+const jobDraftSchema = z.object({
+  designation_id: uuidField('designation_id').optional(),
+  department_id: uuidField('department_id').optional(),
+  branch_location: z.string().trim().max(120).optional(),
+  reporting_supervisor_id: uuidField('reporting_supervisor_id').optional(),
+  employee_type: z.enum(employeeTypeValues).optional(),
   joining_date: joiningDateSchema.optional(),
+  work_shift_id: uuidField('work_shift_id').optional(),
+  work_location: z.string().trim().max(120).optional(),
+  skill_trade: z.string().trim().max(120).optional(),
+  experience_years: nonNegativeNumber('experience_years', 60).optional(),
+  certification_licenses: z.string().trim().max(500).optional(),
+  safety_training_completed: yesNoBoolean.optional(),
 });
 
 const paymentDraftSchema = z
@@ -294,8 +418,16 @@ const identityDraftSchema = z
       .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, 'Invalid PAN')
       .optional(),
     driving_license_number: z.string().trim().max(40).optional(),
-    identity_document_url: documentUrlSchema.optional(),
-    additional_document_url: documentUrlSchema.optional(),
+    voter_id: z.string().trim().max(40).optional(),
+    uan_number: z
+      .string()
+      .trim()
+      .regex(/^\d{12}$/, 'uan_number must be exactly 12 digits')
+      .optional(),
+    esi_number: z.string().trim().max(20).optional(),
+    pf_number: z.string().trim().max(30).optional(),
+    identity_document_url: documentFileKeySchema.optional(),
+    additional_document_url: documentFileKeySchema.optional(),
   })
   .optional();
 
@@ -429,7 +561,11 @@ const csvQueryStrings = z.preprocess((val) => {
 
 export const getEmployerRosterSchema = z.object({
   query: z.object({
-    status: z.enum(['active', 'inactive', 'terminated', 'resigned']).optional(),
+    is_active: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((val) => (val === undefined ? undefined : val === 'true')),
+    separation_reason: z.enum(['terminated', 'resigned', 'absconded', 'inactive']).optional(),
     search: z.string().optional(),
     limit: z
       .string()
@@ -446,6 +582,10 @@ export const getEmployerRosterSchema = z.object({
 
 export const getEmployerEmployeesListSchema = z.object({
   query: z.object({
+    roster: z
+      .enum(['active', 'past', 'all'])
+      .optional()
+      .default('active'),
     search: z.string().optional(),
     designation: csvQueryStrings,
     department: csvQueryStrings,
@@ -476,15 +616,60 @@ export const getEmployeeDetailsSchema = z.object({
   }),
 });
 
+const profileUpdateBodySchema = z
+  .object({
+    employee_no: z.string().trim().max(50).optional(),
+    notes: z.string().trim().max(2000).optional(),
+    personal: personalDraftSchema.optional(),
+    job: jobDraftSchema.optional(),
+    payment: paymentDraftSchema.optional(),
+    identity: identityDraftSchema.optional(),
+  })
+  .refine(
+    (data) =>
+      data.employee_no !== undefined ||
+      data.notes !== undefined ||
+      data.personal !== undefined ||
+      data.job !== undefined ||
+      data.payment !== undefined ||
+      data.identity !== undefined,
+    { message: 'At least one profile section must be provided' },
+  );
+
+export const updateEmployeeProfileSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid employee mapping ID format'),
+  }),
+  body: profileUpdateBodySchema,
+});
+
 export const updateEmploymentStatusSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid employee mapping ID format'),
   }),
-  body: z.object({
-    status: z.enum(['active', 'inactive', 'terminated', 'resigned'], {
-      error: 'Invalid employment status provided',
+  body: z
+    .object({
+      is_active: z.boolean(),
+      separation_reason: z
+        .enum(['terminated', 'resigned', 'absconded', 'inactive'])
+        .optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (!data.is_active && !data.separation_reason) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'separation_reason is required when deactivating an employment',
+          path: ['separation_reason'],
+        });
+      }
+      if (data.is_active && data.separation_reason) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'separation_reason must be omitted for active employments',
+          path: ['separation_reason'],
+        });
+      }
     }),
-  }),
 });
 
 export const getAllEmployeeEmploymentSchema = z.object({
@@ -526,5 +711,18 @@ export const getEmployeeEmploymentSchema = z.object({
 export const searchAddressSchema = z.object({
   query: z.object({
     query: z.string().trim().min(2, 'Search query must be at least 2 characters long'),
+  }),
+});
+
+export const addEmployeeDocumentSchema = z.object({
+  params: z.object({
+    id: z.string().uuid('Invalid employee mapping ID format'),
+  }),
+  body: z.object({
+    document_type: z.string().trim().min(1, 'document_type is required').max(120),
+    document_number: z.string().trim().max(80).optional(),
+    file_key: documentFileKeySchema,
+    file_name: z.string().trim().max(255).optional(),
+    expiry_date: isoDateString('expiry_date').optional(),
   }),
 });

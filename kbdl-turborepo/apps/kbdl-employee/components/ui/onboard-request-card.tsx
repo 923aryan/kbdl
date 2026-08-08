@@ -113,7 +113,7 @@ export default function OnboardRequestCard({ employment }: OnboardRequestCardPro
           <View style={styles.rightHeader}>
             <View style={styles.payPill}>
               <Typography variant="caption" style={styles.payAmount}>
-                {employment.employment_status.toUpperCase()}
+                {(employment.is_active ? 'ACTIVE' : (employment.separation_reason ?? 'INACTIVE')).toString().toUpperCase()}
               </Typography>
             </View>
           </View>

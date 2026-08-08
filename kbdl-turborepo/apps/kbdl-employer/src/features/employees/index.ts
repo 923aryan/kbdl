@@ -1,4 +1,8 @@
-export { EmployeeDashboardScreen } from './screens/employee-dashboard-screen';
+export {
+  EmployeeListScreen,
+  EmployeeDetailScreen,
+  EmployeeOnboardScreen,
+} from './screens/employee-dashboard-screen';
 export { useFilteredEmployees } from './hooks/use-employee-hook';
 export {
   designations,
@@ -10,5 +14,9 @@ export {
   type Employee,
   type PaymentMethod,
   type Status,
-  type ViewMode,
 } from './stores/use-employee-store';
+export {
+  EMPLOYEE_LIST_PATH,
+  EMPLOYEE_ONBOARD_PATH,
+  employeeDetailPath,
+} from './lib/employee-routes';
