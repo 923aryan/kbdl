@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   UserCheck,
+  UserRoundCheck,
   Users,
   WalletCards,
   X,
@@ -45,6 +46,15 @@ const menuItems = [
     subItems: [
       { path: '/leave/apply', label: 'Apply Leave', icon: Users },
       { path: '/leave/requests', label: 'Leaves Request', icon: Users },
+    ],
+  },
+  {
+    path: '/attendance',
+    label: 'Attendance',
+    icon: UserRoundCheck,
+    subItems: [
+      { path: '/attendance/add', label: 'Add Attendance', icon: Users },
+      { path: '/attendance/analytics', label: 'Analytics', icon: FileText },
     ],
   },
 ];
@@ -91,19 +101,32 @@ function NavItem({
   // If it has subItems, render accordion
   return (
     <div>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
+      <div
         className={`
           mx-3 mb-2 flex h-11 w-[calc(100%-24px)] items-center justify-between rounded-xl px-5 text-[15px] font-semibold transition-colors
           ${isActive || isSectionActive ? 'bg-[#DBEAFF] text-[#0658C2]' : 'text-[#0F172A] hover:bg-[#FAFAFA]'}
         `}
       >
-        <div className="flex items-center">
+        <Link
+          href={item.path}
+          onClick={() => {
+            setIsOpen(true);
+            setSidebarOpen(false);
+          }}
+          className="flex min-w-0 flex-1 items-center"
+        >
           <Icon className="mr-4 h-5 w-5 shrink-0" />
-          <span>{item.label}</span>
-        </div>
-        {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </button>
+          <span className="truncate">{item.label}</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="ml-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition hover:bg-white/70"
+          aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${item.label} menu`}
+        >
+          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </button>
+      </div>
 
       {isOpen && (
         <div className="mx-5 mb-3 rounded-xl bg-white p-2 shadow-sm ring-1 ring-gray-100">
