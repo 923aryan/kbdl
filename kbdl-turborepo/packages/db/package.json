@@ -20,16 +20,16 @@
     }
   },
   "scripts": {
-    "generate": "node --env-file=../../.env ./scripts/prisma-cli.mjs generate",
-    "push": "node --env-file=../../.env ./scripts/prisma-cli.mjs db push",
-    "migrate:deploy": "node --env-file=../../.env ./scripts/prisma-cli.mjs migrate deploy",
-    "build": "node --env-file=../../.env ./scripts/prisma-cli.mjs generate",
-    "clone-db": "node --env-file=../../.env ./scripts/clone-database.mjs",
-    "seed": "node --env-file=../../.env ./prisma/seed.mjs",
-    "db:reset-seed": "node --env-file=../../.env ./scripts/prisma-cli.mjs db push --force-reset --accept-data-loss && node --env-file=../../.env ./prisma/seed.mjs"
+    "generate": "node ./scripts/prisma-cli.mjs generate",
+    "push": "node ./scripts/prisma-cli.mjs db push",
+    "migrate:deploy": "node ./scripts/prisma-cli.mjs migrate deploy",
+    "build": "node ./scripts/prisma-cli.mjs generate",
+    "clone-db": "node ./scripts/clone-database.mjs",
+    "seed": "node ./prisma/seed.mjs",
+    "db:reset-seed": "node ./scripts/prisma-cli.mjs db push --force-reset --accept-data-loss && node ./prisma/seed.mjs"
   },
   "prisma": {
-    "seed": "node --env-file=../../.env ./prisma/seed.mjs"
+    "seed": "node ./prisma/seed.mjs"
   },
   "publishConfig": {
     "access": "public"

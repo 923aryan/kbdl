@@ -24,13 +24,21 @@ DB_DIR="/app/packages/db"
 apply_migrations() {
   echo "▶ Applying Prisma migrations (migrate deploy)..."
   cd "$DB_DIR"
-  pnpm exec prisma migrate deploy
+  if [ -f ./scripts/prisma-cli.mjs ]; then
+    node ./scripts/prisma-cli.mjs migrate deploy
+  else
+    pnpm exec prisma migrate deploy
+  fi
 }
 
 apply_force_reset() {
   echo "▶ Resetting database schema (db push --force-reset)..."
   cd "$DB_DIR"
-  pnpm exec prisma db push --force-reset --accept-data-loss
+  if [ -f ./scripts/prisma-cli.mjs ]; then
+    node ./scripts/prisma-cli.mjs db push --force-reset --accept-data-loss
+  else
+    pnpm exec prisma db push --force-reset --accept-data-loss
+  fi
 }
 
 run_seed() {

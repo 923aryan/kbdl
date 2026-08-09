@@ -21,20 +21,11 @@
  * App User rows are created separately for shift-swap / jobs and linked via linked_user_id.
  */
 
-import { config as loadEnv } from 'dotenv';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { loadDbEnv } from '../scripts/resolve-database-url.mjs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/index.js';
 
-/** Single source of truth: kbdl-turborepo/.env */
-loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env') });
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('❌ DATABASE_URL is missing — set it in kbdl-turborepo/.env');
-  process.exit(1);
-}
+const connectionString = loadDbEnv();
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });

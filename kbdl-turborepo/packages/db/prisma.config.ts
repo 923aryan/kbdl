@@ -1,11 +1,14 @@
+import { existsSync } from 'node:fs';
 import { config } from 'dotenv';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'prisma/config';
 
-/** Single source of truth: kbdl-turborepo/.env */
+/** Single source of truth: kbdl-turborepo/.env (optional in Docker when DATABASE_URL is injected) */
 const rootEnv = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.env');
-config({ path: rootEnv });
+if (existsSync(rootEnv)) {
+  config({ path: rootEnv });
+}
 
 function resolveDatabaseUrl(): string {
   if (process.env.DATABASE_URL?.trim()) {
@@ -30,7 +33,7 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
-    seed: 'node --env-file=../../.env ./prisma/seed.mjs',
+    seed: 'node ./prisma/seed.mjs',
   },
   datasource: {
     url: resolveDatabaseUrl(),
