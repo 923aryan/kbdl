@@ -50,6 +50,15 @@ docker compose run --rm backend reset-seed
 # or: pnpm docker:reset-seed
 ```
 
+This runs `db push --force-reset`, seeds, and baselines migration history.
+
+Fix backend restart loop (P3005) after manual reset:
+
+```powershell
+docker compose run --rm backend baseline
+docker compose up -d backend
+```
+
 Logins: [seed-logins.md](./seed-logins.md)  
 Demo: `employer@kbdl.dev` / OTP `123456` (if backend still hardcodes local OTP)
 
