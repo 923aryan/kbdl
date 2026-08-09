@@ -20,12 +20,13 @@
     }
   },
   "scripts": {
-    "generate": "prisma generate",
-    "push": "prisma db push",
-    "build": "prisma generate",
+    "generate": "node --env-file=../../.env ./scripts/prisma-cli.mjs generate",
+    "push": "node --env-file=../../.env ./scripts/prisma-cli.mjs db push",
+    "migrate:deploy": "node --env-file=../../.env ./scripts/prisma-cli.mjs migrate deploy",
+    "build": "node --env-file=../../.env ./scripts/prisma-cli.mjs generate",
     "clone-db": "node --env-file=../../.env ./scripts/clone-database.mjs",
     "seed": "node --env-file=../../.env ./prisma/seed.mjs",
-    "db:reset-seed": "prisma db push --force-reset --accept-data-loss && node --env-file=../../.env ./prisma/seed.mjs"
+    "db:reset-seed": "node --env-file=../../.env ./scripts/prisma-cli.mjs db push --force-reset --accept-data-loss && node --env-file=../../.env ./prisma/seed.mjs"
   },
   "prisma": {
     "seed": "node --env-file=../../.env ./prisma/seed.mjs"

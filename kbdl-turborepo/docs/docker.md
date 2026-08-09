@@ -37,12 +37,24 @@ docker compose up --build
 
 ### Seed demo data
 
+Apply migrations + seed (keeps existing rows, backfills new columns):
+
 ```powershell
 docker compose run --rm backend seed
 ```
 
+Full wipe + reseed (**dev only — deletes all data**):
+
+```powershell
+docker compose run --rm backend reset-seed
+# or: pnpm docker:reset-seed
+```
+
 Logins: [seed-logins.md](./seed-logins.md)  
 Demo: `employer@kbdl.dev` / OTP `123456` (if backend still hardcodes local OTP)
+
+> **Note:** Do not use `prisma db push` on a DB that already has data when adding required columns.  
+> Use `migrate deploy` (via `backend seed`) or `reset-seed` for a clean slate.
 
 ### Auto-seed on start (optional)
 

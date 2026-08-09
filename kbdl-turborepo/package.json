@@ -17,6 +17,7 @@
     "docker:up:detach": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:seed": "docker compose run --rm backend seed",
+    "docker:reset-seed": "docker compose run --rm backend reset-seed",
     "docker:logs": "docker compose logs -f backend",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
