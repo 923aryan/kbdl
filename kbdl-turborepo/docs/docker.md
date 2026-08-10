@@ -1,145 +1,110 @@
-# Docker stack (Postgres + Redis + Backend)
+# Docker stack (minimal: PostGIS + Redis + backend)
 
-Runs **PostGIS Postgres**, **Redis**, and the **KBDL backend** in Docker.  
-Employer / admin / landing frontends stay on your machine and call `http://localhost:8000`.
+Backend Docker image installs **only** `kbdl-backend` workspace deps (no Next.js / frontend apps).  
+See `Dockerfile` (`--filter kbdl-backend...`) and `.dockerignore`.
+
+## Two ways to run
+
+| Mode | Where | DB / Redis URL |
+|------|--------|----------------|
+| **A. Full Docker** (AWS server) | `docker compose up -d --build` | Container uses `postgres` / `redis` hostnames |
+| **B. Host backend** (your PC) | `pnpm start:backend` | `.env` → `51.20.0.36:5432` / `:6379` |
+
+Both share one `.env` at `kbdl-turborepo/.env`.  
+Docker **backend container overrides** `DATABASE_URL` / `REDIS_URL` to internal service names.
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running  
-  (`docker` must work in PowerShell — restart the terminal after install)
-- Ports free: **5432**, **6379**, **8000** (or change them in `.env`)
+- Docker installed
+- Ports on server: **5432**, **6379**, **8000** (EC2 Security Group — restrict 5432/6379 to your IP in dev)
+- Create/edit `kbdl-turborepo/.env` (copy the same file to the server)
 
-## Env: `kbdl-turborepo/.env` (backend only)
+## Env: `kbdl-turborepo/.env`
 
-Compose, local backend (`pnpm dev:backend`), and Prisma (`pnpm db:push` / `db:seed`) use this file.  
-Employer UI uses `apps/kbdl-employer/.env` separately.  
-Do not create `apps/kbdl-backend/.env` or `packages/db/.env`.
+| Variable | Purpose |
+|----------|---------|
+| `REMOTE_DOCKER_HOST` | AWS public IP (`51.20.0.36`) — docs / reference |
+| `POSTGRES_*` / `REDIS_*` | Docker Compose infra |
+| `DATABASE_URL` / `REDIS_URL` | **Host-side** backend + Prisma (`pnpm start:backend`, `pnpm db:seed`) |
+| `JWT_*`, `S3_*`, … | Shared by Docker backend via `env_file` |
 
-Create/edit `kbdl-turborepo/.env` with at least: `POSTGRES_*`, `REDIS_*`, `DATABASE_URL`, `REDIS_URL`, `JWT_*`, `RESEND_API_KEY`, `GEOAPIFY_API_KEY`, `S3_*`, `PORT`, `EMPLOYER_URL`.
-
-| Variable | Used for |
-|----------|----------|
-| `POSTGRES_USER` | DB user |
-| `POSTGRES_PASSWORD` | DB password |
-| `POSTGRES_DB` | Default database name |
-| `REDIS_PASSWORD` | Redis `requirepass` |
-| `JWT_*` / `RESEND_*` / … | Backend |
-
-`DATABASE_URL` / `REDIS_URL` for the backend are **built from those vars** in `docker-compose.yml`.
-
-> Password changes only apply on a **fresh** Postgres volume. After changing `POSTGRES_PASSWORD`, run `docker compose down -v` then `up` again (wipes data).
-
-## Start
-
-```powershell
-docker compose up --build
-```
-
-### Seed demo data
-
-Apply migrations + seed (keeps existing rows, backfills new columns):
-
-```powershell
-docker compose run --rm backend seed
-```
-
-Full wipe + reseed (**dev only — deletes all data**):
-
-```powershell
-docker compose run --rm backend reset-seed
-# or: pnpm docker:reset-seed
-```
-
-This runs `db push --force-reset`, seeds, and baselines migration history.
-
-Fix backend restart loop (P3005) after manual reset:
-
-```powershell
-docker compose run --rm backend baseline
-docker compose up -d backend
-```
-
-Logins: [seed-logins.md](./seed-logins.md)  
-Demo: `employer@kbdl.dev` / OTP `123456` (if backend still hardcodes local OTP)
-
-> **Note:** Do not use `prisma db push` on a DB that already has data when adding required columns.  
-> Use `migrate deploy` (via `backend seed`) or `reset-seed` for a clean slate.
-
-### Auto-seed on start (optional)
-
-In `.env`:
+**Local PC → remote Docker PG/Redis:**
 
 ```env
-SEED_ON_START=true
+REMOTE_DOCKER_HOST=51.20.0.36
+DATABASE_URL="postgresql://kbdl:kbdl@51.20.0.36:5432/kbdl?schema=public"
+REDIS_URL="redis://:kbdlredis@51.20.0.36:6379"
 ```
 
-Warning: seed **clears** tables first.
+Then on your PC:
 
-## Connect from outside (host / DBeaver / psql)
-
-Values come from your `.env`:
-
-```text
-Host:     localhost
-Port:     POSTGRES_PORT (default 5432)
-Database: POSTGRES_DB
-User:     POSTGRES_USER
-Password: POSTGRES_PASSWORD
+```powershell
+pnpm install:backend
+pnpm --filter @repo/db generate
+pnpm start:backend
 ```
 
-Example with typical local defaults:
+**Backend on same machine as Docker (not in container):** use `127.0.0.1` instead of public IP in `DATABASE_URL` / `REDIS_URL`.
 
-```text
-postgresql://kbdl:kbdl@localhost:5432/kbdl?schema=public
+## AWS — full stack in Docker
+
+```bash
+cd ~/kbdl/kbdl-turborepo
+
+# optional: 2G swap on small instances before first build
+docker compose up -d --build
+docker compose run --rm backend seed
+curl http://127.0.0.1:8000/health
 ```
 
-Redis:
+Or step by step:
 
-```text
-redis://:REDIS_PASSWORD@localhost:REDIS_PORT
+```bash
+pnpm docker:infra      # postgres + redis only
+pnpm docker:backend    # build + start backend
+pnpm docker:seed       # migrate + seed
 ```
+
+## Seed / reset
+
+```bash
+docker compose run --rm backend seed        # migrate + seed
+docker compose run --rm backend reset-seed  # wipe + seed (dev only)
+```
+
+Logins: [seed-logins.md](./seed-logins.md)
 
 ## URLs
 
 | Service | URL |
 |---------|-----|
-| Backend health | http://localhost:8000/health |
-| API docs | http://localhost:8000/api/docs |
-| Employer UI (host) | http://localhost:3002 → API localhost:8000 |
+| Backend (server) | http://51.20.0.36:8000 |
+| Health | http://51.20.0.36:8000/health |
+| API docs | http://51.20.0.36:8000/api/docs |
+| Employer UI (local) | http://localhost:3002 |
 
-Frontends:
+Point employer `.env` API URL to `http://51.20.0.36:8000` when testing against remote backend.
 
-```powershell
-pnpm dev:frontend
+## Stop / cleanup
+
+```bash
+docker compose down          # keep data volumes
+docker compose down -v       # wipe PG + Redis data
+docker system prune -f       # reclaim unused layers (keeps running containers)
+docker volume prune -f       # unused volumes only
 ```
-
-## Stop / reset
-
-```powershell
-docker compose down          # keep DB volume
-docker compose down -v       # wipe Postgres + Redis volumes
-```
-
-## Only infra in Docker (backend on host)
-
-```powershell
-docker compose up postgres redis -d
-```
-
-Then set (in `kbdl-turborepo/.env` only):
-
-```env
-DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/DB?schema=public
-REDIS_URL=redis://:REDIS_PASSWORD@localhost:6379
-```
-
-Backend and Prisma both read that single file — no `apps/kbdl-backend/.env` or `packages/db/.env`.
 
 ## Useful commands
 
-```powershell
-docker compose logs -f backend
+```bash
 docker compose ps
-docker compose exec postgres psql -U %POSTGRES_USER% -d %POSTGRES_DB%
-docker compose exec redis redis-cli -a %REDIS_PASSWORD% ping
+docker compose logs -f backend
+docker compose exec postgres psql -U kbdl -d kbdl
+docker compose exec redis redis-cli -a kbdlredis ping
 ```
+
+## Small EC2 notes
+
+- Use `pnpm install:backend` on host — never full `pnpm install` (pulls Next.js, OOM on 1GB RAM)
+- Add 2G swap before `docker compose build`
+- Prefer `docker compose up -d --build` over host `pnpm install` on the server
