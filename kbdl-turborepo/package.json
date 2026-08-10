@@ -18,6 +18,7 @@
     "db:seed": "pnpm --filter @repo/db seed",
     "db:push": "pnpm --filter @repo/db push",
     "docker:up": "docker compose up --build -d",
+    "docker:fresh": "sh scripts/docker-fresh-start.sh",
     "docker:infra": "docker compose up -d postgres redis",
     "docker:backend": "docker compose up -d --build backend",
     "docker:restart-backend": "sh docker/restart-backend-clean.sh",

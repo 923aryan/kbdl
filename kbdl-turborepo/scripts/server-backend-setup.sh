@@ -21,22 +21,20 @@ rm -rf node_modules apps/*/node_modules packages/*/node_modules
 echo "▶ Installing backend PRODUCTION deps only (skips eslint/next dev chain)..."
 pnpm install --filter kbdl-backend... --frozen-lockfile --prod
 
-echo "▶ Installing global build tools (small — prisma, tsx, tsup)..."
-sudo npm install -g prisma@7.8.0 tsx@4.21.0 tsup@8.5.1 typescript@6.0.3
+echo "▶ Adding minimal build tools (tsx, tsup, prisma — no eslint/next)..."
+pnpm add -D tsx tsup prisma --filter kbdl-backend --filter @repo/db
 
 echo "▶ Prisma generate..."
-cd "$ROOT/packages/db"
-prisma generate
+pnpm --filter @repo/db generate
 
 echo "▶ Building backend..."
-cd "$ROOT/apps/kbdl-backend"
-tsup
+pnpm --filter kbdl-backend build
 
 echo ""
 echo "✅ Setup done."
 echo "▶ Disk after:"
 df -h / | tail -1
 echo ""
-echo "Start production:  cd $ROOT && pnpm --filter kbdl-backend start"
-echo "Start dev (tsx):   cd $ROOT/apps/kbdl-backend && tsx watch --env-file=../../.env src/server.ts"
-echo "Or with PM2:       pm2 start \"pnpm --filter kbdl-backend start\" --name kbdl-backend"
+echo "Start production:  cd $ROOT && pnpm start:backend:prod"
+echo "Start dev:         cd $ROOT && pnpm --filter kbdl-backend exec tsx watch --env-file=../../.env src/server.ts"
+echo "PM2:               pm2 start \"pnpm start:backend:prod\" --name kbdl-backend --cwd $ROOT"
