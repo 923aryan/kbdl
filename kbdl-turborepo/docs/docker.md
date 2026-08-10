@@ -89,10 +89,21 @@ Point employer `.env` API URL to `http://51.20.0.36:8000` when testing against r
 
 ```bash
 docker compose down          # keep data volumes
-docker compose down -v       # wipe PG + Redis data
-docker system prune -f       # reclaim unused layers (keeps running containers)
-docker volume prune -f       # unused volumes only
+docker compose down -v       # wipe PG + Redis data — DO NOT use if you want to keep DB
+pnpm docker:clean            # prune dangling images/cache only (DB volumes safe)
+pnpm docker:restart-backend  # stop backend, prune junk, rebuild, start (DB safe)
 ```
+
+### Restart backend + free disk (keeps Postgres data)
+
+```bash
+pnpm docker:restart-backend
+# or:
+sh docker/restart-backend-clean.sh
+```
+
+This removes: stopped containers, unused images, build cache, old backend image.  
+It does **not** run `docker volume prune` or `compose down -v` — **`kbdl_pgdata` stays**.
 
 ## Useful commands
 
