@@ -30,7 +30,7 @@ export interface ApiRequestConfig extends RequestInit {
 const FALLBACK_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
 const BASE_URL = apiUrl || FALLBACK_URL;
-
+// const BASE_URL = 'http://10.0.2.2:8000/api/v1';
 async function http<T>(path: string, config: ApiRequestConfig = {}): Promise<ApiSuccess<T>> {
   const { requireAuth = true, showToast = false, ...fetchConfig } = config;
   const url = `${BASE_URL}${path}`;

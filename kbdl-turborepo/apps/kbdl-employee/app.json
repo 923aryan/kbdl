@@ -38,11 +38,59 @@
       "expo-font",
       "@react-native-community/datetimepicker"
     ],
-    "owner": "aryanraj923s-organization",
     "extra": {
       "eas": {
-        "projectId": "6b018aa3-8c64-4978-8acd-a78197c44160"
+        "projectId": "9a08dfa0-3aba-4fc7-b849-8810e00c2783"
       }
-    }
+    },
+    "owner": "aniketsharma09"
   }
 }
+// {
+//   "expo": {
+//     "name": "Kaam Badlo",
+//     "slug": "kbdl-employee",
+//     "version": "1.0.0",
+//     "orientation": "portrait",
+//     "icon": "./assets/images/logo.png",
+//     "scheme": "kbdlemployee",
+//     "userInterfaceStyle": "automatic",
+//     "newArchEnabled": true,
+//     "ios": {
+//       "supportsTablet": true,
+//       "bundleIdentifier": "com.anonymous.kbdlemployee"
+//     },
+//     "android": {
+//       "edgeToEdgeEnabled": true,
+//       "predictiveBackGestureEnabled": false,
+//       "package": "com.anonymous.kbdlemployee",
+//       "googleServicesFile": "./google-services.json"
+//     },
+//     "web": {
+//       "output": "static",
+//       "favicon": "./assets/images/favicon.png",
+//       "bundler": "metro"
+//     },
+//     "splash": {
+//       "image": "./assets/images/transparent.png",
+//       "resizeMode": "contain",
+//       "backgroundColor": "#001A4D"
+//     },
+//     "experiments": {
+//       "typedRoutes": true,
+//       "reactCompiler": true
+//     },
+//     "plugins": [
+//       "expo-localization",
+//       "expo-dev-client",
+//       "expo-font",
+//       "@react-native-community/datetimepicker"
+//     ],
+//     "owner": "aryanraj923s-organization",
+//     "extra": {
+//       "eas": {
+//         "projectId": "6b018aa3-8c64-4978-8acd-a78197c44160"
+//       }
+//     }
+//   }
+// }

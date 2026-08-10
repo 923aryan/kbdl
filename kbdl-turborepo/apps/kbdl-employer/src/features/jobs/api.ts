@@ -28,9 +28,16 @@ export type JobApplication = {
   applied_at?: string | null;
   employer_notes?: string | null;
   user?: {
+    name?: string | null;
     first_name?: string | null;
     last_name?: string | null;
     email?: string | null;
+    phone_no?: string | null;
+    experience?: number | null;
+    city?: string | null;
+    area?: string | null;
+    skills?: string[] | null;
+    rating_avg?: number | null;
   } | null;
 };
 
@@ -118,4 +125,20 @@ export async function getJobApplications(jobId: string, page = 1, limit = 10) {
     applications: response.data,
     meta: response.meta as { total?: number; page?: number; pageSize?: number },
   };
+}
+
+export async function selectJobApplicant(jobId: string, applicationId: string) {
+  const response = await api.patch<JobApplication>(
+    `/jobs/employer/${jobId}/applications/${applicationId}/select`,
+    {},
+  );
+  return response.data;
+}
+
+export async function rejectJobApplicant(jobId: string, applicationId: string) {
+  const response = await api.patch<JobApplication>(
+    `/jobs/employer/${jobId}/applications/${applicationId}/reject`,
+    {},
+  );
+  return response.data;
 }

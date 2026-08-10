@@ -516,10 +516,12 @@ const updateOwnedJobStatus = async (employerId: string, jobId: string, status: J
     throw new AppError(400, 'INVALID_JOB_STATUS', 'Only open or paused jobs can be closed.');
   }
 
-  return prisma.job.update({
-    where: { id: jobId },
-    data: { status },
-  }).then((job) => ({ ...job, employer_id: job.company_id })) as any;
+  return prisma.job
+    .update({
+      where: { id: jobId },
+      data: { status },
+    })
+    .then((job) => ({ ...job, employer_id: job.company_id })) as any;
 };
 
 export const getJobsService = async (
@@ -820,9 +822,11 @@ export const deleteJobService = async (
     throw new AppError(400, 'JOB_HAS_APPLICATIONS', 'Jobs with applications cannot be deleted.');
   }
 
-  return prisma.job.delete({
-    where: { id: jobId },
-  }).then((job) => ({ ...job, employer_id: job.company_id })) as any;
+  return prisma.job
+    .delete({
+      where: { id: jobId },
+    })
+    .then((job) => ({ ...job, employer_id: job.company_id })) as any;
 };
 
 export const duplicateJobService = async (
@@ -1519,12 +1523,14 @@ export const adminUpdateJobStatusService = async (
     throw new AppError(404, 'JOB_NOT_FOUND', 'Job not found.');
   }
 
-  return prisma.job.update({
-    where: { id: jobId },
-    data: {
-      status: payload.status,
-    },
-  }).then((job) => ({ ...job, employer_id: job.company_id })) as any;
+  return prisma.job
+    .update({
+      where: { id: jobId },
+      data: {
+        status: payload.status,
+      },
+    })
+    .then((job) => ({ ...job, employer_id: job.company_id })) as any;
 };
 
 export const adminUpdateJobApplicationStatusService = async (

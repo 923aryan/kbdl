@@ -73,18 +73,20 @@ export default function FindJobsScreen() {
             />
           ) : (
             <>
-              <JobSection
-                title="Best Match to Your Interest"
-                jobs={recommended.data ?? []}
-                horizontal
-                onSeeAll={() =>
-                  router.push({
-                    pathname: '/jobs/list' as never,
-                    params: { type: 'recommended' },
-                  } as never)
-                }
-                emptyMessage="Add skills in your profile to get personalized matches."
-              />
+              {(recommended.data?.length ?? 0) > 0 ? (
+                <JobSection
+                  title="Best Match to Your Interest"
+                  jobs={recommended.data ?? []}
+                  horizontal
+                  onSeeAll={() =>
+                    router.push({
+                      pathname: '/jobs/list' as never,
+                      params: { type: 'recommended' },
+                    } as never)
+                  }
+                  emptyMessage="Add skills in your profile to get personalized matches."
+                />
+              ) : null}
               <JobSection
                 title="Latest Post"
                 jobs={latest.data ?? []}

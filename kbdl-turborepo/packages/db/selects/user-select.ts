@@ -6,6 +6,7 @@ export const safeUserSelect = Prisma.validator<Prisma.UserSelect>()({
   city: true,
   area: true,
   skills: true,
+  experience: true,
   rating_avg: true,
   rating_count: true,
   verification_level: true,
