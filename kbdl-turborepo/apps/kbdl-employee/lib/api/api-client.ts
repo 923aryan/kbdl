@@ -25,11 +25,12 @@ export interface ApiRequestConfig extends RequestInit {
   showToast?: boolean;
 }
 
-// 1. Android emulators cannot resolve 'localhost'. They need '10.0.2.2'.
-// For physical devices, you must use your machine's local IP (e.g., 192.168.1.X).
+// Use the public backend for physical devices and release APKs.
+// `10.0.2.2` works only on an Android emulator.
 const FALLBACK_URL =
   Platform.OS === 'android' ? 'http://10.0.2.2:8000/api/v1' : 'http://localhost:8000/api/v1';
-const BASE_URL = apiUrl || FALLBACK_URL;
+const BASE_URL = apiUrl || 'http://51.20.0.36:8000/api/v1';
+// const BASE_URL = apiUrl || FALLBACK_URL;
 // const BASE_URL = 'http://10.0.2.2:8000/api/v1';
 async function http<T>(path: string, config: ApiRequestConfig = {}): Promise<ApiSuccess<T>> {
   const { requireAuth = true, showToast = false, ...fetchConfig } = config;
