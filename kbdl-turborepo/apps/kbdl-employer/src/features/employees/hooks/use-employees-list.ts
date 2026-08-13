@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import {
   fetchEmployeesList,
   type EmployeesListParams,
   type EmployeesListResult,
 } from '../api';
-import { useDebouncedValue } from './use-debounced-value';
 import type { Employee, Status } from '../stores/use-employee-store';
 
 function formatJoinedDate(iso: string): string {

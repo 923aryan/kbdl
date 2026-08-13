@@ -1,0 +1,203 @@
+// =============================================================================
+// ENUMS — shared typed values used across modules
+// =============================================================================
+// Conventions:
+// - DB enum names are snake_case via @@map(...)
+// - Prefer enums over free-text for status / type fields that drive business rules
+// =============================================================================
+
+enum PlatformType {
+  EMPLOYEE
+  EMPLOYER
+
+  @@map("platform_type")
+}
+
+enum ShiftStatus {
+  open
+  approved
+  completed
+  cancelled
+  absent
+  rejected
+
+  @@map("shift_status")
+}
+
+enum PayType {
+  HOURLY
+  FIXED
+
+  @@map("pay_type")
+}
+
+enum ShiftApplicationStatus {
+  pending
+  accepted
+  rejected
+  withdrawn
+
+  @@map("shift_application_status")
+}
+
+enum ShiftApplicationType {
+  invited
+  applied
+
+  @@map("shift_application_type")
+}
+
+enum SalaryType {
+  hourly
+  daily
+  weekly
+  monthly
+
+  @@map("salary_type")
+}
+
+enum JobStatus {
+  draft
+  open
+  paused
+  closed
+  expired
+
+  @@map("job_status")
+}
+
+enum EmploymentType {
+  full_time
+  part_time
+  contract
+  temporary
+  internship
+  freelance
+
+  @@map("employment_type")
+}
+
+enum JobWorkType {
+  onsite
+  remote
+  hybrid
+
+  @@map("job_work_type")
+}
+
+enum JobApplicationStatus {
+  applied
+  under_review
+  shortlisted
+  interview_scheduled
+  selected
+  hired
+  rejected
+  withdrawn
+
+  @@map("job_application_status")
+}
+
+enum TargetAudience {
+  worker
+  company
+  individual
+  contractor
+
+  @@map("target_audience")
+}
+
+enum SubscriptionStatus {
+  active
+  expired
+  cancelled
+  pending
+
+  @@map("subscription_status")
+}
+
+enum SeparationReason {
+  terminated
+  resigned
+  absconded
+  inactive
+
+  @@map("separation_reason")
+}
+
+enum OnboardingStage {
+  draft
+  onboard
+  probation
+
+  @@map("onboarding_stage")
+}
+
+enum HrAddressType {
+  present
+  permanent
+
+  @@map("hr_address_type")
+}
+
+enum MaritalStatus {
+  unmarried
+  married
+  divorced
+  widowed
+
+  @@map("marital_status")
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  half_day
+  leave
+  holiday
+  week_off
+  on_duty
+
+  @@map("attendance_status")
+}
+
+enum AttendanceSource {
+  hr_manual
+  device
+  app
+  system
+
+  @@map("attendance_source")
+}
+
+enum TransactionType {
+  payment
+  refund
+  payout
+
+  @@map("transaction_type")
+}
+
+enum TransactionStatus {
+  pending
+  success
+  failed
+
+  @@map("transaction_status")
+}
+
+enum PaymentMode {
+  cash
+  upi
+
+  @@map("payment_mode")
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+
+  @@map("payment_status")
+}

@@ -29,12 +29,28 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
 
     switch (prismaErr.code) {
       case 'P2002': {
+        const target = prismaErr.meta?.target;
+        const fieldLabel = Array.isArray(target)
+          ? target.join(', ')
+          : typeof target === 'string'
+            ? target
+            : 'unique field';
+        const isAttendanceDayClash =
+          Array.isArray(target) &&
+          target.includes('company_member_id') &&
+          target.includes('date') &&
+          !target.includes('work_shift_id');
+
         response = {
           success: false,
           error: {
             code: 'DUPLICATE_ERROR',
-            message: `A record with this ${prismaErr.meta?.target} already exists.`,
-            details: { field: prismaErr.meta?.target },
+            message: isAttendanceDayClash
+              ? 'Attendance already exists for this employee on this date. Edit the existing row or add a different shift.'
+              : fieldLabel === 'unique field'
+                ? 'Attendance already exists for this employee / date / shift. Edit the existing row instead.'
+                : `A record with this ${fieldLabel} already exists.`,
+            details: { field: target },
           },
         };
         return res.status(409).json(response);

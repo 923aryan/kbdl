@@ -18,6 +18,6 @@ for migration_dir in prisma/migrations/*/; do
   [ -d "$migration_dir" ] || continue
   migration_name=$(basename "$migration_dir")
   echo "  • $migration_name"
-  run_prisma migrate resolve --applied "$migration_name"
+  run_prisma migrate resolve --applied "$migration_name" || true
 done
 echo "✅ Baseline complete"

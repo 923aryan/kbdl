@@ -1,0 +1,62 @@
+// =============================================================================
+// PAYMENTS — Razorpay transactions + orders
+// =============================================================================
+
+model Transaction {
+  id String @id @default(uuid()) @db.Uuid
+
+  user_id         String? @db.Uuid
+  company_id      String? @db.Uuid
+  subscription_id String? @db.Uuid
+  order_id        String? @db.Uuid
+
+  type                      TransactionType
+  transaction_platform_type PlatformType
+  amount                    Decimal           @db.Decimal(10, 2)
+  status                    TransactionStatus
+  payment_mode              PaymentMode
+
+  razorpay_payment_id String? @db.VarChar
+  razorpay_order_id   String? @db.VarChar
+  razorpay_signature  String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company      Company?       @relation(fields: [company_id], references: [id])
+  user         User?          @relation(fields: [user_id], references: [id])
+  subscription Subscriptions? @relation(fields: [subscription_id], references: [id])
+  order        Order?         @relation(fields: [order_id], references: [id])
+
+  @@index([user_id])
+  @@index([company_id])
+  @@index([subscription_id])
+  @@index([order_id])
+  @@map("transactions")
+}
+
+model Order {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id          String?      @db.Uuid
+  user_id             String?      @db.Uuid
+  order_platform_type PlatformType
+  order_date          DateTime     @db.Timestamptz()
+  total_price         Decimal?     @db.Decimal(10, 2)
+
+  payment_status PaymentStatus
+
+  shipping_address String? @db.VarChar
+  address_id       String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company      Company?      @relation(fields: [company_id], references: [id])
+  user         User?         @relation(fields: [user_id], references: [id])
+  transactions Transaction[]
+
+  @@index([company_id])
+  @@index([user_id])
+  @@map("orders")
+}

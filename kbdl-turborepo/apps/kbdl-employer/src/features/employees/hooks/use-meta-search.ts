@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useDebouncedValue } from './use-debounced-value';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 type Fetcher<T> = (search: string) => Promise<T[]>;
 

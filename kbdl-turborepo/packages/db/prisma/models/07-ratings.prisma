@@ -1,0 +1,47 @@
+// =============================================================================
+// RATINGS — user↔user feedback, optionally tied to shift/job/company
+// =============================================================================
+
+model Rating {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Who gave / received the rating (User identity)
+  from_user_id String @db.Uuid
+  to_user_id   String @db.Uuid
+
+  // Optional company-member context
+  from_company_member_id String? @db.Uuid
+  to_company_member_id   String? @db.Uuid
+
+  company_id String? @db.Uuid
+  shift_id   String? @db.Uuid
+  job_id     String? @db.Uuid
+
+  score         Int
+  review        String? @db.Text
+  flagged_issue Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  from_user User @relation("UserGivenRatings", fields: [from_user_id], references: [id])
+  to_user   User @relation("UserReceivedRatings", fields: [to_user_id], references: [id])
+
+  from_company_member CompanyMember? @relation("MemberGivenRatings", fields: [from_company_member_id], references: [id])
+  to_company_member   CompanyMember? @relation("MemberReceivedRatings", fields: [to_company_member_id], references: [id])
+
+  company Company? @relation(fields: [company_id], references: [id])
+  shift   Shift?   @relation(fields: [shift_id], references: [id])
+  job     Job?     @relation(fields: [job_id], references: [id])
+
+  @@unique([shift_id, from_user_id, to_user_id])
+  @@unique([job_id, from_user_id, to_user_id])
+  @@index([from_user_id])
+  @@index([to_user_id])
+  @@index([from_company_member_id])
+  @@index([to_company_member_id])
+  @@index([company_id])
+  @@index([shift_id])
+  @@index([job_id])
+  @@map("ratings")
+}
