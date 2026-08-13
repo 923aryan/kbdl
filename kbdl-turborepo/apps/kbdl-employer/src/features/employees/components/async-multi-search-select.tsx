@@ -70,7 +70,7 @@ export function AsyncMultiSearchSelect({
         <span className={selected.length ? 'text-black' : 'text-[#676767]'}>
           {selected.length ? `${selected.length} selected` : placeholder}
         </span>
-        <ChevronDown className="h-5 w-5 shrink-0 text-black" />
+        <ChevronDown className={`h-5 w-5 text-black transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {selected.length > 0 && (

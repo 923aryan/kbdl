@@ -36,6 +36,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react';
+import { z } from 'zod';
 
 import { useEmployeesList } from '../hooks/use-employees-list';
 import { useMetaSearch } from '../hooks/use-meta-search';
@@ -160,158 +161,6 @@ const validateOnboardDocuments = (documents: OnboardDocument[], action: 'draft' 
   }
 
   return null;
-};
-
-type OnboardFormState = {
-  fullName: string;
-  mobileNumber: string;
-  email: string;
-  employeeNumber: string;
-  karigariId: string;
-  dateOfBirth: string;
-  gender: string;
-  address: string;
-  presentAddressLine1: string;
-  presentCity: string;
-  presentState: string;
-  presentPincode: string;
-  permanentAddressLine1: string;
-  permanentCity: string;
-  permanentState: string;
-  permanentPincode: string;
-  sameAsPresentAddress: string;
-  bloodGroup: string;
-  alternatePhone: string;
-  maritalStatus: string;
-  fatherName: string;
-  motherName: string;
-  nationality: string;
-  religion: string;
-  languagesKnown: string;
-  probationPeriodMonths: string;
-  noticePeriodDays: string;
-  weeklyOff: string;
-  workingHours: string;
-  confirmationDate: string;
-  emergencyContactName: string;
-  emergencyContactRelation: string;
-  emergencyContactNumber: string;
-  designationId: string;
-  designationLabel: string;
-  departmentId: string;
-  departmentLabel: string;
-  branchLocation: string;
-  reportingSupervisorId: string;
-  reportingSupervisorLabel: string;
-  employeeType: string;
-  joiningDate: string;
-  workShiftId: string;
-  workShiftLabel: string;
-  workLocation: string;
-  skillTrade: string;
-  experienceYears: string;
-  certificationLicenses: string;
-  safetyTrainingCompleted: string;
-  upiId: string;
-  upiName: string;
-  wageAmount: string;
-  upiPaymentFrequency: string;
-  accountHolderName: string;
-  accountNumber: string;
-  bankName: string;
-  bankNameManual: string;
-  ifscCode: string;
-  aadhaarNumber: string;
-  panNumber: string;
-  drivingLicenseNumber: string;
-  voterId: string;
-  uanNumber: string;
-  esiNumber: string;
-  pfNumber: string;
-  documents: OnboardDocument[];
-  basicSalary: string;
-  salaryType: string;
-  salaryPaymentFrequency: string;
-  overtimeEligible: string;
-  pfApplicable: string;
-  esiApplicable: string;
-  notes: string;
-};
-
-const emptyOnboardForm: OnboardFormState = {
-  fullName: '',
-  mobileNumber: '',
-  email: '',
-  employeeNumber: '',
-  karigariId: '',
-  dateOfBirth: '',
-  gender: '',
-  address: '',
-  presentAddressLine1: '',
-  presentCity: '',
-  presentState: '',
-  presentPincode: '',
-  permanentAddressLine1: '',
-  permanentCity: '',
-  permanentState: '',
-  permanentPincode: '',
-  sameAsPresentAddress: 'Yes',
-  bloodGroup: '',
-  alternatePhone: '',
-  maritalStatus: '',
-  fatherName: '',
-  motherName: '',
-  nationality: 'Indian',
-  religion: '',
-  languagesKnown: '',
-  probationPeriodMonths: '',
-  noticePeriodDays: '',
-  weeklyOff: 'Sunday',
-  workingHours: '',
-  confirmationDate: '',
-  emergencyContactName: '',
-  emergencyContactRelation: '',
-  emergencyContactNumber: '',
-  designationId: '',
-  designationLabel: '',
-  departmentId: '',
-  departmentLabel: '',
-  branchLocation: '',
-  reportingSupervisorId: '',
-  reportingSupervisorLabel: '',
-  employeeType: '',
-  joiningDate: '',
-  workShiftId: '',
-  workShiftLabel: '',
-  workLocation: '',
-  skillTrade: '',
-  experienceYears: '',
-  certificationLicenses: '',
-  safetyTrainingCompleted: 'Yes',
-  upiId: '',
-  upiName: '',
-  wageAmount: '',
-  upiPaymentFrequency: '',
-  accountHolderName: '',
-  accountNumber: '',
-  bankName: '',
-  bankNameManual: '',
-  ifscCode: '',
-  aadhaarNumber: '',
-  panNumber: '',
-  drivingLicenseNumber: '',
-  voterId: '',
-  uanNumber: '',
-  esiNumber: '',
-  pfNumber: '',
-  documents: [],
-  basicSalary: '',
-  salaryType: '',
-  salaryPaymentFrequency: '',
-  overtimeEligible: 'Yes',
-  pfApplicable: 'Yes',
-  esiApplicable: 'Yes',
-  notes: '',
 };
 
 const displayOrDash = (value?: string) => value?.trim() || '-';
@@ -2006,6 +1855,222 @@ function buildCalendarDays(date: Date) {
   });
 }
 
+const requiredString = (message: string) => z.string({ required_error: message }).min(1, { message });
+
+const numericString = (message: string) =>
+  requiredString(message).regex(/^\d+(\.\d+)?$/, {
+    message: 'Must be a valid number',
+  });
+
+const phoneRegex = /^\+91\d{10}$/;
+const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/i;
+const aadhaarRegex = /^\d{12}$/;
+const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/i;
+const pincodeRegex = /^\d{6}$/;
+
+const getOnboardValidationSchema = (paymentMethod: PaymentMethod) => {
+  const baseSchema = z.object({
+    // Personal Info
+    fullName: z.string()
+    .trim()
+    .min(1, 'Full Name is required')
+    .regex(/^[A-Za-z\s]+$/, 'Full Name can contain only letters'),
+    mobileNumber: requiredString('Mobile Number is required')
+      .transform((val) => normalizePhoneNumber(val))
+      .refine((val) => phoneRegex.test(val), {
+        message: 'Must be a valid 10-digit Indian mobile number',
+      }),
+    email: z
+  .string()
+  .email({ message: 'Invalid email address' })
+  .optional()
+  .or(z.literal('')),
+    dateOfBirth: requiredString('Date of Birth is required').refine(
+      (value) => {
+        const dob = new Date(value);
+        const today = new Date();
+        const age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        const actualAge =
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < dob.getDate())
+            ? age - 1
+            : age;
+        return actualAge >= 14;
+      },
+      {
+        message: 'Employee must be at least 14 years old',
+      },
+    ),
+    gender: requiredString('Gender is required'),
+    bloodGroup: requiredString('Blood Group is required'),
+    emergencyContactName: z.string()
+    .trim()
+    .min(1, 'Emergency Contact Name is required')
+    .regex(/^[A-Za-z\s]+$/, 'Emergency Contact Name can contain only letters'),
+    emergencyContactRelation: z.string()
+      .trim()
+      .min(1, 'Emergency Contact Relation is required')
+      .regex(/^[A-Za-z\s]+$/, 'Emergency Contact Relation can contain only letters'),
+
+    emergencyContactNumber: requiredString('Emergency Contact Number is required')
+      .transform((val) => normalizePhoneNumber(val))
+      .refine((val) => phoneRegex.test(val), {
+        message: 'Must be a valid 10-digit Indian mobile number',
+      }),
+    fatherName: z.string().trim().refine(
+        (value) => value === '' || /^[A-Za-z\s]+$/.test(value),
+        'Father\'s Name can contain only letters',
+      ),
+
+      motherName: z.string().trim().refine(
+        (value) => value === '' || /^[A-Za-z\s]+$/.test(value),
+        'Mother\'s Name can contain only letters',
+      ),
+
+      nationality: z.string().trim().refine(
+        (value) => value === '' || /^[A-Za-z\s]+$/.test(value),
+        'Invalid nationality',
+      ),
+
+      alternatePhone: z.string().trim().refine(
+        (value) => value === '' || /^[6-9]\d{9}$/.test(value),
+        'Invalid mobile number',
+      ),
+
+    // Address
+    address: z.string().trim().refine(
+      (value) => value === '' || value.length >= 5,
+      'Address must be at least 5 characters',
+    ),
+    presentAddressLine1: requiredString('Present Address Line 1 is required'),
+    presentCity: requiredString('Present City is required'),
+    presentState: requiredString('Present State is required'),
+    presentPincode: requiredString('Present Pincode is required').regex(
+      pincodeRegex,
+      'Pincode must be 6 digits',
+    ),
+    sameAsPresentAddress: requiredString(
+      'Please specify whether permanent address is same as present address',
+    ),
+
+    // Job Info
+    designationId: requiredString('Designation is required'),
+    departmentId: requiredString('Department is required'),
+    branchLocation: requiredString('Branch / Location is required'),
+    reportingSupervisorId: requiredString('Reporting Supervisor is required'),
+    employeeType: requiredString('Employee Type is required'),
+    joiningDate: requiredString('Joining Date is required'),
+    workShiftId: requiredString('Shift Assignment is required'),
+    probationPeriodMonths: z.string().trim().refine(
+    (value) => value === '' || /^\d+$/.test(value),
+      'Probation Period must be a valid number',
+    ),
+    noticePeriodDays: z.string().trim().refine(
+      (value) => value === '' || /^\d+$/.test(value),
+      'Notice Period must be a valid number',
+    ),
+    weeklyOff: z.string().trim().refine(
+      (value) => value === '' || /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i.test(value),
+      'Please enter a valid day',
+    ),
+    workingHours: z.string().trim().refine(
+      (value) => value === '' || value.length >= 5,
+      'Please enter valid working hours',
+    ),
+    confirmationDate: z.string().trim().refine(
+      (value) => value === '' || !Number.isNaN(Date.parse(value)),
+      'Invalid confirmation date',
+    ),
+    workLocation: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9\s,./()&-]+$/.test(value),
+      'Work Location contains invalid characters',
+    ),
+
+    // Work Details
+    skillTrade: requiredString('Skill / Trade is required'),
+    experienceYears: numericString('Experience is required'),
+    safetyTrainingCompleted: requiredString('Safety Training completion status is required'),
+    certificationLicenses: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9\s,./()&-]+$/.test(value),
+      'Certification / Licenses contains invalid characters',
+    ),
+
+    // Identity
+    aadhaarNumber: requiredString('Aadhaar Number is required').regex(aadhaarRegex, 'Aadhaar must be 12 digits'),
+    panNumber: requiredString('PAN Number is required').regex(panRegex, 'Invalid PAN format'),
+    drivingLicenseNumber: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9-]{5,20}$/.test(value),
+      'Invalid Driving License Number',
+    ),
+    voterId: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9]{10}$/.test(value),
+      'Voter ID must be 10 characters',
+    ),
+    uanNumber: z.string().trim().refine(
+      (value) => value === '' || /^\d{12}$/.test(value),
+      'UAN Number must be exactly 12 digits',
+    ),
+    esiNumber: z.string().trim().refine(
+      (value) => value === '' || /^\d{10,17}$/.test(value),
+      'Invalid ESI Number',
+    ),
+    pfNumber: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9/-]{5,30}$/.test(value),
+      'Invalid PF Number',
+    ),
+
+    // Salary
+    basicSalary: numericString('Basic Salary / Wage is required'),
+    salaryType: requiredString('Salary / Wage Type is required'),
+    salaryPaymentFrequency: requiredString('Payment Frequency is required'),
+    overtimeEligible: requiredString('Overtime eligibility is required'),
+    pfApplicable: requiredString('PF applicability is required'),
+    esiApplicable: requiredString('ESI applicability is required'),
+
+    //Documents
+    documents: z.array(z.any()).min(1, 'At least one document is required'),
+  });
+
+  let schema = baseSchema;
+
+  if (paymentMethod === 'upi') {
+    schema = schema.extend({
+      upiId: z.string().trim().min(1, 'UPI ID is required').regex(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$/, 'Invalid UPI ID format'),
+      upiName: z.string().trim().min(1, 'Name on UPI is required').regex(/^[A-Za-z\s]+$/, 'Name on UPI can contain only letters'),
+      wageAmount: z.string().trim().min(1, 'Wage Amount is required').regex(/^\d+(\.\d{1,2})?$/, 'Wage Amount must be a valid number'),
+      upiPaymentFrequency: requiredString('Payment Frequency is required'),
+    });
+  }
+
+  if (paymentMethod === 'bank') {
+    schema = schema.extend({
+      accountHolderName: z.string().trim().min(1, 'Account Holder Name is required').regex(/^[A-Za-z\s]+$/, 'Account Holder Name can contain only letters'),
+      accountNumber: z.string().trim().min(1, 'Account Number is required').regex(/^\d{9,18}$/, 'Account Number must contain 9-18 digits'),
+      bankName: z.string().trim().min(1, 'Bank Name is required').regex(/^[A-Za-z0-9\s&.-]+$/, 'Bank Name contains invalid characters'),
+      ifscCode: z.string().trim().min(1, 'IFSC Code is required').regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code format'),
+    });
+  }
+  
+
+  return schema.passthrough().superRefine((data: OnboardFormState, ctx) => {
+    if (data.sameAsPresentAddress?.toLowerCase() === 'no') {
+      if (!data.permanentAddressLine1?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent Address Line 1 is required', path: ['permanentAddressLine1'] });
+      if (!data.permanentCity?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent City is required', path: ['permanentCity'] });
+      if (!data.permanentState?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent State is required', path: ['permanentState'] });
+      if (!data.permanentPincode?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent Pincode is required', path: ['permanentPincode'] });
+      else if (!pincodeRegex.test(data.permanentPincode.trim())) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Pincode must be 6 digits', path: ['permanentPincode'] });
+    }
+    if (paymentMethod === 'bank' && data.bankName === OTHER_BANK_OPTION && !data.bankNameManual.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please enter the bank name manually',
+        path: ['bankNameManual'],
+      });
+    }
+  });
+};
+
 function AddEmployee({
   paymentMethod,
   onPaymentMethod,
@@ -2017,13 +2082,14 @@ function AddEmployee({
   onAddEmployee: () => void;
   onBack: () => void;
 }) {
-  const [form, setForm] = useState<OnboardFormState>(emptyOnboardForm);
+  const { form, setValue, resetForm } = useEmployeeStore();
   const [submitting, setSubmitting] = useState(false);
   const [errorModal, setErrorModal] = useState<{
     open: boolean;
     title: string;
     errors: { label: string; message: string }[];
   }>({ open: false, title: '', errors: [] });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [metaLoading, setMetaLoading] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
   const [initialDepartments, setInitialDepartments] = useState<MetaDepartment[]>([]);
@@ -2033,6 +2099,7 @@ function AddEmployee({
   const [religionSearch, setReligionSearch] = useState('');
   const [languageSearch, setLanguageSearch] = useState('');
   const [bankSearch, setBankSearch] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const bankOptions = useMemo(
     () =>
@@ -2063,42 +2130,50 @@ function AddEmployee({
 
   const selectedLanguages = useMemo(() => parseCommaList(form.languagesKnown), [form.languagesKnown]);
 
-  const setValue = (key: keyof OnboardFormState, value: string) => {
-    setForm((current) => ({ ...current, [key]: value }));
-    setErrorModal((current) => (current.open ? { ...current, open: false } : current));
+  const handleValueChange = (key: keyof OnboardFormState, value: string) => {
+    setValue(key, value);
+    setErrorModal((current) =>
+      current.open ? { ...current, open: false } : current
+    );
   };
 
   useEffect(() => {
-    let cancelled = false;
-    setMetaLoading(true);
-    setMetaError(null);
+  let cancelled = false;
+  setMetaLoading(true);
+  setMetaError(null);
 
-    fetchOnboardMetaInitial(40)
-      .then((meta) => {
-        if (cancelled) return;
-        setInitialDepartments(meta.departments);
-        setInitialDesignations(meta.designations);
-        setInitialSupervisors(meta.supervisors);
-        setInitialWorkShifts(meta.workShifts);
-        setForm((current) => ({
-          ...current,
-          employeeNumber: current.employeeNumber.trim() || meta.nextEmployeeNo,
-        }));
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setMetaError(
-          err instanceof Error ? err.message : 'Failed to load departments / designations / supervisors',
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setMetaLoading(false);
-      });
+  fetchOnboardMetaInitial(40)
+    .then((meta) => {
+      if (cancelled) return;
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      setInitialDepartments(meta.departments);
+      setInitialDesignations(meta.designations);
+      setInitialSupervisors(meta.supervisors);
+      setInitialWorkShifts(meta.workShifts);
+
+      if (!form.employeeNumber.trim()) {
+        setValue('employeeNumber', meta.nextEmployeeNo);
+      }
+    })
+    .catch((err: unknown) => {
+      if (cancelled) return;
+
+      setMetaError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load departments / designations / supervisors',
+      );
+    })
+    .finally(() => {
+      if (!cancelled) {
+        setMetaLoading(false);
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   const designationSearch = useMetaSearch(
     async (search) => (await fetchDesignationsMeta({ search, limit: 40 })).data,
@@ -2121,6 +2196,31 @@ function AddEmployee({
     setSubmitting(true);
     setErrorModal((current) => ({ ...current, open: false }));
 
+    if (action === 'submit') {
+      setSubmitted(true);
+      const validationSchema = getOnboardValidationSchema(paymentMethod);
+      const result = validationSchema.safeParse(form);
+
+        if (!result.success) {
+          const fieldErrors: Record<string, string> = {};
+
+          result.error.issues.forEach((issue) => {
+            const field = issue.path.join('.');
+
+            if (!fieldErrors[field]) {
+              fieldErrors[field] = issue.message;
+            }
+          });
+
+          setErrors(fieldErrors);
+
+          setSubmitting(false);
+          return;
+        }
+
+        setErrors({});
+      }
+
     const documentError = validateOnboardDocuments(form.documents, action);
     if (documentError) {
       setErrorModal({
@@ -2136,7 +2236,6 @@ function AddEmployee({
       const payload = buildOnboardApiPayload(form, paymentMethod, action);
       const response = await api.post<EmployeeEmploymentDTO>('/operations/employer/onboard', payload);
       const employmentId = response.data.id;
-
       const uploadedDocs = getUploadedOnboardDocuments(form.documents);
       for (const doc of uploadedDocs.slice(1)) {
         await addEmployeeDocument(employmentId, {
@@ -2146,7 +2245,7 @@ function AddEmployee({
           ...(doc.documentNumber.trim() ? { document_number: doc.documentNumber.trim() } : {}),
         });
       }
-
+      resetForm();
       onAddEmployee();
     } catch (error) {
       const parsed = extractOnboardApiErrors(error);
@@ -2154,7 +2253,7 @@ function AddEmployee({
       if (errWithCode.code === 'EMPLOYEE_NO_EXISTS') {
         fetchNextEmployeeNumber()
           .then((response) => {
-            setForm((current) => ({ ...current, employeeNumber: response.data.employee_no }));
+            setValue('employeeNumber', response.data.employee_no);
           })
           .catch(() => undefined);
       }
@@ -2169,25 +2268,26 @@ function AddEmployee({
   };
   const identitySalaryPanels = (
     <div className="grid gap-4 xl:grid-cols-2">
-      <FormPanel title="Identity Documents" icon={IdCard} columns="single">
-        <Field label="Aadhaar Number" required placeholder="Enter Aadhaar Number" value={form.aadhaarNumber} onChange={(value) => setValue('aadhaarNumber', value)} />
-        <Field label="PAN Number" required placeholder="Enter PAN Number" value={form.panNumber} onChange={(value) => setValue('panNumber', value)} />
-        <Field label="Driving License Number (if applicable)" placeholder="Enter Driving License Number" value={form.drivingLicenseNumber} onChange={(value) => setValue('drivingLicenseNumber', value)} />
-        <Field label="Voter ID" placeholder="Enter Voter ID" value={form.voterId} onChange={(value) => setValue('voterId', value)} />
-        <Field label="UAN Number" placeholder="12-digit UAN" value={form.uanNumber} onChange={(value) => setValue('uanNumber', value)} />
-        <Field label="ESI Number" placeholder="Enter ESI Number" value={form.esiNumber} onChange={(value) => setValue('esiNumber', value)} />
-        <Field label="PF Number" placeholder="Enter PF Number" value={form.pfNumber} onChange={(value) => setValue('pfNumber', value)} />
-      </FormPanel>
-      <FormPanel title="Salary Details" icon={WalletCards} columns="single">
-        <Field label="Basic Salary / Wage" required placeholder="Enter amount" value={form.basicSalary} onChange={(value) => setValue('basicSalary', value)} />
-        <SelectField label="Salary / Wage Type" required placeholder="Select Type" options={dropdownOptions.salaryType} value={form.salaryType} onChange={(value) => setValue('salaryType', value)} />
-        <SelectField label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} value={form.salaryPaymentFrequency} onChange={(value) => setValue('salaryPaymentFrequency', value)} />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <RadioGroup label="Overtime Eligible" required options={['Yes', 'No']} value={form.overtimeEligible} onChange={(value) => setValue('overtimeEligible', value)} />
-          <RadioGroup label="PF Applicable" required options={['Yes', 'No']} value={form.pfApplicable} onChange={(value) => setValue('pfApplicable', value)} />
-          <RadioGroup label="ESI Applicable" required options={['Yes', 'No']} value={form.esiApplicable} onChange={(value) => setValue('esiApplicable', value)} />
-        </div>
-      </FormPanel>
+        <FormPanel title="Identity Documents" icon={IdCard} columns="single">
+          <Field label="Aadhaar Number" required placeholder="Enter Aadhaar Number" value={form.aadhaarNumber} onChange={(value) => setValue('aadhaarNumber', value)} error={errors?.aadhaarNumber} />
+          <Field label="PAN Number" required placeholder="Enter PAN Number" value={form.panNumber} onChange={(value) => setValue('panNumber', value)} error={errors?.panNumber} />
+          <Field label="Driving License Number (if applicable)" placeholder="Enter Driving License Number" value={form.drivingLicenseNumber} onChange={(value) => setValue('drivingLicenseNumber', value)} error={errors?.drivingLicenseNumber} />
+          <Field label="Voter ID" placeholder="Enter Voter ID" value={form.voterId} onChange={(value) => setValue('voterId', value)} error={errors?.voterId} />
+          <Field label="UAN Number" placeholder="12-digit UAN" value={form.uanNumber} onChange={(value) => setValue('uanNumber', value)} error={errors?.uanNumber} />
+          <Field label="ESI Number" placeholder="Enter ESI Number" value={form.esiNumber} onChange={(value) => setValue('esiNumber', value)} error={errors?.esiNumber} />
+          <Field label="PF Number" placeholder="Enter PF Number" value={form.pfNumber} onChange={(value) => setValue('pfNumber', value)} error={errors?.pfNumber} />
+        </FormPanel>
+
+        <FormPanel title="Salary Details" icon={WalletCards} columns="single">
+          <Field label="Basic Salary / Wage" required placeholder="Enter amount" value={form.basicSalary} onChange={(value) => setValue('basicSalary', value)} error={errors?.basicSalary} />
+          <SelectField label="Salary / Wage Type" required placeholder="Select Type" options={dropdownOptions.salaryType} value={form.salaryType} onChange={(value) => setValue('salaryType', value)} error={errors?.salaryType} />
+          <SelectField id="salary-payment-frequency" label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} value={form.salaryPaymentFrequency} onChange={(value) => setValue('salaryPaymentFrequency', value)} error={errors?.salaryPaymentFrequency} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <RadioGroup label="Overtime Eligible" required options={['Yes', 'No']} value={form.overtimeEligible} onChange={(value) => setValue('overtimeEligible', value)} error={errors?.overtimeEligible} />
+            <RadioGroup label="PF Applicable" required options={['Yes', 'No']} value={form.pfApplicable} onChange={(value) => setValue('pfApplicable', value)} error={errors?.pfApplicable} />
+            <RadioGroup label="ESI Applicable" required options={['Yes', 'No']} value={form.esiApplicable} onChange={(value) => setValue('esiApplicable', value)} error={errors?.esiApplicable} />
+          </div>
+        </FormPanel>
     </div>
   );
 
@@ -2195,260 +2295,104 @@ function AddEmployee({
     <section className="rounded-[24px] border border-[#D3D3D3] bg-white p-5 shadow-sm sm:p-7">
       <PageTitle title="ADD NEW EMPLOYEE" crumb="Employee > Add New Employee" onBack={onBack} />
       <div className="mt-6 space-y-4">
-        <FormPanel title="Personal Information" icon={IdCard}>
-          <Field label="Full Name" required placeholder="Enter full name" value={form.fullName} onChange={(value) => setValue('fullName', value)} />
-          <Field label="Mobile Number" required placeholder="Enter mobile number" value={form.mobileNumber} onChange={(value) => setValue('mobileNumber', value)} />
-          <Field label="Email" placeholder="Enter email" value={form.email} onChange={(value) => setValue('email', value)} />
-          <Field label="Date of Birth" required type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.dateOfBirth} onChange={(value) => setValue('dateOfBirth', value)} />
-          <SelectField label="Gender" required placeholder="Select Gender" options={dropdownOptions.gender} value={form.gender} onChange={(value) => setValue('gender', value)} />
-          <SelectField label="Marital Status" placeholder="Select Marital Status" options={dropdownOptions.maritalStatus} value={form.maritalStatus} onChange={(value) => setValue('maritalStatus', value)} />
-          <Field label="Father's Name" placeholder="Enter father's name" value={form.fatherName} onChange={(value) => setValue('fatherName', value)} />
-          <Field label="Mother's Name" placeholder="Enter mother's name" value={form.motherName} onChange={(value) => setValue('motherName', value)} />
-          <Field label="Nationality" placeholder="Indian" value={form.nationality} onChange={(value) => setValue('nationality', value)} />
-          <AsyncSearchSelect
-            label="Religion"
-            placeholder="Search religion"
-            valueId={form.religion}
-            valueLabel={form.religion}
-            search={religionSearch}
-            onSearchChange={setReligionSearch}
-            options={religionOptions}
-            onSelect={(option) => setValue('religion', option.label)}
-            onClear={() => setValue('religion', '')}
-          />
-          <AsyncMultiSearchSelect
-            label="Languages Known"
-            placeholder="Search and select languages"
-            selected={selectedLanguages}
-            search={languageSearch}
-            onSearchChange={setLanguageSearch}
-            options={languageOptions}
-            onAdd={(language) =>
-              setValue('languagesKnown', joinCommaList([...selectedLanguages, language]))
-            }
-            onRemove={(language) =>
-              setValue(
-                'languagesKnown',
-                joinCommaList(selectedLanguages.filter((item) => item !== language)),
-              )
-            }
-            onClear={() => setValue('languagesKnown', '')}
-          />
-          <Field label="Alternate Mobile" placeholder="Enter alternate number (not unique — can repeat)" value={form.alternatePhone} onChange={(value) => setValue('alternatePhone', value)} />
-          <Field label="Legacy Address (optional)" placeholder="Or enter full address as single line" value={form.address} onChange={(value) => setValue('address', value)} />
-          <SelectField label="Blood Group" required placeholder="Select Blood Group" options={dropdownOptions.blood} value={form.bloodGroup} onChange={(value) => setValue('bloodGroup', value)} />
-          <Field label="Emergency Contact Name" required placeholder="Enter emergency contact name" value={form.emergencyContactName} onChange={(value) => setValue('emergencyContactName', value)} />
-          <Field label="Emergency Contact Relation" required placeholder="Enter emergency contact relation" value={form.emergencyContactRelation} onChange={(value) => setValue('emergencyContactRelation', value)} />
-          <Field label="Emergency Contact Number" required placeholder="Enter emergency contact number (not unique)" value={form.emergencyContactNumber} onChange={(value) => setValue('emergencyContactNumber', value)} />
-        </FormPanel>
+      <FormPanel title="Personal Information" icon={IdCard}>
+        <Field label="Full Name" required placeholder="Enter full name" value={form.fullName} onChange={(value) => setValue('fullName', value)} error={errors.fullName} />
+        <Field label="Mobile Number" required placeholder="Enter mobile number" value={form.mobileNumber} onChange={(value) => setValue('mobileNumber', value)} error={errors.mobileNumber} />
+        <Field label="Email" placeholder="Enter email" value={form.email} onChange={(value) => setValue('email', value)} error={errors?.email} />
+        <Field label="Date of Birth" required type="date" placeholder="YYYY-MM-DD" value={form.dateOfBirth} onChange={(value) => setValue('dateOfBirth', value)} error={errors.dateOfBirth} />
+        <SelectField label="Gender" required placeholder="Select Gender" options={dropdownOptions.gender} value={form.gender} onChange={(value) => setValue('gender', value)} error={errors.gender} />
+        <SelectField label="Marital Status" placeholder="Select Marital Status" options={dropdownOptions.maritalStatus} value={form.maritalStatus} onChange={(value) => setValue('maritalStatus', value)} error={errors?.maritalStatus} />
+        <Field label="Father's Name" placeholder="Enter father's name" value={form.fatherName} onChange={(value) => setValue('fatherName', value)} error={errors?.fatherName} />
+        <Field label="Mother's Name" placeholder="Enter mother's name" value={form.motherName} onChange={(value) => setValue('motherName', value)} error={errors?.motherName} />
+        <Field label="Nationality" placeholder="Indian" value={form.nationality} onChange={(value) => setValue('nationality', value)} error={errors?.nationality} />
+        <AsyncSearchSelect label="Religion" placeholder="Search religion" valueId={form.religion} valueLabel={form.religion} search={religionSearch} onSearchChange={setReligionSearch} options={religionOptions} error={errors?.religion} onSelect={(option) => setValue('religion', option.label)} onClear={() => setValue('religion', '')} />
+        <AsyncMultiSearchSelect label="Languages Known" placeholder="Search and select languages" selected={selectedLanguages} search={languageSearch} onSearchChange={setLanguageSearch} options={languageOptions} onAdd={(language) => setValue('languagesKnown', joinCommaList([...selectedLanguages, language]))} onRemove={(language) => setValue('languagesKnown', joinCommaList(selectedLanguages.filter((item) => item !== language)))} onClear={() => setValue('languagesKnown', '')} />
+        <Field label="Alternate Mobile" placeholder="Enter alternate number (not unique — can repeat)" value={form.alternatePhone} onChange={(value) => setValue('alternatePhone', value)} error={errors?.alternatePhone} />
+        <Field label="Legacy Address (optional)" placeholder="Or enter full address as single line" value={form.address} onChange={(value) => setValue('address', value)} error={errors?.address} />
+        <SelectField label="Blood Group" required placeholder="Select Blood Group" options={dropdownOptions.blood} value={form.bloodGroup} onChange={(value) => setValue('bloodGroup', value)} error={errors.bloodGroup} />
+        <Field label="Emergency Contact Name" required placeholder="Enter emergency contact name" value={form.emergencyContactName} onChange={(value) => setValue('emergencyContactName', value)} error={errors.emergencyContactName} />
+        <Field label="Emergency Contact Relation" required placeholder="Enter emergency contact relation" value={form.emergencyContactRelation} onChange={(value) => setValue('emergencyContactRelation', value)} error={errors.emergencyContactRelation} />
+        <Field label="Emergency Contact Number" required placeholder="Enter emergency contact number (not unique)" value={form.emergencyContactNumber} onChange={(value) => setValue('emergencyContactNumber', value)} error={errors.emergencyContactNumber} />
+      </FormPanel>
 
-        <FormPanel title="Current Address (Present)" icon={MapPin} columns="single">
-          <AddressFormBlock
-            title="Where the employee currently lives"
-            required
-            values={{
-              line1: form.presentAddressLine1,
-              city: form.presentCity,
-              state: form.presentState,
-              pincode: form.presentPincode,
-            }}
-            onChange={(patch) => {
-              setForm((current) => ({
-                ...current,
-                ...(patch.line1 !== undefined ? { presentAddressLine1: patch.line1 } : {}),
-                ...(patch.city !== undefined ? { presentCity: patch.city } : {}),
-                ...(patch.state !== undefined ? { presentState: patch.state } : {}),
-                ...(patch.pincode !== undefined ? { presentPincode: patch.pincode } : {}),
-              }));
-            }}
-          />
-        </FormPanel>
+      <FormPanel title="Current Address (Present)" icon={MapPin} columns="single">
+        <AddressFormBlock
+          title="Where the employee currently lives"
+          required
+          showErrors={submitted}
+          values={{
+            line1: form.presentAddressLine1,
+            city: form.presentCity,
+            state: form.presentState,
+            pincode: form.presentPincode,
+          }}
+          errors={{
+            line1: errors?.presentAddressLine1,
+            city: errors?.presentCity,
+            state: errors?.presentState,
+            pincode: errors?.presentPincode,
+          }}
+          onChange={(patch) => {
+            if (patch.line1 !== undefined) setValue('presentAddressLine1', patch.line1);
+            if (patch.city !== undefined) setValue('presentCity', patch.city);
+            if (patch.state !== undefined) setValue('presentState', patch.state);
+            if (patch.pincode !== undefined) setValue('presentPincode', patch.pincode);
+          }}
+        />
+      </FormPanel>
 
         <FormPanel title="Permanent Address" icon={MapPin} columns="single">
-          <RadioGroup label="Permanent same as Current" options={['Yes', 'No']} value={form.sameAsPresentAddress} onChange={(value) => setValue('sameAsPresentAddress', value)} />
-          {form.sameAsPresentAddress.trim().toLowerCase() === 'no' ? (
-            <AddressFormBlock
-              title="Permanent / native address"
-              values={{
-                line1: form.permanentAddressLine1,
-                city: form.permanentCity,
-                state: form.permanentState,
-                pincode: form.permanentPincode,
-              }}
-              onChange={(patch) => {
-                setForm((current) => ({
-                  ...current,
-                  ...(patch.line1 !== undefined ? { permanentAddressLine1: patch.line1 } : {}),
-                  ...(patch.city !== undefined ? { permanentCity: patch.city } : {}),
-                  ...(patch.state !== undefined ? { permanentState: patch.state } : {}),
-                  ...(patch.pincode !== undefined ? { permanentPincode: patch.pincode } : {}),
-                }));
-              }}
-            />
-          ) : (
-            <p className="text-sm text-[#676767]">
-              Permanent address will be copied from current address on submit.
-            </p>
-          )}
+          <RadioGroup label="Permanent same as Current" options={['Yes', 'No']} value={form.sameAsPresentAddress} onChange={(value) => setValue('sameAsPresentAddress', value)} error={errors.sameAsPresentAddress} />
+            {form.sameAsPresentAddress.trim().toLowerCase() === 'no' ? (
+              <AddressFormBlock
+                title="Permanent / native address"
+                required
+                showErrors={submitted}
+                values={{ line1: form.permanentAddressLine1, city: form.permanentCity, state: form.permanentState, pincode: form.permanentPincode }}
+                errors={{ line1: errors?.permanentAddressLine1, city: errors?.permanentCity, state: errors?.permanentState, pincode: errors?.permanentPincode }}
+                onChange={(patch) => {
+                  if (patch.line1 !== undefined) setValue('permanentAddressLine1', patch.line1);
+                  if (patch.city !== undefined) setValue('permanentCity', patch.city);
+                  if (patch.state !== undefined) setValue('permanentState', patch.state);
+                  if (patch.pincode !== undefined) setValue('permanentPincode', patch.pincode);
+                }}
+              />
+            ) : (
+              <p className="text-sm text-[#676767]">
+                Permanent address will be copied from current address on submit.
+              </p>
+            )}
         </FormPanel>
 
         <FormPanel title="Job Information" icon={Briefcase}>
-          <Field
-            label="Employee Number"
-            placeholder="Auto-generated from company sequence"
-            value={form.employeeNumber}
-            onChange={(value) => setValue('employeeNumber', value)}
-          />
-          <p className="-mt-2 text-xs text-[#676767]">
-            Suggested next number from your company (EMP-001, EMP-002…). You can edit if needed.
-          </p>
-          <Field
-            label="Karigari ID"
-            placeholder="Platform worker ID e.g. KG1000 (globally unique if set)"
-            value={form.karigariId}
-            onChange={(value) => setValue('karigariId', value)}
-          />
-          <AsyncSearchSelect
-            label="Designation"
-            required
-            placeholder={metaLoading ? 'Loading designations…' : 'Search designation'}
-            valueId={form.designationId}
-            valueLabel={form.designationLabel}
-            search={designationSearch.search}
-            onSearchChange={designationSearch.setSearch}
-            loading={metaLoading || designationSearch.loading}
-            error={metaError || designationSearch.error}
-            options={designationSearch.items.map((item) => ({
-              id: item.id,
-              label: item.name,
-              sublabel: item.description || undefined,
-            }))}
-            onSelect={(option) => {
-              setForm((current) => ({
-                ...current,
-                designationId: option.id,
-                designationLabel: option.label,
-              }));
-            }}
-            onClear={() =>
-              setForm((current) => ({
-                ...current,
-                designationId: '',
-                designationLabel: '',
-              }))
-            }
-          />
-          <AsyncSearchSelect
-            label="Department"
-            required
-            placeholder={metaLoading ? 'Loading departments…' : 'Search department'}
-            valueId={form.departmentId}
-            valueLabel={form.departmentLabel}
-            search={departmentSearch.search}
-            onSearchChange={departmentSearch.setSearch}
-            loading={metaLoading || departmentSearch.loading}
-            error={metaError || departmentSearch.error}
-            options={departmentSearch.items.map((item) => ({
-              id: item.id,
-              label: item.name,
-              sublabel: item.description || undefined,
-            }))}
-            onSelect={(option) => {
-              setForm((current) => ({
-                ...current,
-                departmentId: option.id,
-                departmentLabel: option.label,
-              }));
-            }}
-            onClear={() =>
-              setForm((current) => ({
-                ...current,
-                departmentId: '',
-                departmentLabel: '',
-              }))
-            }
-          />
-          <SelectField label="Branch / Location" required placeholder="Select Branch" options={dropdownOptions.branch} value={form.branchLocation} onChange={(value) => setValue('branchLocation', value)} />
-          <AsyncSearchSelect
-            label="Reporting Supervisor"
-            required
-            placeholder={metaLoading ? 'Loading supervisors…' : 'Search supervisor'}
-            valueId={form.reportingSupervisorId}
-            valueLabel={form.reportingSupervisorLabel}
-            search={supervisorSearch.search}
-            onSearchChange={supervisorSearch.setSearch}
-            loading={metaLoading || supervisorSearch.loading}
-            error={metaError || supervisorSearch.error}
-            options={supervisorSearch.items.map((item) => ({
-              id: item.id,
-              label: item.name || item.phone_no,
-              sublabel: [item.role_name, item.department_name, item.phone_no].filter(Boolean).join(' · '),
-            }))}
-            onSelect={(option) => {
-              setForm((current) => ({
-                ...current,
-                reportingSupervisorId: option.id,
-                reportingSupervisorLabel: option.label,
-              }));
-            }}
-            onClear={() =>
-              setForm((current) => ({
-                ...current,
-                reportingSupervisorId: '',
-                reportingSupervisorLabel: '',
-              }))
-            }
-          />
-          <SelectField label="Employee Type" required placeholder="Select Employee Type" options={dropdownOptions.type} value={form.employeeType} onChange={(value) => setValue('employeeType', value)} />
-          <Field label="Joining Date" required type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.joiningDate} onChange={(value) => setValue('joiningDate', value)} />
-          <AsyncSearchSelect
-            label="Shift Assignment"
-            required
-            placeholder={metaLoading ? 'Loading shifts…' : 'Search work shift'}
-            valueId={form.workShiftId}
-            valueLabel={form.workShiftLabel}
-            search={workShiftSearch.search}
-            onSearchChange={workShiftSearch.setSearch}
-            loading={metaLoading || workShiftSearch.loading}
-            error={metaError || workShiftSearch.error}
-            options={workShiftSearch.items.map((item) => ({
-              id: item.id,
-              label: item.name,
-              sublabel: `${item.start_time?.slice(0, 5) ?? ''} – ${item.end_time?.slice(0, 5) ?? ''}`,
-            }))}
-            onSelect={(option) => {
-              setForm((current) => ({
-                ...current,
-                workShiftId: option.id,
-                workShiftLabel: option.label,
-              }));
-            }}
-            onClear={() =>
-              setForm((current) => ({
-                ...current,
-                workShiftId: '',
-                workShiftLabel: '',
-              }))
-            }
-          />
-          <Field label="Probation Period (months)" placeholder="e.g. 3" value={form.probationPeriodMonths} onChange={(value) => setValue('probationPeriodMonths', value)} />
-          <Field label="Notice Period (days)" placeholder="e.g. 15" value={form.noticePeriodDays} onChange={(value) => setValue('noticePeriodDays', value)} />
-          <Field label="Weekly Off" placeholder="Sunday" value={form.weeklyOff} onChange={(value) => setValue('weeklyOff', value)} />
-          <Field label="Working Hours" placeholder="e.g. 09:00 AM - 06:00 PM" value={form.workingHours} onChange={(value) => setValue('workingHours', value)} />
-          <Field label="Confirmation Date" type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.confirmationDate} onChange={(value) => setValue('confirmationDate', value)} />
-          <Field label="Work Location / Site" placeholder="Enter work location or site" value={form.workLocation} onChange={(value) => setValue('workLocation', value)} />
+          <Field label="Employee Number" placeholder="Auto-generated from company sequence" value={form.employeeNumber} onChange={(value) => setValue('employeeNumber', value)} />
+          <p className="-mt-2 text-xs text-[#676767]">Suggested next number from your company (EMP-001, EMP-002…). You can edit if needed.</p>
+          <Field label="Karigari ID" placeholder="Platform worker ID e.g. KG1000 (globally unique if set)" value={form.karigariId} onChange={(value) => setValue('karigariId', value)} />
+          <AsyncSearchSelect label="Designation" required placeholder={metaLoading ? 'Loading designations…' : 'Search designation'} valueId={form.designationId} valueLabel={form.designationLabel} search={designationSearch.search} onSearchChange={designationSearch.setSearch} loading={metaLoading || designationSearch.loading} error={errors.designationId || metaError || designationSearch.error} options={designationSearch.items.map((item) => ({ id: item.id, label: item.name, sublabel: item.description || undefined }))} onSelect={(option) => { setValue('designationId', option.id); setValue('designationLabel', option.label); }} onClear={() => { setValue('designationId', ''); setValue('designationLabel', ''); }} />
+          <AsyncSearchSelect label="Department" required placeholder={metaLoading ? 'Loading departments…' : 'Search department'} valueId={form.departmentId} valueLabel={form.departmentLabel} search={departmentSearch.search} onSearchChange={departmentSearch.setSearch} loading={metaLoading || departmentSearch.loading} error={errors.departmentId || metaError || departmentSearch.error} options={departmentSearch.items.map((item) => ({ id: item.id, label: item.name, sublabel: item.description || undefined }))} onSelect={(option) => { setValue('departmentId', option.id); setValue('departmentLabel', option.label); }} onClear={() => { setValue('departmentId', ''); setValue('departmentLabel', ''); }} />
+          <SelectField label="Branch / Location" required placeholder="Select Branch" options={dropdownOptions.branch} value={form.branchLocation} onChange={(value) => setValue('branchLocation', value)} error={errors.branchLocation} />
+          <AsyncSearchSelect label="Reporting Supervisor" required placeholder={metaLoading ? 'Loading supervisors…' : 'Search supervisor'} valueId={form.reportingSupervisorId} valueLabel={form.reportingSupervisorLabel} search={supervisorSearch.search} onSearchChange={supervisorSearch.setSearch} loading={metaLoading || supervisorSearch.loading} error={errors.reportingSupervisorId || metaError || supervisorSearch.error} options={supervisorSearch.items.map((item) => ({ id: item.id, label: item.name || item.phone_no, sublabel: [item.role_name, item.department_name, item.phone_no].filter(Boolean).join(' · ') }))} onSelect={(option) => { setValue('reportingSupervisorId', option.id); setValue('reportingSupervisorLabel', option.label); }} onClear={() => { setValue('reportingSupervisorId', ''); setValue('reportingSupervisorLabel', ''); }} />
+          <SelectField label="Employee Type" required placeholder="Select Employee Type" options={dropdownOptions.type} value={form.employeeType} onChange={(value) => setValue('employeeType', value)} error={errors.employeeType} />
+          <Field label="Joining Date" required type="date" placeholder="YYYY-MM-DD" value={form.joiningDate} onChange={(value) => setValue('joiningDate', value)} error={errors.joiningDate} />
+          <AsyncSearchSelect label="Shift Assignment" required placeholder={metaLoading ? 'Loading shifts…' : 'Search work shift'} valueId={form.workShiftId} valueLabel={form.workShiftLabel} search={workShiftSearch.search} onSearchChange={workShiftSearch.setSearch} loading={metaLoading || workShiftSearch.loading} error={errors.workShiftId || metaError || workShiftSearch.error} options={workShiftSearch.items.map((item) => ({ id: item.id, label: item.name, sublabel: `${item.start_time?.slice(0, 5) ?? ''} – ${item.end_time?.slice(0, 5) ?? ''}` }))} onSelect={(option) => { setValue('workShiftId', option.id); setValue('workShiftLabel', option.label); }} onClear={() => { setValue('workShiftId', ''); setValue('workShiftLabel', ''); }} />
+          <Field label="Probation Period (months)" placeholder="e.g. 3" value={form.probationPeriodMonths} onChange={(value) => setValue('probationPeriodMonths', value)} error={errors?.probationPeriodMonths} />
+          <Field label="Notice Period (days)" placeholder="e.g. 15" value={form.noticePeriodDays} onChange={(value) => setValue('noticePeriodDays', value)} error={errors?.noticePeriodDays} />
+          <Field label="Weekly Off" placeholder="Sunday" value={form.weeklyOff} onChange={(value) => setValue('weeklyOff', value)} error={errors?.weeklyOff} />
+          <Field label="Working Hours" placeholder="e.g. 09:00 AM - 06:00 PM" value={form.workingHours} onChange={(value) => setValue('workingHours', value)} error={errors?.workingHours} />
+          <Field label="Confirmation Date" type="date" placeholder="YYYY-MM-DD" value={form.confirmationDate} onChange={(value) => setValue('confirmationDate', value)} error={errors?.confirmationDate} />
+          <Field label="Work Location / Site" placeholder="Enter work location or site" value={form.workLocation} onChange={(value) => setValue('workLocation', value)} error={errors?.workLocation} />
         </FormPanel>
 
         <div className="grid gap-4 xl:grid-cols-2">
           <FormPanel title="Work Details" icon={Wrench} columns="single">
             <div className="grid gap-4 sm:grid-cols-2">
-            <SelectField label="Skill / Trade" required placeholder="Select Skill / Trade" options={dropdownOptions.skill} value={form.skillTrade} onChange={(value) => setValue('skillTrade', value)} />
-              <Field label="Experience (Years)" required placeholder="Enter experience in years" value={form.experienceYears} onChange={(value) => setValue('experienceYears', value)} />
+              <SelectField label="Skill / Trade" required placeholder="Select Skill / Trade" options={dropdownOptions.skill} value={form.skillTrade} onChange={(value) => setValue('skillTrade', value)} error={errors?.skillTrade} />
+              <Field label="Experience (Years)" required placeholder="Enter experience in years" value={form.experienceYears} onChange={(value) => setValue('experienceYears', value)} error={errors.experienceYears} />
             </div>
-             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Certification / Licenses" placeholder="Enter Certifications (if any)" value={form.certificationLicenses} onChange={(value) => setValue('certificationLicenses', value)} />
-              <RadioGroup label="Safety Training Completed" required options={['Yes', 'No']} value={form.safetyTrainingCompleted} onChange={(value) => setValue('safetyTrainingCompleted', value)} />
-             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Certification / Licenses" placeholder="Enter Certifications (if any)" value={form.certificationLicenses} onChange={(value) => setValue('certificationLicenses', value)} error={errors?.certificationLicenses} />
+              <RadioGroup label="Safety Training Completed" required options={['Yes', 'No']} value={form.safetyTrainingCompleted} onChange={(value) => setValue('safetyTrainingCompleted', value)} error={errors.safetyTrainingCompleted} />
+            </div>
           </FormPanel>
           <FormPanel title="Payment Method" icon={CreditCard} columns="single">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -2461,43 +2405,23 @@ function AddEmployee({
 
         {paymentMethod === 'upi' && (
           <FormPanel title="UPI Transfer" icon={WalletCards}>
-            <Field label="UPI ID" required placeholder="Enter UPI ID" value={form.upiId} onChange={(value) => setValue('upiId', value)} />
-            <Field label="Name on UPI" required placeholder="Enter name on UPI" value={form.upiName} onChange={(value) => setValue('upiName', value)} />
-            <Field label="Wage Amount" required placeholder="Enter wage amount" value={form.wageAmount} onChange={(value) => setValue('wageAmount', value)} />
-            <SelectField label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} value={form.upiPaymentFrequency} onChange={(value) => setValue('upiPaymentFrequency', value)} />
+            <Field label="UPI ID" required placeholder="Enter UPI ID" value={form.upiId} onChange={(value) => setValue('upiId', value)} error={errors.upiId} />
+            <Field label="Name on UPI" required placeholder="Enter name on UPI" value={form.upiName} onChange={(value) => setValue('upiName', value)} error={errors.upiName} />
+            <Field label="Wage Amount" required placeholder="Enter wage amount" value={form.wageAmount} onChange={(value) => setValue('wageAmount', value)} error={errors.wageAmount} />
+            <SelectField id="upi-payment-frequency" label="Payment Frequency" required placeholder="Select Frequency" options={dropdownOptions.frequency} value={form.upiPaymentFrequency} onChange={(value) => setValue('upiPaymentFrequency', value)} error={errors?.upiPaymentFrequency} />
           </FormPanel>
         )}
 
         {paymentMethod === 'bank' && (
           <>
             <FormPanel title="Bank Details" icon={Landmark}>
-              <Field label="Account Holder Name" required placeholder="Enter Account Holder Name" value={form.accountHolderName} onChange={(value) => setValue('accountHolderName', value)} />
-              <Field label="Account Number" required placeholder="Enter Account Number" value={form.accountNumber} onChange={(value) => setValue('accountNumber', value)} />
-              <AsyncSearchSelect
-                label="Bank Name"
-                required
-                placeholder="Search bank (SBI, HDFC, ICICI…)"
-                valueId={form.bankName}
-                valueLabel={form.bankName}
-                search={bankSearch}
-                onSearchChange={setBankSearch}
-                options={bankOptions}
-                onSelect={(option) => setValue('bankName', option.label)}
-                onClear={() => {
-                  setValue('bankName', '');
-                  setValue('bankNameManual', '');
-                }}
-              />
+              <Field label="Account Holder Name" required placeholder="Enter Account Holder Name" value={form.accountHolderName} onChange={(value) => setValue('accountHolderName', value)} error={errors.accountHolderName} />
+              <Field label="Account Number" required placeholder="Enter Account Number" value={form.accountNumber} onChange={(value) => setValue('accountNumber', value)} error={errors.accountNumber} />
+              <AsyncSearchSelect label="Bank Name" required placeholder="Search bank (SBI, HDFC, ICICI…)" valueId={form.bankName} valueLabel={form.bankName} search={bankSearch} onSearchChange={setBankSearch} options={bankOptions} error={errors?.bankName} onSelect={(option) => setValue('bankName', option.label)} onClear={() => { setValue('bankName', ''); setValue('bankNameManual', ''); }} />
               {form.bankName === OTHER_BANK_OPTION && (
-                <Field
-                  label="Enter Bank Name"
-                  required
-                  placeholder="Type your bank name"
-                  value={form.bankNameManual}
-                  onChange={(value) => setValue('bankNameManual', value)}
-                />
+                <Field label="Enter Bank Name" required placeholder="Type your bank name" value={form.bankNameManual} onChange={(value) => setValue('bankNameManual', value)} error={errors.bankNameManual} />
               )}
-              <Field label="IFSC Code" required placeholder="Enter IFSC Code" value={form.ifscCode} onChange={(value) => setValue('ifscCode', value)} />
+              <Field label="IFSC Code" required placeholder="Enter IFSC Code" value={form.ifscCode} onChange={(value) => setValue('ifscCode', value)} error={errors.ifscCode} />
             </FormPanel>
             {identitySalaryPanels}
           </>
@@ -2506,12 +2430,13 @@ function AddEmployee({
         {paymentMethod !== 'bank' && identitySalaryPanels}
 
         <FormPanel title="Documents & Notes" icon={FileText} columns="single">
-          <OnboardDocumentsSection
-            documents={form.documents}
-            notes={form.notes}
-            onDocumentsChange={(documents) => setForm((current) => ({ ...current, documents }))}
-            onNotesChange={(value) => setValue('notes', value)}
-          />
+            <OnboardDocumentsSection
+              documents={form.documents}
+              notes={form.notes}
+              onDocumentsChange={(documents) => setValue('documents', documents)}
+              onNotesChange={(value) => setValue('notes', value)}
+              error={errors?.documents}
+            />
         </FormPanel>
 
         <OnboardErrorModal
@@ -2522,10 +2447,10 @@ function AddEmployee({
         />
 
         <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:justify-end">
-          <button type="button" disabled={submitting} onClick={() => saveEmployee('draft')} className="h-12 rounded-xl border border-[#0658C2] px-8 text-base font-semibold text-[#0658C2] disabled:opacity-60">
-            Save as Draft
-          </button>
-          <button type="button" disabled={submitting} onClick={() => saveEmployee('submit')} className="h-12 rounded-xl bg-[#0658C2] px-8 text-base font-semibold text-white disabled:opacity-60">
+        <button type="button" disabled={submitting} onClick={() => saveEmployee('draft')} className="h-12 cursor-pointer rounded-xl border border-[#0658C2] px-8 text-base font-semibold text-[#0658C2] transition-all duration-200 hover:bg-[#F0F6FF] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
+          Save as Draft
+        </button>
+          <button type="button" disabled={submitting} onClick={() => saveEmployee('submit')} className="h-12 cursor-pointer rounded-xl bg-[#0658C2] px-8 text-base font-semibold text-white transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
             Submit Profile
           </button>
         </div>
@@ -2595,11 +2520,13 @@ function OnboardDocumentsSection({
   notes,
   onDocumentsChange,
   onNotesChange,
+  error,
 }: {
   documents: OnboardDocument[];
   notes: string;
   onDocumentsChange: (documents: OnboardDocument[]) => void;
   onNotesChange: (value: string) => void;
+  error?: string;
 }) {
   const updateDocument = (id: string, patch: Partial<OnboardDocument>) => {
     onDocumentsChange(
@@ -2638,20 +2565,27 @@ function OnboardDocumentsSection({
       </div>
 
       {documents.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[#D3D3D3] bg-[#FAFAFA] px-6 py-10 text-center">
-          <FileText className="mx-auto h-8 w-8 text-[#0658C2]" />
-          <p className="mt-3 text-sm font-semibold">No documents added yet</p>
-          <p className="mt-1 text-xs text-[#676767]">
-            Click &quot;Add Document&quot; to upload Aadhaar, PAN, or other files.
-          </p>
-          <button
-            type="button"
-            onClick={addDocument}
-            className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0658C2] px-4 text-sm font-semibold text-[#0658C2]"
-          >
-            <Plus className="h-4 w-4" /> Add Document
-          </button>
-        </div>
+        <>
+          <div className={`rounded-xl border border-dashed bg-[#FAFAFA] px-6 py-10 text-center ${error ? 'border-[#F54A4A]' : 'border-[#D3D3D3]'}`}>
+            <FileText className="mx-auto h-8 w-8 text-[#0658C2]" />
+            <p className="mt-3 text-sm font-semibold">No documents added yet</p>
+            <p className="mt-1 text-xs text-[#676767]">
+              Click &quot;Add Document&quot; to upload Aadhaar, PAN, or other files.
+            </p>
+            <button
+              type="button"
+              onClick={addDocument}
+              className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0658C2] px-4 text-sm font-semibold text-[#0658C2]"
+            >
+              <Plus className="h-4 w-4" /> Add Document
+            </button>
+          </div>
+          {error && (
+            <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
+              {error}
+            </span>
+          )}
+        </>
       ) : (
         <div className="space-y-3">
           {documents.map((doc, index) => (
@@ -2760,6 +2694,7 @@ function Field({
   value,
   onChange,
   type = 'text',
+  error,
 }: {
   label: string;
   placeholder: string;
@@ -2768,86 +2703,127 @@ function Field({
   value?: string;
   onChange?: (value: string) => void;
   type?: string;
+  error?: string;
 }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-semibold">
         {label} {required && <span className="text-[#F54A4A]">*</span>}
       </span>
+
       <span className="relative block">
         <input
           type={type}
           value={value}
           onChange={(event) => onChange?.(event.target.value)}
-          className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 pr-11 text-sm outline-none focus:border-[#0658C2]"
+          className={`h-11 w-full rounded-lg border px-4 text-sm outline-none ${
+            error
+              ? 'border-[#F54A4A] focus:border-[#F54A4A]'
+              : 'border-[#D3D3D3] focus:border-[#0658C2]'
+          }`}
           placeholder={placeholder}
         />
-        {Icon && <Icon className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black" />}
+
+        {Icon && (
+          <Icon className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black" />
+        )}
       </span>
+
+      {error && (
+        <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
+          {error}
+        </span>
+      )}
     </label>
   );
 }
 
 function SelectField({
+  id,
   label,
   placeholder,
   required,
   options,
   value,
   onChange,
+  error,
 }: {
+  id?: string;
   label: string;
   placeholder: string;
   required?: boolean;
   options: string[];
   value?: string;
   onChange?: (value: string) => void;
+  error?: string;
 }) {
   const { openDropdown, setOpenDropdown } = useEmployeeStore();
-  const dropdownId = `select-${label}`;
+  const dropdownId = id || `select-${label}`;
   const open = openDropdown === dropdownId;
   const [localValue, setLocalValue] = useState('');
   const selectedValue = value ?? localValue;
 
   return (
-    <label className="relative block">
+    <label className="block">
       <span className="mb-2 block text-sm font-semibold">
         {label} {required && <span className="text-[#F54A4A]">*</span>}
       </span>
-      <button
-        type="button"
-        onClick={() => setOpenDropdown(open ? null : dropdownId)}
-        className="flex h-11 w-full items-center justify-between rounded-lg border border-gray-100 px-4 text-left text-sm text-[#676767] focus:border-[#0658C2] cursor-pointer"
-      >
-        {selectedValue || placeholder}
-        <ChevronDown className="h-5 w-5 text-black" />
-      </button>
-      {open && (
-        <div className="absolute z-30 mt-1 w-full rounded-lg border border-[#DBEAFF] bg-white p-2 shadow-xl max-h-[260px] overflow-y-auto">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => {
-                setLocalValue(option);
-                onChange?.(option);
-                setOpenDropdown(null);
-              }}
-              className={`group flex w-full items-center mb-1 justify-between rounded-md cursor-pointer border border-gray-100 px-[16px] py-[9px] text-[14px]text-left hover:bg-[#DBEAFF] hover:border-transparent text-sm ${
-                selectedValue === option ? 'bg-[#DBEAFF] text-[#0658C2]' : 'hover:bg-[#DBEAFF]'
-              }`}
-            >
-              {option}
-              <span className={`h-4 w-4 rounded border text-[#0658C2] group-hover:bg-white group-hover:border-transparent ${selectedValue === option ? 'border-transparent bg-white' : 'border-[#D3D3D3]'}`}>
-                {selectedValue === option && (
-                  <span className="relative block h-4 w-4 rounded">
-                    <span className="absolute inset-0 bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] top-[-6px] left-[2px] bg-center bg-no-repeat" />
-                  </span>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
+
+      <span className="relative block">
+        <button
+          type="button"
+          onClick={() => setOpenDropdown(open ? null : dropdownId)}
+          className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-lg border px-4 text-left text-sm ${
+            error
+              ? 'border-[#F54A4A] focus:border-[#F54A4A]'
+              : 'border-gray-100 focus:border-[#0658C2]'
+          }`}
+        >
+          <span>{selectedValue || placeholder}</span>
+          <ChevronDown className={`h-5 w-5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+
+        {open && (
+          <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-100 bg-white p-1 shadow-lg">
+            {options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => {
+                  setLocalValue(option);
+                  onChange?.(option);
+                  setOpenDropdown(null);
+                }}
+                className={`group mb-1 flex w-full cursor-pointer items-center justify-between rounded-md border px-[16px] py-[9px] text-left text-[14px] ${
+                  selectedValue === option
+                    ? 'border-transparent bg-[#DBEAFF] text-[#0658C2]'
+                    : 'border-gray-100 hover:border-transparent hover:bg-[#DBEAFF]'
+                }`}
+              >
+                {option}
+                <span
+                  className={`h-4 w-4 rounded border text-[#0658C2] ${
+                    selectedValue === option
+                      ? 'border-transparent bg-white'
+                      : 'border-[#D3D3D3]'
+                  }`}
+                >
+                  {selectedValue === option && (
+                    <span className="flex h-full w-full items-center justify-center text-xs">
+                      ✓
+                    </span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </span>
+
+      {error && (
+        <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
+          {error}
+        </span>
       )}
     </label>
   );
@@ -2859,36 +2835,59 @@ function RadioGroup({
   value,
   required,
   onChange,
+  error,
 }: {
   label: string;
   options: string[];
   value: string;
   required?: boolean;
   onChange?: (value: string) => void;
+  error?: string;
 }) {
   const [selected, setSelected] = useState(value);
 
   return (
-    <div>
-      <p className="mb-4 text-sm font-semibold">
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold">
         {label} {required && <span className="text-[#F54A4A]">*</span>}
-      </p>
-      <div className="flex flex-wrap gap-6">
+      </span>
+
+      <div className="flex flex-wrap gap-4">
         {options.map((option) => (
-          <button key={option} type="button" onClick={() => {
-            setSelected(option);
-            onChange?.(option);
-          }} className="inline-flex items-center gap-2 cursor-pointer">
-          <span className={`flex h-4 w-4 items-center justify-center rounded-full border ${selected === option ? "border-[#0658C2] ring-4 ring-blue-100" : "border-gray-300"}`}>
-            {selected === option && (
-              <span className="h-2 w-2 rounded-full bg-blue-600" />
-            )}
-          </span>
-            {option}
+          <button
+            key={option}
+            type="button"
+            onClick={() => {
+              setSelected(option);
+              onChange?.(option);
+            }}
+            className="inline-flex cursor-pointer items-center gap-2"
+          >
+            <span
+              className={`flex h-4 w-4 items-center justify-center rounded-full border ${
+                error
+                  ? 'border-[#F54A4A]'
+                  : selected === option
+                    ? 'border-[#0658C2] ring-4 ring-blue-100'
+                    : 'border-gray-300'
+              }`}
+            >
+              {selected === option && (
+                <span className="h-2 w-2 rounded-full bg-[#0658C2]" />
+              )}
+            </span>
+
+            <span className="text-sm">{option}</span>
           </button>
         ))}
       </div>
-    </div>
+
+      {error && (
+        <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
+          {error}
+        </span>
+      )}
+    </label>
   );
 }
 

@@ -65,12 +65,11 @@ export function AsyncSearchSelect({
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-11 w-full items-center justify-between rounded-lg border border-[#D3D3D3] px-4 text-left text-sm outline-none focus:border-[#0658C2]"
-      >
+        className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-lg border px-4 text-left text-sm outline-none ${error ? 'border-[#F54A4A] focus:border-[#F54A4A]' : 'border-[#D3D3D3] focus:border-[#0658C2]'}`}>
         <span className={valueId ? 'text-black' : 'text-[#676767]'}>
           {valueLabel || placeholder}
         </span>
-        <ChevronDown className="h-5 w-5 text-black" />
+        <ChevronDown className={`h-5 w-5 text-black transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -135,6 +134,7 @@ export function AsyncSearchSelect({
           )}
         </div>
       )}
+      {error && <span className="mt-1 block text-xs font-medium text-[#F54A4A]">{error}</span>}
     </div>
   );
 }
