@@ -27,14 +27,20 @@ docker builder prune -af
 docker image prune -af
 docker container prune -f
 
-echo "▶ Building + starting full stack (postgres + redis + backend)..."
-docker compose up -d --build
+echo "▶ Building backend image..."
+docker compose build backend
+
+echo "▶ Starting postgres + redis..."
+docker compose up -d postgres redis
 
 echo "▶ Waiting for postgres/redis healthy..."
-sleep 5
+sleep 8
 
 echo "▶ Reset DB + seed demo data..."
 docker compose run --rm backend reset-seed
+
+echo "▶ Starting backend..."
+docker compose up -d backend
 
 echo "▶ Waiting for backend health..."
 ATTEMPTS=0

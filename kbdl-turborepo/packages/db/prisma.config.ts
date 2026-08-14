@@ -30,7 +30,8 @@ function resolveDatabaseUrl(): string {
 }
 
 export default defineConfig({
-  schema: 'prisma/schema.prisma',
+  // Directory: Prisma loads all *.prisma files under prisma/ (schema.prisma + models/*).
+  schema: 'prisma',
   migrations: {
     path: 'prisma/migrations',
     seed: 'node ./prisma/seed.mjs',

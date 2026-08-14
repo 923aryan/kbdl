@@ -1,0 +1,87 @@
+// =============================================================================
+// JOBS / ATS — open roles and applications
+// =============================================================================
+
+model Job {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id                   String  @db.Uuid
+  department_id                String? @db.Uuid
+  team_id                      String? @db.Uuid
+  created_by_company_member_id String? @db.Uuid
+
+  title       String @db.VarChar(255)
+  description String @db.Text
+
+  employment_type EmploymentType
+  work_type       JobWorkType
+
+  salary_min    Decimal?   @db.Decimal(10, 2)
+  salary_max    Decimal?   @db.Decimal(10, 2)
+  salary_type   SalaryType
+  is_negotiable Boolean    @default(false)
+
+  job_start_time DateTime? @db.Timestamptz()
+  job_end_time   DateTime? @db.Timestamptz()
+
+  address  String?                               @db.Text
+  location Unsupported("geography(Point,4326)")?
+
+  seats_available Int?
+
+  status     JobStatus @default(open)
+  expires_at DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company           Company        @relation(fields: [company_id], references: [id])
+  department        Department?    @relation(fields: [department_id], references: [id])
+  team              Team?          @relation(fields: [team_id], references: [id])
+  created_by_member CompanyMember? @relation("JobCreatedBy", fields: [created_by_company_member_id], references: [id])
+
+  applications JobApplication[]
+  ratings      Rating[]
+
+  @@index([company_id])
+  @@index([department_id])
+  @@index([team_id])
+  @@index([created_by_company_member_id])
+  @@index([status])
+  @@index([expires_at])
+  @@index([job_start_time])
+  @@map("jobs")
+}
+
+model JobApplication {
+  id String @id @default(uuid()) @db.Uuid
+
+  job_id  String @db.Uuid
+  user_id String @db.Uuid
+
+  status JobApplicationStatus @default(applied)
+
+  cover_letter   String? @db.Text
+  employer_notes String? @db.Text
+
+  applied_at     DateTime  @default(now()) @db.Timestamptz()
+  reviewed_at    DateTime? @db.Timestamptz()
+  shortlisted_at DateTime? @db.Timestamptz()
+  interview_at   DateTime? @db.Timestamptz()
+  hired_at       DateTime? @db.Timestamptz()
+  rejected_at    DateTime? @db.Timestamptz()
+  withdrawn_at   DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  job  Job  @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id])
+
+  @@unique([job_id, user_id])
+  @@index([job_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([job_id, status])
+  @@map("job_applications")
+}

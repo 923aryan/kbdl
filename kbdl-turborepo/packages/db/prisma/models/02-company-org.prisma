@@ -1,0 +1,230 @@
+// =============================================================================
+// COMPANY ORG — tenant, catalog, membership, hierarchy
+// =============================================================================
+// Company             = employer tenant
+// CompanyRole         = RBAC catalog (OWNER/ADMIN/HR/...) — NOT job title
+// CompanyDesignation  = job-title catalog — NOT RBAC
+// CompanyMember       = person inside a company (portal staff OR linked worker)
+// Department / Team   = org structure; manager_company_member_id = reporting line
+// Related: settings → 03-company-settings.prisma | attendance → 04-attendance.prisma
+// =============================================================================
+
+model Company {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_name     String                                 @db.VarChar
+  company_address  String?                                @db.VarChar
+  company_location Unsupported("geography(Point, 4326)")?
+  gst_number       String?                                @db.VarChar
+  pan              String?                                @db.VarChar
+  state            String?                                @db.VarChar
+  epf_registration_no String?                             @db.VarChar
+  esic_code        String?                                @db.VarChar
+  is_verified      Boolean                                @default(false)
+  preferences      Json                                   @default("{}")
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  departments   Department[]
+  designations  CompanyDesignation[]
+  roles         CompanyRole[]
+  members       CompanyMember[]
+  jobs          Job[]
+  shifts        Shift[]
+  ratings       Rating[]
+  employments   EmployeeEmployment[]
+  transactions  Transaction[]
+  orders        Order[]
+  subscriptions Subscriptions[]
+
+  payroll_settings    PayrollSettings?
+  statutory_settings  StatutorySettings?
+  payment_settings    PaymentSettings?
+  work_schedule       CompanyWorkSchedule?
+  overtime_settings   OvertimeSettings?
+
+  work_shifts      WorkShift[]
+  employee_shifts  EmployeeShift[]
+  attendances      Attendance[]
+  holidays         CompanyHoliday[]
+
+  @@index([company_name])
+  @@map("companies")
+}
+
+/// Per-company role catalog (like Department).
+/// Members reference `role_id` — rename/edit `name` without rewriting members.
+/// `code` is the stable machine key used by backend (OWNER, ADMIN, ...).
+model CompanyRole {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  /// Stable key for code lookups (OWNER, ADMIN, HR, CUSTOM_X, ...)
+  code String @db.VarChar
+
+  /// Display name — can be updated anytime
+  name String @db.VarChar
+
+  description String? @db.Text
+
+  /// System roles are seeded defaults; protect from accidental delete
+  is_system Boolean @default(false)
+  is_active Boolean @default(true)
+
+  /// Future RBAC hooks
+  permissions Json? @default("{}")
+
+  sort_order Int @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company         @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  members CompanyMember[]
+
+  @@unique([company_id, code])
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@index([code])
+  @@map("company_roles")
+}
+
+model Department {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id  String  @db.Uuid
+  name        String  @db.VarChar
+  description String? @db.Text
+
+  parent_department_id String? @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  company           Company      @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  parent_department Department?  @relation("DepartmentHierarchy", fields: [parent_department_id], references: [id])
+  child_departments Department[] @relation("DepartmentHierarchy")
+
+  teams              Team[]
+  members            CompanyMember[]
+  hr_profile_depts   EmployeeHrProfile[] @relation("HrProfileDepartment")
+  jobs               Job[]
+  shifts             Shift[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@index([parent_department_id])
+  @@map("departments")
+}
+
+/// Job-title catalog per company (NOT RBAC — that is CompanyRole).
+model CompanyDesignation {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  name        String  @db.VarChar
+  description String? @db.Text
+  is_active   Boolean @default(true)
+  sort_order  Int     @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company     Company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  hr_profiles EmployeeHrProfile[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@map("company_designations")
+}
+
+model Team {
+  id String @id @default(uuid()) @db.Uuid
+
+  department_id String @db.Uuid
+  name          String @db.VarChar
+
+  lead_company_member_id String? @db.Uuid
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  department Department @relation(fields: [department_id], references: [id], onDelete: Cascade)
+
+  lead_company_member CompanyMember?  @relation("TeamLead", fields: [lead_company_member_id], references: [id])
+  members             CompanyMember[] @relation("TeamMembers")
+
+  jobs   Job[]
+  shifts Shift[]
+
+  @@unique([department_id, name])
+  @@index([department_id])
+  @@index([lead_company_member_id])
+  @@map("teams")
+}
+
+model CompanyMember {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Nullable for HR-only worker rows until app account links via WorkforcePerson.
+  user_id       String? @db.Uuid
+  company_id    String  @db.Uuid
+  /// Worker rows link to one employment stint; null for owner/HR/staff.
+  employment_id String? @unique @db.Uuid
+  department_id String? @db.Uuid
+  team_id       String? @db.Uuid
+
+  /// FK into per-company role catalog (not a free-form string / global enum)
+  role_id String @db.Uuid
+
+  platform_type PlatformType
+
+  // Manager hierarchy (self-relation)
+  manager_company_member_id String? @db.Uuid
+
+  is_active Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  user       User?               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  company    Company             @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  employment EmployeeEmployment? @relation(fields: [employment_id], references: [id], onDelete: Cascade)
+  department Department?         @relation(fields: [department_id], references: [id])
+  team       Team?       @relation("TeamMembers", fields: [team_id], references: [id])
+  /// Restrict: cannot delete a role while members still reference it
+  role       CompanyRole @relation(fields: [role_id], references: [id], onDelete: Restrict)
+
+  manager CompanyMember?  @relation("ManagerHierarchy", fields: [manager_company_member_id], references: [id])
+  reports CompanyMember[] @relation("ManagerHierarchy")
+
+  led_teams Team[] @relation("TeamLead")
+
+  jobs_created    Job[]   @relation("JobCreatedBy")
+  shifts_created  Shift[] @relation("ShiftCreatedBy")
+  shifts_assigned Shift[] @relation("ShiftAssignedTo")
+
+  ratings_given    Rating[] @relation("MemberGivenRatings")
+  ratings_received Rating[] @relation("MemberReceivedRatings")
+
+  employee_shifts        EmployeeShift[]
+  attendances            Attendance[]     @relation("MemberAttendance")
+  attendances_marked     Attendance[]     @relation("AttendanceMarkedBy")
+
+  @@index([company_id])
+  @@index([company_id, user_id])
+  @@index([employment_id])
+  @@index([department_id])
+  @@index([team_id])
+  @@index([role_id])
+  @@index([manager_company_member_id])
+  @@index([platform_type])
+  @@map("company_members")
+}

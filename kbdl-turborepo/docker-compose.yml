@@ -75,7 +75,7 @@ services:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-kbdl}
       PGDATABASE: ${POSTGRES_DB:-kbdl}
-      PRISMA_APPLY_MODE: ${PRISMA_APPLY_MODE:-migrate}
+      PRISMA_APPLY_MODE: ${PRISMA_APPLY_MODE:-push}
     depends_on:
       postgres:
         condition: service_healthy
