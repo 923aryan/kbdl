@@ -65,12 +65,17 @@ export function AsyncMultiSearchSelect({
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((prev) => !prev)}
-        className="flex min-h-11 w-full items-center justify-between rounded-lg border border-[#D3D3D3] px-4 py-2 text-left text-sm outline-none focus:border-[#0658C2]"
+        className={`flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-2 text-base font-semibold outline-none ${
+          open
+            ? 'border-[#0658C2] text-blue-950'
+            : 'border-gray-300 text-gray-400'
+        }`}
       >
-        <span className={selected.length ? 'text-black' : 'text-[#676767]'}>
+        <span className={selected.length ? 'font-normal text-sm text-[#111827]' : 'font-normal text-sm text-gray-500'}>
           {selected.length ? `${selected.length} selected` : placeholder}
         </span>
-        <ChevronDown className={`h-5 w-5 text-black transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+
+        <ChevronDown className={`h-5 w-5 transition-transform duration-200 text-black ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {selected.length > 0 && (
@@ -81,6 +86,7 @@ export function AsyncMultiSearchSelect({
               className="inline-flex items-center gap-1 rounded-full border border-[#DBEAFF] bg-[#F5F9FF] px-3 py-1 text-xs font-medium text-[#0658C2]"
             >
               {item}
+
               <button
                 type="button"
                 aria-label={`Remove ${item}`}
@@ -95,50 +101,90 @@ export function AsyncMultiSearchSelect({
       )}
 
       {open && (
-        <div className="absolute z-40 mt-1 w-full overflow-hidden rounded-lg border border-[#DBEAFF] bg-white shadow-xl">
-          <div className="relative border-b border-[#EFEFEF] p-2">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#676767]" />
+        <div className="absolute left-0 z-40 mt-2 w-full rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
+          {/* Search */}
+          <div className="relative mb-3">
             <input
               autoFocus
+              type="text"
               value={search}
               onChange={(event) => onSearchChange(event.target.value)}
-              placeholder={`Search ${label.toLowerCase()}…`}
-              className="h-10 w-full rounded-md border border-[#D3D3D3] pl-9 pr-3 text-sm outline-none focus:border-[#0658C2]"
+              placeholder={`Search ${label.toLowerCase()}...`}
+              className="w-full rounded-md border border-transparent bg-[#F8F8F8] px-4 py-[9px] pr-10 text-sm outline-none focus:border-[#0658C2]"
             />
+
+            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
           </div>
 
-          <div id={listId} role="listbox" className="max-h-[240px] overflow-y-auto p-1">
-            {availableOptions.length === 0 && (
-              <p className="px-3 py-2 text-sm text-[#676767]">No results</p>
-            )}
-            {availableOptions.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                role="option"
-                onClick={() => {
-                  onAdd(option.label);
-                  onSearchChange('');
-                }}
-                className="flex w-full rounded-md px-3 py-2 text-left text-sm hover:bg-[#DBEAFF]"
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+          {/* Selected */}
+          {selected.length > 0 && (
+            <>
+              <div className="flex items-center justify-between px-1 py-3 text-xs font-semibold uppercase text-[#676767]">
+                <span>Selected ({selected.length})</span>
 
-          {selected.length > 0 && onClear && (
-            <button
-              type="button"
-              onClick={() => {
-                onClear();
-                setOpen(false);
-              }}
-              className="w-full border-t border-[#EFEFEF] px-3 py-2 text-left text-sm text-[#F54A4A]"
-            >
-              Clear all
-            </button>
+                {onClear && (
+                  <button
+                    type="button"
+                    onClick={() => onClear()}
+                    className="normal-case text-[#0658C2] cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-[150px] space-y-1 overflow-y-auto border-b border-[#D3D3D3] pb-3">
+                {selected.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => onRemove(item)}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-md bg-[#DBEAFF] px-4 py-[9px] text-left text-sm text-[#0658C2]"
+                  >
+                    {item}
+
+                    <span className="relative h-4 w-4 rounded bg-white">
+                      <span className="absolute inset-0 left-[2px] top-[-2px] w-[22px] bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] bg-no-repeat" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
+
+          {/* Available */}
+          <p className="px-1 py-3 text-xs font-semibold uppercase text-[#676767]">
+            Available {label}
+          </p>
+
+          <div
+            id={listId}
+            role="listbox"
+            className="max-h-[260px] space-y-1 overflow-y-auto"
+          >
+            {availableOptions.length > 0 ? (
+              availableOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="option"
+                  onClick={() => {
+                    onAdd(option.label);
+                    onSearchChange('');
+                  }}
+                  className="group flex w-full cursor-pointer items-center justify-between rounded-md border border-[#D3D3D3] px-4 py-[9px] text-left text-sm hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]"
+                >
+                  {option.label}
+
+                  <span className="h-4 w-4 rounded border border-[#D3D3D3] group-hover:border-transparent group-hover:bg-white" />
+                </button>
+              ))
+            ) : (
+              <p className="px-3 py-2 text-sm text-[#676767]">
+                No results found
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
