@@ -101,7 +101,7 @@ export function JobListScreen({
                   </button>
                 )}
                 <Link
-                  href={`/jobs/${job.id}`}
+                  href={`/jobs/${job.id}/edit`}
                   className="inline-flex items-center rounded-full bg-slate-800 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-900"
                 >
                   Details

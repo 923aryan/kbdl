@@ -1,8 +1,4 @@
-import { Prisma, safeEmployerSelect } from '@repo/db';
-
-export type EmployerDTO = Prisma.EmployerGetPayload<{
-  select: typeof safeEmployerSelect;
-}>;
+import type { EmployerDTO } from '@repo/types';
 
 export type EmployerVerifyRegisterResponse = {
   accessToken: string;

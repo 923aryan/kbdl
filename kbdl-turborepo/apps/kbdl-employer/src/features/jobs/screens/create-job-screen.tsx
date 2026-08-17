@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Calendar, MapPin, Briefcase, DollarSign, Eye } from 'lucide-react';
-import { createEmployerJob, getEmployerJob, updateEmployerJob } from '../api';
+import { createEmployerJob, getEmployerJob, updateEmployerJob, type EmployerJob } from '../api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createJobSchema } from '@repo/validator/shared';
 import { Controller, useForm } from 'react-hook-form';
@@ -29,23 +29,10 @@ const DEFAULT_VALUES: JobFormInput = {
   address: '',
   seats_available: undefined,
   job_start_time: undefined,
+  job_end_time: undefined,
+  expires_at: undefined,
   is_negotiable: false,
 };
-
-const FIELD_LABELS: Partial<Record<keyof JobFormInput, string>> = {
-  title: 'Job Title',
-  description: 'Job Description',
-  employment_type: 'Employment Type',
-  work_type: 'Work Type',
-  salary_type: 'Salary Type',
-  salary_min: 'Minimum Salary',
-  salary_max: 'Maximum Salary',
-  address: 'Work Location',
-  seats_available: 'Number of Openings',
-  job_start_time: 'Job Start Date & Time',
-};
-
-const FIELD_ORDER = Object.keys(FIELD_LABELS) as (keyof JobFormInput)[];
 
 function toDateTimeLocalInput(value?: string | null) {
   return value ? new Date(value).toISOString().slice(0, 16) : '';
@@ -61,11 +48,13 @@ function getFormErrorMessage(error: unknown) {
 function Field({
   label,
   required,
+  error,
   children,
   className = '',
 }: {
   label: string;
   required?: boolean;
+  error?: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -76,18 +65,13 @@ function Field({
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       {children}
+      {error && <p className="text-xs font-medium text-red-600">{error}</p>}
     </div>
   );
 }
 
-function ErrorSummary({
-  serverError,
-  validationErrors,
-}: {
-  serverError?: string | null;
-  validationErrors: { label: string; message: string }[];
-}) {
-  if (!serverError && validationErrors.length === 0) return null;
+function ErrorSummary({ serverError }: { serverError?: string | null }) {
+  if (!serverError) return null;
 
   return (
     <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-700 shadow-sm">
@@ -96,17 +80,8 @@ function ErrorSummary({
           <AlertCircle size={18} className="text-red-600" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-red-800">Please fix these errors</h2>
-          {serverError && <p className="mt-1 text-sm font-medium">{serverError}</p>}
-          {validationErrors.length > 0 && (
-            <ul className="mt-2 space-y-1 text-sm">
-              {validationErrors.map((item) => (
-                <li key={item.label} className="leading-5">
-                  <span className="font-semibold">{item.label}:</span> {item.message}
-                </li>
-              ))}
-            </ul>
-          )}
+          <h2 className="text-sm font-bold text-red-800">Unable to save job</h2>
+          <p className="mt-1 text-sm font-medium">{serverError}</p>
         </div>
       </div>
     </div>
@@ -171,6 +146,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
   const [loadingJob, setLoadingJob] = useState(isEditing);
   const [error, setError] = useState<string | null>(null);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
+  const loadedJobRef = useRef<EmployerJob | null>(null);
 
   const {
     register,
@@ -185,14 +161,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
   });
 
   const watchAll = watch();
-  const validationErrors = useMemo(
-    () =>
-      FIELD_ORDER.map((name) => {
-        const message = getFormErrorMessage(errors[name]);
-        return message ? { label: FIELD_LABELS[name] ?? String(name), message } : null;
-      }).filter((item): item is { label: string; message: string } => Boolean(item)),
-    [errors],
-  );
+  const fieldError = (name: keyof JobFormInput) => getFormErrorMessage(errors[name]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -205,6 +174,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
       try {
         const job = await getEmployerJob(jobId);
         if (cancelled) return;
+        loadedJobRef.current = job;
 
         reset({
           title: job.title,
@@ -218,6 +188,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
           seats_available: job.seats_available ?? undefined,
           job_start_time: job.job_start_time ?? undefined,
           job_end_time: job.job_end_time ?? undefined,
+          expires_at: job.expires_at ?? undefined,
           is_negotiable: job.is_negotiable ?? false,
           status: (job.status as JobFormInput['status']) ?? 'draft',
         });
@@ -254,9 +225,20 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
         address: data.address || undefined,
         seats_available: data.seats_available,
         is_negotiable: data.is_negotiable,
-        job_start_time: data.job_start_time,
         status,
       };
+
+      if (!isEditing || data.job_start_time !== loadedJobRef.current?.job_start_time) {
+        Object.assign(payload, { job_start_time: data.job_start_time });
+      }
+
+      if (!isEditing || data.job_end_time !== loadedJobRef.current?.job_end_time) {
+        Object.assign(payload, { job_end_time: data.job_end_time });
+      }
+
+      if (!isEditing || data.expires_at !== loadedJobRef.current?.expires_at) {
+        Object.assign(payload, { expires_at: data.expires_at });
+      }
 
       if (jobId) {
         await updateEmployerJob(jobId, payload);
@@ -324,7 +306,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
         </div>
 
         <div ref={errorSummaryRef}>
-          <ErrorSummary serverError={error} validationErrors={validationErrors} />
+          <ErrorSummary serverError={error} />
         </div>
 
         {loadingJob ? (
@@ -340,14 +322,14 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                 {/* 1. Job Information */}
                 <Section number="1" title="Job Information">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Job Title" required>
+                    <Field label="Job Title" required error={fieldError('title')}>
                       <input
                         {...register('title')}
                         placeholder="Enter job title(e.g. Warehouse Assistant)"
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Employment Type" required>
+                    <Field label="Employment Type" required error={fieldError('employment_type')}>
                       <select {...register('employment_type')} className={selectCls}>
                         <option value={EmploymentType.full_time}>Full-Time</option>
                         <option value={EmploymentType.part_time}>Part-Time</option>
@@ -357,7 +339,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                     </Field>
                   </div>
 
-                  <Field label="Job Description" required>
+                  <Field label="Job Description" required error={fieldError('description')}>
                     <textarea
                       {...register('description')}
                       rows={4}
@@ -370,14 +352,14 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                 {/* 2. Location */}
                 <Section number="2" title="Location">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Work Location" required>
+                    <Field label="Work Location" required error={fieldError('address')}>
                       <input
                         {...register('address')}
                         placeholder="Enter complete address"
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Work Type" required>
+                    <Field label="Work Type" required error={fieldError('work_type')}>
                       <select {...register('work_type')} className={selectCls}>
                         <option value={JobWorkType.remote}>Remote</option>
                         <option value={JobWorkType.onsite}>On-site</option>
@@ -390,7 +372,11 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                 {/* 3. Requirements */}
                 <Section number="3" title="Requirements">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <Field label="Number of Openings" required>
+                    <Field
+                      label="Number of Openings"
+                      required
+                      error={fieldError('seats_available')}
+                    >
                       <input
                         {...register('seats_available', {
                           setValueAs: (v) => (v === '' ? undefined : Number(v)),
@@ -401,10 +387,50 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Job Start Date & Time">
+                    <Field label="Job Start Date & Time" error={fieldError('job_start_time')}>
                       <Controller
                         control={control}
                         name="job_start_time"
+                        render={({ field: { onChange, value } }) => {
+                          const dateStr = toDateTimeLocalInput(value);
+                          return (
+                            <input
+                              type="datetime-local"
+                              value={dateStr}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onChange(val ? new Date(val).toISOString() : undefined);
+                              }}
+                              className={inputCls}
+                            />
+                          );
+                        }}
+                      />
+                    </Field>
+                    <Field label="Job End Date & Time" error={fieldError('job_end_time')}>
+                      <Controller
+                        control={control}
+                        name="job_end_time"
+                        render={({ field: { onChange, value } }) => {
+                          const dateStr = toDateTimeLocalInput(value);
+                          return (
+                            <input
+                              type="datetime-local"
+                              value={dateStr}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onChange(val ? new Date(val).toISOString() : undefined);
+                              }}
+                              className={inputCls}
+                            />
+                          );
+                        }}
+                      />
+                    </Field>
+                    <Field label="Job Expiry Date & Time" error={fieldError('expires_at')}>
+                      <Controller
+                        control={control}
+                        name="expires_at"
                         render={({ field: { onChange, value } }) => {
                           const dateStr = toDateTimeLocalInput(value);
                           return (
@@ -427,7 +453,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                 {/* 4. Salary & Benefits */}
                 <Section number="4" title="Salary & Benefits">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <Field label="Salary Type" required>
+                    <Field label="Salary Type" required error={fieldError('salary_type')}>
                       <select {...register('salary_type')} className={selectCls}>
                         <option value="monthly">Monthly</option>
                         <option value="hourly">Hourly</option>
@@ -435,7 +461,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                         <option value="weekly">Weekly</option>
                       </select>
                     </Field>
-                    <Field label="Minimum Salary">
+                    <Field label="Minimum Salary" error={fieldError('salary_min')}>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
                           ₹
@@ -451,7 +477,7 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                         />
                       </div>
                     </Field>
-                    <Field label="Maximum Salary">
+                    <Field label="Maximum Salary" error={fieldError('salary_max')}>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
                           ₹
@@ -515,6 +541,36 @@ export function CreateJobScreen({ jobId }: CreateJobScreenProps = {}) {
                       value={
                         watchAll.job_start_time
                           ? new Date(watchAll.job_start_time).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''
+                      }
+                    />
+                    <SummaryRow
+                      icon={Calendar}
+                      label="End Date"
+                      value={
+                        watchAll.job_end_time
+                          ? new Date(watchAll.job_end_time).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : ''
+                      }
+                    />
+                    <SummaryRow
+                      icon={Calendar}
+                      label="Expiry"
+                      value={
+                        watchAll.expires_at
+                          ? new Date(watchAll.expires_at).toLocaleDateString('en-GB', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',

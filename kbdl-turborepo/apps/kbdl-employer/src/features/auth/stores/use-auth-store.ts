@@ -1,10 +1,9 @@
 'use client';
 
-import { GetCurrentEmployerProfileResponse } from '@repo/types';
+import { EmployerDTO, GetCurrentEmployerProfileResponse } from '@repo/types';
 import { create } from 'zustand';
 import { api } from '../../../lib/api-client';
 import { clearAuthTokens, setAuthTokens } from '../../../lib/auth-tokens';
-import { EmployerDTO } from '../types/employer';
 
 type AuthState = {
   employer: EmployerDTO | null;

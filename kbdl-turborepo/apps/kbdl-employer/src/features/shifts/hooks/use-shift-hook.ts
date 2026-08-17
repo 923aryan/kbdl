@@ -19,7 +19,7 @@ import type {
   RejectShiftResponse,
   ReportShiftNoShowResponse,
 } from '@repo/types';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 type EmployerShiftWithPending = GetEmployerShiftsResponse[number] & {
   pendingApplications: GetPendingShiftsResponse;
@@ -121,7 +121,9 @@ export const useGetEmployerShiftAnalytics = () => {
   });
 };
 
-export const useGetPublicUserProfile = (userId?: string | null) => {
+export const useGetPublicUserProfile = (
+  userId?: string | null,
+): UseQueryResult<GetPublicUserProfileResponse, Error> => {
   return useQuery({
     queryKey: ['public-user-profile', userId],
     enabled: Boolean(userId),

@@ -1,6 +1,7 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 
 import CustomButton from '@/components/ui/button';
 import { Typography } from '@/components/ui/typography';
@@ -36,6 +37,11 @@ export function ConfirmationModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: theme.background }]}>
+          {confirmVariant === 'destructive' ? (
+            <View style={styles.iconWrap}>
+              <Feather name="alert-triangle" size={36} color="#DC2626" />
+            </View>
+          ) : null}
           <Typography variant="h2" style={[styles.title, { color: theme.text }]}>
             {title}
           </Typography>
@@ -85,6 +91,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
+  iconWrap: { marginBottom: 8 },
   title: { fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
   message: { textAlign: 'center', marginBottom: 24, lineHeight: 22 },
   buttonContainer: {

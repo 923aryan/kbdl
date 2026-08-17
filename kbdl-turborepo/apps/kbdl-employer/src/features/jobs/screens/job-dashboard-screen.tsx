@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   Briefcase,
   Check,
+  CheckCircle2,
+  ClipboardList,
   MoreVertical,
   ChevronDown,
   ChevronUp,
@@ -12,9 +14,20 @@ import {
   ChevronRight,
   Plus,
   Search,
+  UserCheck,
+  Users,
   X,
+  type LucideIcon,
 } from 'lucide-react';
-import { EmployerJob, getEmployerJobs } from '../api';
+import {
+  closeEmployerJob,
+  deleteEmployerJob,
+  duplicateEmployerJob,
+  EmployerJob,
+  EmployerJobStats,
+  getEmployerJobs,
+  updateEmployerJobStatus,
+} from '../api';
 import { JobApplicationsDrawer } from './job-applications-drawer';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -62,6 +75,24 @@ const STATUS_BADGE: Record<string, { dot: string; pill: string; label: string }>
     label: 'Expired',
   },
 };
+
+const EMPTY_JOB_STATS: EmployerJobStats = {
+  totalJobs: 0,
+  activeJobs: 0,
+  draftJobs: 0,
+  totalApplications: 0,
+  hiresFromJobs: 0,
+};
+
+function buildFallbackJobStats(jobs: EmployerJob[], totalJobs: number): EmployerJobStats {
+  return {
+    totalJobs,
+    activeJobs: jobs.filter((job) => job.status === 'open').length,
+    draftJobs: jobs.filter((job) => job.status === 'draft').length,
+    totalApplications: jobs.reduce((sum, job) => sum + (job.application_count ?? 0), 0),
+    hiresFromJobs: jobs.reduce((sum, job) => sum + (job.hire_count ?? 0), 0),
+  };
+}
 
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
 
@@ -133,6 +164,39 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  iconClassName,
+  iconBgClassName,
+}: {
+  title: string;
+  value: number;
+  subtitle: string;
+  icon: LucideIcon;
+  iconClassName: string;
+  iconBgClassName: string;
+}) {
+  return (
+    <div className="flex min-h-[86px] items-center gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconBgClassName}`}
+      >
+        <Icon className={`h-5 w-5 ${iconClassName}`} />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-xs font-semibold text-gray-600">{title}</p>
+        <p className="mt-0.5 text-2xl font-bold leading-none text-gray-900">
+          {value.toLocaleString('en-IN')}
+        </p>
+        <p className="mt-1 text-xs font-medium text-gray-400">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
 function formatJobLabel(value?: string | null) {
   return value ? value.replace(/_/g, ' ') : '—';
 }
@@ -147,6 +211,10 @@ function formatJobDate(value?: string | null) {
         minute: '2-digit',
       })
     : '—';
+}
+
+function isExpiredByDate(job: EmployerJob) {
+  return Boolean(job.expires_at && new Date(job.expires_at).getTime() <= Date.now());
 }
 
 function formatSalary(job: EmployerJob) {
@@ -255,13 +323,43 @@ function JobRow({
   onViewApplications,
   onViewDetails,
   onUpdateStatus,
+  onDeleteJob,
+  onCloseJob,
+  onDuplicateJob,
 }: {
   job: EmployerJob;
   onViewApplications: (job: EmployerJob) => void;
   onViewDetails: (job: EmployerJob) => void;
-  onUpdateStatus?: (jobId: string, status: string) => void;
+  onUpdateStatus: (job: EmployerJob, status: 'open' | 'paused') => void;
+  onDeleteJob: (job: EmployerJob) => void;
+  onCloseJob: (job: EmployerJob) => void;
+  onDuplicateJob: (job: EmployerJob) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const actionStatus = job.status ?? 'draft';
+  const expiredByDate = isExpiredByDate(job);
+  const canDelete = actionStatus === 'draft';
+  const canPause = actionStatus === 'open';
+  const canPublish = actionStatus === 'draft' || actionStatus === 'paused';
+  const canClose = actionStatus === 'open' || actionStatus === 'paused';
+  const canDuplicate =
+    actionStatus === 'closed' || actionStatus === 'open' || actionStatus === 'paused';
+
+  const toggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 208;
+    const menuHeight = 216;
+    const hasSpaceBelow = rect.bottom + menuHeight + 12 <= window.innerHeight;
+
+    setMenuPosition({
+      top: hasSpaceBelow ? rect.bottom + 8 : Math.max(12, rect.top - menuHeight - 8),
+      left: Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12)),
+    });
+    setMenuOpen((current) => !current);
+  };
+
   const postedDate = job.created_at
     ? new Date(job.created_at).toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -312,11 +410,10 @@ function JobRow({
       <td className="px-5 py-3 relative" onClick={(event) => event.stopPropagation()}>
         <div className="relative flex justify-center text-left">
           <button
-            onClick={(event) => {
-              event.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
+            type="button"
+            onClick={toggleMenu}
             className="flex h-9 w-9 items-center justify-center rounded-full text-blue-600 transition hover:bg-blue-50"
+            aria-label="Open job actions"
           >
             <MoreVertical size={16} />
           </button>
@@ -330,7 +427,10 @@ function JobRow({
                   setMenuOpen(false);
                 }}
               />
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-lg z-20 py-1 flex flex-col">
+              <div
+                className="fixed z-50 flex w-52 flex-col rounded-xl border border-gray-100 bg-white py-1 shadow-xl"
+                style={{ top: menuPosition.top, left: menuPosition.left }}
+              >
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -351,26 +451,62 @@ function JobRow({
                 >
                   Edit Job
                 </Link>
-                {status === 'draft' && (
+                {canPublish && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuOpen(false);
-                      onUpdateStatus?.(job.id, 'open');
+                      onUpdateStatus(job, 'open');
                     }}
                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-blue-600 transition-colors"
                   >
-                    Publish Job
+                    {expiredByDate ? 'Activate Again' : 'Publish Job'}
+                  </button>
+                )}
+                {canPause && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onUpdateStatus(job, 'paused');
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-orange-600 transition-colors"
+                  >
+                    Pause Job
+                  </button>
+                )}
+                {canClose && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onCloseJob(job);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-gray-700 transition-colors"
+                  >
+                    Close Job
+                  </button>
+                )}
+                {canDuplicate && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onDuplicateJob(job);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 text-gray-700 transition-colors"
+                  >
+                    {actionStatus === 'closed' ? 'Repost Job' : 'Duplicate Job'}
                   </button>
                 )}
                 <button
+                  disabled={!canDelete}
                   onClick={(e) => {
                     e.stopPropagation();
                     setMenuOpen(false);
-                    // Action placeholder for backend delete job
-                    alert('Delete functionality is pending backend integration.');
+                    onDeleteJob(job);
                   }}
-                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-red-50 text-red-600 transition-colors"
+                  className="w-full text-left px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:text-gray-300 disabled:hover:bg-white"
                 >
                   Delete Job
                 </button>
@@ -497,6 +633,7 @@ export function JobsDashboardScreen() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(10);
+  const [stats, setStats] = useState<EmployerJobStats>(EMPTY_JOB_STATS);
   const [status, setStatus] = useState('');
   const [jobType, setJobType] = useState('');
   const [location, setLocation] = useState('');
@@ -504,8 +641,9 @@ export function JobsDashboardScreen() {
   const [activeFilter, setActiveFilter] = useState<'jobType' | 'location' | 'status' | null>(null);
   const [selectedJob, setSelectedJob] = useState<EmployerJob | null>(null);
   const [selectedDetailsJob, setSelectedDetailsJob] = useState<EmployerJob | null>(null);
+  const autoPausedJobIds = useRef<Set<string>>(new Set());
 
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
       const result = await getEmployerJobs({
@@ -516,33 +654,138 @@ export function JobsDashboardScreen() {
         employment_type: jobType || undefined,
         work_type: location || undefined,
       });
-      setJobs(result.jobs);
-      setTotal(result.meta.total ?? result.jobs.length);
+      const expiredOpenJobs = result.jobs.filter(
+        (job) =>
+          job.status === 'open' && isExpiredByDate(job) && !autoPausedJobIds.current.has(job.id),
+      );
+      const normalizedJobs = result.jobs.map((job) =>
+        expiredOpenJobs.some((expiredJob) => expiredJob.id === job.id)
+          ? { ...job, status: 'paused' }
+          : job,
+      );
+      const nextTotal = result.meta.total ?? normalizedJobs.length;
+      setJobs(normalizedJobs);
+      setTotal(nextTotal);
       setPage(result.meta.page ?? page);
-      setPageSize(result.meta.pageSize ?? pageSize);
+      setPageSize(result.meta.pageSize ?? result.meta.limit ?? pageSize);
+      setStats(result.meta.stats ?? buildFallbackJobStats(normalizedJobs, nextTotal));
+
+      if (expiredOpenJobs.length > 0) {
+        expiredOpenJobs.forEach((job) => autoPausedJobIds.current.add(job.id));
+        await Promise.all(
+          expiredOpenJobs.map((job) => updateEmployerJobStatus(job.id, { status: 'paused' })),
+        );
+      }
     } catch (error) {
       console.error('Unable to load jobs', error);
     } finally {
       setLoading(false);
     }
+  }, [jobType, location, page, pageSize, search, status]);
+
+  const handleUpdateStatus = async (job: EmployerJob, newStatus: 'open' | 'paused') => {
+    if (newStatus === 'open' && isExpiredByDate(job)) {
+      alert('Please edit the job expiry date to a future time before activating it again.');
+      return;
+    }
+
+    try {
+      await updateEmployerJobStatus(job.id, { status: newStatus });
+      await loadJobs();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to update job status.');
+    }
   };
 
-  const handleUpdateStatus = async (jobId: string, newStatus: string) => {
-    // TODO: Connect with backend when API is available.
-    // e.g. await updateEmployerJob(jobId, { status: newStatus });
-    // loadJobs();
-    alert(`Change status to ${newStatus} is triggered. Implement API call here.`);
+  const handleCloseJob = async (job: EmployerJob) => {
+    if (!window.confirm('Close this job? It will stop accepting applications.')) return;
+
+    try {
+      await closeEmployerJob(job.id);
+      await loadJobs();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to close job.');
+    }
+  };
+
+  const handleDeleteJob = async (job: EmployerJob) => {
+    if (job.status !== 'draft') {
+      alert('Only draft jobs can be deleted.');
+      return;
+    }
+
+    if (!window.confirm('Delete this draft job permanently?')) return;
+
+    try {
+      await deleteEmployerJob(job.id);
+      await loadJobs();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to delete job.');
+    }
+  };
+
+  const handleDuplicateJob = async (job: EmployerJob) => {
+    try {
+      await duplicateEmployerJob(job.id);
+      await loadJobs();
+      alert(job.status === 'closed' ? 'Repost draft created.' : 'Job duplicate draft created.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Unable to duplicate job.');
+    }
   };
 
   useEffect(() => {
     loadJobs();
-  }, [page, status, jobType, location, search]);
+  }, [loadJobs]);
 
   // Reset page when filters change (not page itself)
   const handleFilter = (setter: (v: string) => void) => (v: string) => {
     setter(v);
     setPage(1);
   };
+
+  const statCards = [
+    {
+      title: 'Total Jobs',
+      value: stats.totalJobs,
+      subtitle: 'All Time',
+      icon: Briefcase,
+      iconBgClassName: 'bg-blue-50',
+      iconClassName: 'text-blue-600',
+    },
+    {
+      title: 'Active Jobs',
+      value: stats.activeJobs,
+      subtitle: 'Currently Live',
+      icon: CheckCircle2,
+      iconBgClassName: 'bg-green-50',
+      iconClassName: 'text-green-600',
+    },
+    {
+      title: 'Draft Jobs',
+      value: stats.draftJobs,
+      subtitle: 'Not Published',
+      icon: ClipboardList,
+      iconBgClassName: 'bg-orange-50',
+      iconClassName: 'text-orange-500',
+    },
+    {
+      title: 'Total Applications',
+      value: stats.totalApplications,
+      subtitle: 'All Jobs',
+      icon: Users,
+      iconBgClassName: 'bg-purple-50',
+      iconClassName: 'text-purple-600',
+    },
+    {
+      title: 'Hires From Jobs',
+      value: stats.hiresFromJobs,
+      subtitle: 'This Month',
+      icon: UserCheck,
+      iconBgClassName: 'bg-pink-50',
+      iconClassName: 'text-pink-600',
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 p-5 lg:p-6">
@@ -608,6 +851,12 @@ export function JobsDashboardScreen() {
         </div>
 
         {/* ── Table card ── */}
+        <div className="grid grid-cols-1 gap-4 px-5 pb-4 sm:grid-cols-2 xl:grid-cols-5">
+          {statCards.map((card) => (
+            <StatCard key={card.title} {...card} />
+          ))}
+        </div>
+
         <div className="overflow-hidden rounded-b-xl border border-t-0 border-gray-200 bg-white">
           {/* Filter row — right-aligned, inside the card above the table */}
           {/* Table */}
@@ -644,6 +893,9 @@ export function JobsDashboardScreen() {
                       onViewApplications={setSelectedJob}
                       onViewDetails={setSelectedDetailsJob}
                       onUpdateStatus={handleUpdateStatus}
+                      onDeleteJob={handleDeleteJob}
+                      onCloseJob={handleCloseJob}
+                      onDuplicateJob={handleDuplicateJob}
                     />
                   ))
                 )}
@@ -661,6 +913,7 @@ export function JobsDashboardScreen() {
         jobId={selectedJob?.id}
         jobTitle={selectedJob?.title}
         onClose={() => setSelectedJob(null)}
+        onActionComplete={loadJobs}
       />
       <JobDetailsModal job={selectedDetailsJob} onClose={() => setSelectedDetailsJob(null)} />
     </div>

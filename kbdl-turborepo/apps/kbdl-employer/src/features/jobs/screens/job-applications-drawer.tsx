@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BriefcaseBusiness, Check, Clock, MapPin, Phone, Star, User, X, XCircle } from 'lucide-react';
+import { X, User, Clock, Star, Phone } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   getJobApplications,
   JobApplication,
-  rejectJobApplicant,
-  selectJobApplicant,
+  rejectJobApplication,
+  selectJobApplication,
 } from '../api';
 
 interface JobApplicationsDrawerProps {
@@ -14,18 +15,30 @@ interface JobApplicationsDrawerProps {
   jobId?: string;
   jobTitle?: string;
   onClose: () => void;
+  onActionComplete?: () => void;
 }
+
+const getApplicantName = (user?: JobApplication['user']) => {
+  if (!user) return 'Applicant';
+  return `${user.first_name ?? user.name ?? ''} ${user.last_name ?? ''}`.trim() || 'Applicant';
+};
+
+const formatRating = (value?: number | string | null) => {
+  if (value === undefined || value === null) return 'N/A';
+  return typeof value === 'number' ? value.toFixed(1) : value;
+};
 
 export function JobApplicationsDrawer({
   open,
   jobId,
   jobTitle,
   onClose,
+  onActionComplete,
 }: JobApplicationsDrawerProps) {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !jobId) {
@@ -58,30 +71,31 @@ export function JobApplicationsDrawer({
     };
   }, [open, jobId]);
 
-  const updateApplication = async (applicationId: string, action: 'accept' | 'reject') => {
+  const handleAction = async (applicationId: string, action: 'select' | 'reject') => {
     if (!jobId) return;
 
-    setUpdatingId(applicationId);
-    setError(null);
+    setActionLoading(applicationId);
 
     try {
-      if (action === 'accept') {
-        await selectJobApplicant(jobId, applicationId);
-      } else {
-        await rejectJobApplicant(jobId, applicationId);
-      }
+      const updatedApplication =
+        action === 'select'
+          ? await selectJobApplication(jobId, applicationId)
+          : await rejectJobApplication(jobId, applicationId);
 
       setApplications((current) =>
-        current.map((application) =>
-          application.id === applicationId
-            ? { ...application, status: action === 'accept' ? 'selected' : 'rejected' }
-            : application,
-        ),
+        current.map((item) => (item.id === applicationId ? updatedApplication : item)),
       );
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to update the application.');
+      toast.success(
+        action === 'select'
+          ? 'Application marked as selected.'
+          : 'Application rejected successfully.',
+      );
+      onActionComplete?.();
+    } catch (caught: unknown) {
+      const message = caught instanceof Error ? caught.message : 'Unable to update application.';
+      toast.error(message);
     } finally {
-      setUpdatingId(null);
+      setActionLoading(null);
     }
   };
 
@@ -126,107 +140,97 @@ export function JobApplicationsDrawer({
               No applications found for this job.
             </div>
           ) : (
-            applications.map((application) => (
-              <div
-                key={application.id}
-                className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <User size={16} className="text-slate-400" />
-                      <p className="text-sm font-semibold text-slate-900">
-                        {application.user?.name ||
-                          `${application.user?.first_name ?? ''} ${application.user?.last_name ?? ''}`.trim() ||
-                          'Applicant'}
+            applications.map((application) => {
+              const selected = application.status === 'selected';
+              const rejected = application.status === 'rejected';
+              return (
+                <div
+                  key={application.id}
+                  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <User size={16} className="text-slate-400" />
+                        <p className="text-sm font-semibold text-slate-900">
+                          {getApplicantName(application.user)}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {application.user?.email ?? 'No email provided'}
                       </p>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{application.user?.email ?? 'No email provided'}</p>
+
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
+                      {application.status.replace('_', ' ')}
+                    </span>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-600">
-                    {application.status.replace('_', ' ')}
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <CandidateDetail icon={Phone} label="Contact" value={application.user?.phone_no ?? 'Not provided'} />
-                  <CandidateDetail icon={BriefcaseBusiness} label="Experience" value={application.user?.experience != null ? `${application.user.experience} year${application.user.experience === 1 ? '' : 's'}` : 'Not provided'} />
-                  <CandidateDetail icon={MapPin} label="Location" value={[application.user?.area, application.user?.city].filter(Boolean).join(', ') || 'Not provided'} />
-                  <CandidateDetail icon={Star} label="Rating" value={application.user?.rating_avg != null ? `${application.user.rating_avg}/5` : 'Not rated'} />
-                  <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
-                    <div className="flex items-center gap-2 font-semibold text-slate-900">
-                      <Clock size={14} />
-                      Applied
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
+                      <div className="flex items-center gap-2 font-semibold text-slate-900">
+                        <Clock size={14} />
+                        Applied
+                      </div>
+                      <div>
+                        {application.applied_at
+                          ? new Date(application.applied_at).toLocaleString()
+                          : 'Unknown'}
+                      </div>
                     </div>
-                    <div>
-                      {application.applied_at
-                        ? new Date(application.applied_at).toLocaleString()
-                        : 'Unknown'}
+                    <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
+                      <div className="flex items-center gap-2 font-semibold text-slate-900">
+                        <Phone size={14} />
+                        Phone
+                      </div>
+                      <div>{application.user?.phone_no ?? 'N/A'}</div>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
+                      <div className="flex items-center gap-2 font-semibold text-slate-900">
+                        <Star size={14} />
+                        Rating
+                      </div>
+                      <div>{formatRating(application.user?.rating_avg)}</div>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
+                      <div className="font-semibold text-slate-900">Experience</div>
+                      <div>
+                        {application.user?.experience != null
+                          ? `${application.user.experience} years`
+                          : 'N/A'}
+                      </div>
                     </div>
                   </div>
-                  <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
+
+                  <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
                     <div className="font-semibold text-slate-900">Notes</div>
                     <div>{application.employer_notes ?? 'No notes yet'}</div>
                   </div>
+
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                    <button
+                      type="button"
+                      disabled={selected || rejected || actionLoading === application.id}
+                      onClick={() => handleAction(application.id, 'select')}
+                      className="inline-flex h-11 items-center justify-center rounded-xl bg-green-600 px-4 text-sm font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-200"
+                    >
+                      {selected ? 'Selected' : 'Accept'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={rejected || actionLoading === application.id}
+                      onClick={() => handleAction(application.id, 'reject')}
+                      className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+                    >
+                      {rejected ? 'Rejected' : 'Reject'}
+                    </button>
+                  </div>
                 </div>
-                {application.user?.skills?.length ? (
-                  <div className="mt-3">
-                    <p className="text-xs font-semibold text-slate-900">Skills</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {application.user.skills.map((skill) => (
-                        <span key={skill} className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-                {['applied', 'under_review', 'shortlisted'].includes(application.status) ? (
-                  <div className="mt-5 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
-                    <button
-                      type="button"
-                      disabled={updatingId === application.id}
-                      onClick={() => updateApplication(application.id, 'accept')}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Check size={16} />
-                      {updatingId === application.id ? 'Updating…' : 'Accept'}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={updatingId === application.id}
-                      onClick={() => updateApplication(application.id, 'reject')}
-                      className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <XCircle size={16} />
-                      Reject
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function CandidateDetail({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Phone;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-600">
-      <div className="flex items-center gap-2 font-semibold text-slate-900">
-        <Icon size={14} />
-        {label}
-      </div>
-      <div className="mt-1 break-words">{value}</div>
     </div>
   );
 }
