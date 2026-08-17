@@ -1,0 +1,86 @@
+// =============================================================================
+// MARKETPLACE SHIFTS — shift-swap / gig shifts (NOT HR WorkShift templates)
+// =============================================================================
+// Shift            → dated marketplace shift posting / swap request
+// ShiftApplication → worker apply / invite on a marketplace shift
+// =============================================================================
+
+model Shift {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Organization ownership
+  company_id    String  @db.Uuid
+  department_id String? @db.Uuid
+  team_id       String? @db.Uuid
+
+  created_by_company_member_id String? @db.Uuid
+  assigned_company_member_id   String? @db.Uuid
+
+  // Shift-swap marketplace identities (User-level)
+  original_employee_id    String  @db.Uuid
+  replacement_employee_id String? @db.Uuid
+
+  created_by PlatformType
+
+  request_accepted Boolean @default(false)
+
+  shift_date  DateTime @db.Timestamptz()
+  shift_start DateTime @db.Timestamptz()
+  shift_end   DateTime @db.Timestamptz()
+
+  payType        PayType
+  shift_pay      Decimal     @db.Decimal(10, 2)
+  skill_required String      @db.VarChar
+  status         ShiftStatus
+
+  organization_approved Boolean @default(false)
+  no_show_reported      Boolean @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  company    Company     @relation(fields: [company_id], references: [id])
+  department Department? @relation(fields: [department_id], references: [id])
+  team       Team?       @relation(fields: [team_id], references: [id])
+
+  created_by_member CompanyMember? @relation("ShiftCreatedBy", fields: [created_by_company_member_id], references: [id])
+  assigned_member   CompanyMember? @relation("ShiftAssignedTo", fields: [assigned_company_member_id], references: [id])
+
+  original_employee    User  @relation("OriginalEmployeeShift", fields: [original_employee_id], references: [id])
+  replacement_employee User? @relation("ReplacementEmployeeShift", fields: [replacement_employee_id], references: [id])
+
+  ratings           Rating[]
+  shiftApplications ShiftApplication[]
+
+  @@index([company_id])
+  @@index([department_id])
+  @@index([team_id])
+  @@index([created_by_company_member_id])
+  @@index([assigned_company_member_id])
+  @@index([original_employee_id])
+  @@index([replacement_employee_id])
+  @@index([status])
+  @@map("shifts")
+}
+
+model ShiftApplication {
+  id String @id @default(uuid()) @db.Uuid
+
+  shift_id String @db.Uuid
+  user_id  String @db.Uuid
+
+  type   ShiftApplicationType
+  status ShiftApplicationStatus @default(pending)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  shift Shift @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id])
+
+  @@unique([shift_id, user_id])
+  @@index([shift_id])
+  @@index([user_id])
+  @@map("shift_applications")
+}

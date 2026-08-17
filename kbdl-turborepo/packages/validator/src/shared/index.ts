@@ -1,3 +1,4 @@
+export * from '../../validation-schema/attendance';
 export * from '../../validation-schema/auth';
 export * from '../../validation-schema/jobs';
 export * from '../../validation-schema/leads';

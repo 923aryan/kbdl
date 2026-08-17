@@ -1,11 +1,12 @@
-import { EmploymentStatus, OnboardingStage } from '@repo/db/server';
+import { OnboardingStage, SeparationReason } from '@repo/db/server';
 
 /**
  * Status mapping (single source of truth)
  *
- * - `EmploymentStatus`  → roster lifecycle: pending | active | inactive | terminated | resigned
- * - `OnboardingStage`   → HR onboard flow: draft | onboard | probation
- * - `ui_status`         → employer UI labels on /employees
+ * - `is_active`           → roster filter: current vs past employees
+ * - `separation_reason`   → detail when inactive: terminated | resigned | absconded | inactive
+ * - `OnboardingStage`     → HR onboard flow: draft | onboard | probation
+ * - `ui_status`           → employer UI labels on /employees
  */
 
 export type EmployerUiStatus =
@@ -30,22 +31,18 @@ export function mapOnboardingStageToUi(stage: OnboardingStage | null | undefined
 }
 
 export function mapEmploymentStatusToUi(
-  employmentStatus: EmploymentStatus,
+  isActive: boolean,
   onboardingStage?: OnboardingStage | null,
 ): EmployerUiStatus {
-  if (employmentStatus === EmploymentStatus.inactive) return 'Inactive';
-  if (employmentStatus === EmploymentStatus.terminated) return 'Inactive';
-  if (employmentStatus === EmploymentStatus.resigned) return 'Inactive';
+  if (!isActive) return 'Inactive';
+  return mapOnboardingStageToUi(onboardingStage);
+}
 
-  // pending / active: prefer HR onboarding stage for list badge
-  if (
-    employmentStatus === EmploymentStatus.pending ||
-    employmentStatus === EmploymentStatus.active
-  ) {
-    return mapOnboardingStageToUi(onboardingStage);
-  }
-
-  return 'Onboard';
+export function formatSeparationReason(
+  reason: SeparationReason | null | undefined,
+): string | null {
+  if (!reason) return null;
+  return reason.charAt(0).toUpperCase() + reason.slice(1);
 }
 
 export function resolveOnboardingStageFromDocs(args: {
@@ -55,3 +52,6 @@ export function resolveOnboardingStageFromDocs(args: {
   if (args.action === 'draft') return OnboardingStage.draft;
   return args.hasFullIdentityDocs ? OnboardingStage.probation : OnboardingStage.onboard;
 }
+
+/** Membership check — single source of truth for "is employee in this company?" */
+export const ACTIVE_EMPLOYMENT_FILTER = { is_active: true } as const;

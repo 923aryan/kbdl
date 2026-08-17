@@ -1,11 +1,14 @@
-# Local stack: PostGIS + Redis + KBDL backend
+# Minimal stack: PostGIS + Redis + backend (backend-only Docker build — no Next.js apps)
 #
-# 1) create/edit kbdl-turborepo/.env (POSTGRES_*, REDIS_*, JWT_*, S3_*, …)
-# 2) docker compose up --build
-# 3) docker compose run --rm backend seed
+# Infra only (PG + Redis):
+#   docker compose up -d postgres redis
 #
-# API:  http://localhost:8000
-# Docs: http://localhost:8000/api/docs
+# Full stack (recommended on AWS):
+#   docker compose up -d --build
+#   docker compose run --rm backend seed
+#
+# Host-side backend (local PC) uses DATABASE_URL / REDIS_URL in .env → REMOTE_DOCKER_HOST.
+# Backend container overrides those to postgres/redis service names (see backend.environment).
 
 services:
   postgres:
@@ -17,7 +20,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-kbdl}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "0.0.0.0:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - kbdl_pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init-postgis.sql:/docker-entrypoint-initdb.d/01-postgis.sql:ro
@@ -33,9 +36,18 @@ services:
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+        "--appendonly",
+        "yes",
+        "--bind",
+        "0.0.0.0",
+      ]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "0.0.0.0:${REDIS_PORT:-6379}:6379"
     volumes:
       - kbdl_redisdata:/data
     healthcheck:
@@ -50,28 +62,20 @@ services:
       dockerfile: Dockerfile
     container_name: kbdl-backend
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "${PORT:-8000}:8000"
+      - "0.0.0.0:${PORT:-8000}:8000"
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-8000}
+      # Inside Docker network — ignore REMOTE_DOCKER_HOST / .env public IP
       DATABASE_URL: postgresql://${POSTGRES_USER:-kbdl}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-kbdl}?schema=public
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Set JWT_ACCESS_SECRET in .env}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
-      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-7d}
-      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-14d}
-      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY in .env}
-      EMPLOYER_URL: ${EMPLOYER_URL:-http://localhost:3002}
-      GEOAPIFY_API_KEY: ${GEOAPIFY_API_KEY:?Set GEOAPIFY_API_KEY in .env}
-      AWS_REGION: ${AWS_REGION:-eu-north-1}
-      S3_BUCKET: ${S3_BUCKET:-hrms-documents-123456}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Set S3_ACCESS_KEY_ID in .env}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Set S3_SECRET_ACCESS_KEY in .env}
-      SEED_ON_START: ${SEED_ON_START:-false}
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-kbdl}
       PGDATABASE: ${POSTGRES_DB:-kbdl}
+      PRISMA_APPLY_MODE: ${PRISMA_APPLY_MODE:-push}
     depends_on:
       postgres:
         condition: service_healthy

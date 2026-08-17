@@ -1,5 +1,7 @@
-import { EmployeeDashboardScreen } from '@/features/employees';
+'use client';
+
+import { EmployeeListScreen } from '@/features/employees';
 
 export default function EmployeesPage() {
-  return <EmployeeDashboardScreen />;
+  return <EmployeeListScreen />;
 }

@@ -41,6 +41,10 @@ import { publicShiftQueue } from '../config/queues/public-shift-queue';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
 import {
+  findActiveEmploymentForAppUserAtCompany,
+  findPrimaryActiveEmploymentForAppUser,
+} from '../operations/workforce-person-service';
+import {
   NotificationTypes,
   Role,
   ROLES,
@@ -48,6 +52,28 @@ import {
   ShiftApplicationType,
   ShiftStatus,
 } from '../utils/constants';
+
+/** Company for shift-swap — most recent active employment when worker has several. */
+async function resolveUserCompanyIdForShift(userId: string): Promise<string | null> {
+  const employment = await findPrimaryActiveEmploymentForAppUser(userId);
+  return employment?.company_id ?? null;
+}
+
+/** Employer roster check — membership comes from active employment only. */
+async function assertUserOnEmployerRoster(
+  employeeUserId: string,
+  companyId: string,
+): Promise<void> {
+  const employment = await findActiveEmploymentForAppUserAtCompany(employeeUserId, companyId);
+
+  if (!employment) {
+    throw new AppError(
+      403,
+      'INVALID_EMPLOYEE',
+      'This user is not an active employee of your organization.',
+    );
+  }
+}
 
 const mapShiftWithCompanyToApi = (row: any) => {
   const { company, ...rest } = row;
@@ -74,19 +100,14 @@ export const createShiftService = async (
   let employerId;
   let originalEmployeeId = payload.original_employee_id;
 
+  // extra_shift is notification-only (public-shift broadcast). Never block employer-assigned shifts.
   if (payload.replacement_employee_id) {
     const replacementEmployee = await prisma.user.findUnique({
-      where: {
-        id: payload.replacement_employee_id,
-      },
+      where: { id: payload.replacement_employee_id },
+      select: { id: true },
     });
-
-    if (!replacementEmployee?.extra_shift) {
-      throw new AppError(
-        403,
-        'DONT_WANT_SHIFTS',
-        'This user dont want shifts right now, ask them to enable it in Profile -> Extra Shifts',
-      );
+    if (!replacementEmployee) {
+      throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Replacement employee not found.');
     }
   }
 
@@ -95,24 +116,15 @@ export const createShiftService = async (
   }
   // 1. If created by an employee (user)
   if (userType === 'user') {
-    originalEmployeeId = userId; // Enforce that the user is the original employeeS
-    console.log('origian ', userId);
-    // Resolve company via active employment (User.employer_id removed)
-    const employment = await prisma.employeeEmployment.findFirst({
-      where: {
-        employee_id: userId,
-        employment_status: 'active',
-      },
-    });
-
-    employerId = employment?.company_id;
+    originalEmployeeId = userId;
+    employerId = await resolveUserCompanyIdForShift(userId);
     if (!employerId) {
       throw new AppError(403, 'NOT_EMPLOYED', 'You are not an employee of any organization');
     }
   }
   // 2. If created by the organization (employer)
   else if (userType === ROLES.EMPLOYER) {
-    employerId = userId; // Enforce that the creator is the employer (company id)
+    employerId = userId;
 
     if (!originalEmployeeId) {
       throw new AppError(
@@ -122,25 +134,8 @@ export const createShiftService = async (
       );
     }
 
-    // Validate that the specified employee works for this employer
-    const employment = await prisma.employeeEmployment.findFirst({
-      where: {
-        employee_id: originalEmployeeId,
-        company_id: employerId,
-        employment_status: 'active',
-      },
-    });
-
-    if (!employment) {
-      throw new AppError(
-        403,
-        'INVALID_EMPLOYEE',
-        'This user is not an active employee of your organization.',
-      );
-    }
+    await assertUserOnEmployerRoster(originalEmployeeId, employerId);
   }
-  console.log('origian 1 ', originalEmployeeId);
-
   if (!employerId) {
     throw new AppError(400, 'MISSING_EMPLOYER', 'Employer ID is required.');
   }
@@ -761,17 +756,11 @@ export const updateShiftService = async (
 
   if (payload.replacement_employee_id) {
     const replacementEmployee = await prisma.user.findUnique({
-      where: {
-        id: payload.replacement_employee_id,
-      },
+      where: { id: payload.replacement_employee_id },
+      select: { id: true },
     });
-
-    if (!replacementEmployee?.extra_shift) {
-      throw new AppError(
-        403,
-        'DONT_WANT_SHIFTS',
-        'This user dont want shifts right now, ask them to enable it in Profile -> Extra Shifts',
-      );
+    if (!replacementEmployee) {
+      throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Replacement employee not found.');
     }
   }
 
@@ -1347,7 +1336,7 @@ export const rateShiftService = async (
         role: { code: 'OWNER' },
       },
     });
-    if (!owner) {
+    if (!owner?.user_id) {
       throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer owner not found.');
     }
     fromUserId = owner.user_id;
@@ -1398,18 +1387,10 @@ export const getReferredEmployeeService = async (
     },
     select: {
       id: true,
-      extra_shift: true,
     },
   });
   if (!employee) {
     throw new AppError(404, 'EMPLOYEE_NOT_FOUND', 'Employee not found.');
-  }
-  if (!employee.extra_shift) {
-    throw new AppError(
-      400,
-      'DONT_WANT_SHIFTS',
-      'This user dont want shifts right now, ask them to enable it in Profile -> Extra Shifts',
-    );
   }
   return {
     id: employee.id,

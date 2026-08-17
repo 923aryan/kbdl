@@ -12,13 +12,28 @@ import {
   getEmployeePendingEmployments,
   getEmployerDepartmentsMeta,
   getEmployerDesignationsMeta,
+  getEmployerEmployeesList,
   getEmployerRoster,
   getEmployerSupervisorsMeta,
   getEmployerWorkShiftsMeta,
+  getNextEmployeeNumber,
   onboardEmployee,
   searchAddress,
   updateEmploymentStatus,
+  updateEmployeeProfile,
+  addEmployeeDocument,
 } from './operation-controllers';
+import {
+  bulkMarkHoliday,
+  bulkMarkPresent,
+  getAttendanceAnalyticsBreakdown,
+  getAttendanceAnalyticsInsights,
+  getAttendanceAnalyticsSummary,
+  getAttendanceAnalyticsTrend,
+  getDailyAttendance,
+  updateAttendance,
+  upsertAttendance,
+} from './attendance-controllers';
 
 const operationsRouter: Router = Router();
 
@@ -31,10 +46,43 @@ operationsRouter.get('/employer/meta/departments', employerAuth, getEmployerDepa
 operationsRouter.get('/employer/meta/designations', employerAuth, getEmployerDesignationsMeta);
 operationsRouter.get('/employer/meta/supervisors', employerAuth, getEmployerSupervisorsMeta);
 operationsRouter.get('/employer/meta/work-shifts', employerAuth, getEmployerWorkShiftsMeta);
+operationsRouter.get('/employer/meta/next-employee-no', employerAuth, getNextEmployeeNumber);
 
 operationsRouter.post('/employer/onboard', employerAuth, onboardEmployee);
 
+operationsRouter.get('/employer/employees', employerAuth, getEmployerEmployeesList);
+
+operationsRouter.get('/employer/attendance', employerAuth, getDailyAttendance);
+operationsRouter.get(
+  '/employer/attendance/analytics/summary',
+  employerAuth,
+  getAttendanceAnalyticsSummary,
+);
+operationsRouter.get(
+  '/employer/attendance/analytics/trend',
+  employerAuth,
+  getAttendanceAnalyticsTrend,
+);
+operationsRouter.get(
+  '/employer/attendance/analytics/breakdown',
+  employerAuth,
+  getAttendanceAnalyticsBreakdown,
+);
+operationsRouter.get(
+  '/employer/attendance/analytics/insights',
+  employerAuth,
+  getAttendanceAnalyticsInsights,
+);
+operationsRouter.post('/employer/attendance/bulk-mark-present', employerAuth, bulkMarkPresent);
+operationsRouter.post('/employer/attendance/bulk-mark-holiday', employerAuth, bulkMarkHoliday);
+operationsRouter.post('/employer/attendance', employerAuth, upsertAttendance);
+operationsRouter.patch('/employer/attendance/:attendanceId', employerAuth, updateAttendance);
+
+operationsRouter.post('/employer/:id/documents', employerAuth, addEmployeeDocument);
+
 operationsRouter.get('/employer/:id', employerAuth, getEmployeeDetails);
+
+operationsRouter.patch('/employer/:id/profile', employerAuth, updateEmployeeProfile);
 
 operationsRouter.patch('/employer/:id/status', employerAuth, updateEmploymentStatus);
 

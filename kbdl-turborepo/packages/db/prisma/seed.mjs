@@ -5,29 +5,27 @@
  *   ~10 companies, ~17+ users, ~12 jobs, ~140 shifts, ~150 shift apps,
  *   ratings, notifications, employments, leads, etc.
  *
- * Usage:
- *   pnpm db:push
- *   pnpm db:seed
+ * Usage (after schema change, once):
+ *   pnpm --filter @repo/db exec prisma migrate deploy
+ *   pnpm --filter @repo/db exec prisma generate
+ *   pnpm --filter @repo/db run seed
+ *
+ * Full wipe + reseed (dev only):
+ *   pnpm --filter @repo/db run db:reset-seed
  *
  * Demo employer login:
  *   email: employer@kbdl.dev
  *   OTP:   123456  (if backend login still hardcodes)
+ *
+ * HR employments use workforce_persons only (no User row on onboard).
+ * App User rows are created separately for shift-swap / jobs and linked via linked_user_id.
  */
 
-import { config as loadEnv } from 'dotenv';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { loadDbEnv } from '../scripts/resolve-database-url.mjs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/index.js';
 
-/** Single source of truth: kbdl-turborepo/.env */
-loadEnv({ path: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.env') });
-
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error('❌ DATABASE_URL is missing — set it in kbdl-turborepo/.env');
-  process.exit(1);
-}
+const connectionString = loadDbEnv();
 
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
@@ -326,6 +324,141 @@ async function seedCompanyHolidays(companyId) {
 }
 
 /**
+ * HR onboard: workforce_person + employment + company_member (user_id null until app link).
+ */
+async function createEmploymentStint({
+  fullName,
+  phone,
+  karigariId = null,
+  companyId,
+  departmentId = null,
+  teamId = null,
+  roleId,
+  managerMemberId = null,
+  employeeNo,
+  joinedAt,
+  leftAt = null,
+  isActive,
+  separationReason = null,
+  designationId = null,
+  seedAddresses = false,
+  city = null,
+}) {
+  let workforcePerson = await prisma.workforcePerson.findUnique({
+    where: { phone_no: phone },
+  });
+
+  if (!workforcePerson) {
+    workforcePerson = await prisma.workforcePerson.create({
+      data: {
+        phone_no: phone,
+        karigari_id: karigariId,
+      },
+    });
+  } else if (karigariId && !workforcePerson.karigari_id) {
+    workforcePerson = await prisma.workforcePerson.update({
+      where: { id: workforcePerson.id },
+      data: { karigari_id: karigariId },
+    });
+  }
+
+  const employment = await prisma.employeeEmployment.create({
+    data: {
+      company_id: companyId,
+      workforce_person_id: workforcePerson.id,
+      employee_no: employeeNo,
+      is_active: isActive,
+      separation_reason: isActive ? null : separationReason,
+      joined_at: joinedAt,
+      left_at: isActive ? null : leftAt,
+      hr_profile: {
+        create: {
+          full_name: fullName,
+          department_id: departmentId,
+          designation_id: designationId,
+          onboarding_stage: 'onboard',
+          ...(seedAddresses && city
+            ? {
+                addresses: {
+                  create: [
+                    {
+                      type: 'present',
+                      line1: `Staff quarters, ${city}`,
+                      city,
+                      state: 'Punjab',
+                      pincode: '160001',
+                    },
+                    {
+                      type: 'permanent',
+                      line1: `Village near ${city}`,
+                      city,
+                      state: 'Punjab',
+                      pincode: '140001',
+                    },
+                  ],
+                },
+              }
+            : {}),
+        },
+      },
+    },
+  });
+
+  const member = await prisma.companyMember.create({
+    data: {
+      user_id: workforcePerson.linked_user_id ?? null,
+      company_id: companyId,
+      employment_id: employment.id,
+      department_id: departmentId,
+      team_id: teamId,
+      platform_type: 'EMPLOYEE',
+      role_id: roleId,
+      manager_company_member_id: managerMemberId,
+      is_active: isActive,
+    },
+  });
+
+  return { employment, member, workforcePerson };
+}
+
+/**
+ * App account (jobs / shift swap) — linked to existing WorkforcePerson by phone OTP match.
+ */
+async function linkAppUserForWorkforcePerson({ phone, userData }) {
+  const workforcePerson = await prisma.workforcePerson.findUnique({
+    where: { phone_no: phone },
+  });
+  if (!workforcePerson) {
+    throw new Error(`WorkforcePerson not found for phone ${phone}`);
+  }
+  if (workforcePerson.linked_user_id) {
+    const existing = await prisma.user.findUnique({
+      where: { id: workforcePerson.linked_user_id },
+    });
+    if (existing) {
+      return { user: existing, workforcePerson };
+    }
+  }
+
+  const user = await prisma.user.create({ data: userData });
+
+  await prisma.workforcePerson.update({
+    where: { id: workforcePerson.id },
+    data: { linked_user_id: user.id },
+  });
+
+  await prisma.companyMember.updateMany({
+    where: {
+      employment: { workforce_person_id: workforcePerson.id },
+      user_id: null,
+    },
+    data: { user_id: user.id },
+  });
+
+  return { user, workforcePerson };
+}
+
+/**
  * Assign work shifts + ~14 days attendance for primary company members.
  */
 async function seedAttendanceForCompany({
@@ -489,8 +622,10 @@ async function clearAll() {
   await prisma.order.deleteMany();
   await prisma.subscriptions.deleteMany();
   await prisma.subscriptionPlan.deleteMany();
+  await prisma.employeeHrAddress.deleteMany().catch(() => {});
   await prisma.employeeHrProfile.deleteMany().catch(() => {});
   await prisma.employeeEmployment.deleteMany();
+  await prisma.workforcePerson.deleteMany().catch(() => {});
   await prisma.shift.deleteMany();
   await prisma.job.deleteMany();
   await prisma.attendance.deleteMany();
@@ -629,13 +764,55 @@ async function main() {
   ];
 
   const workerPool = [
-    { name: 'Ravi Kumar', phone: '+919876543211', skills: ['Electrician', 'Wiring'], city: 'Chandigarh' },
-    { name: 'Aman Singh', phone: '+919876543212', skills: ['Helper', 'Loading'], city: 'Mohali' },
-    { name: 'Priya Sharma', phone: '+919876543213', skills: ['Supervisor'], city: 'Panchkula' },
-    { name: 'Dev Kumar', phone: '+918707462709', skills: ['Plumber'], city: 'Jalandhar' },
-    { name: 'Rajeev Pal', phone: '+919006598280', skills: ['AC Technician'], city: 'Ludhiana' },
-    { name: 'Arif Khan', phone: '+917275890926', skills: ['Welder'], city: 'Amritsar' },
-    { name: 'Test Worker', phone: '+911234567898', skills: ['Helper'], city: 'Delhi' },
+    {
+      name: 'Ravi Kumar',
+      phone: '+919876543211',
+      karigariId: 'KG1000',
+      skills: ['Electrician', 'Wiring'],
+      city: 'Chandigarh',
+    },
+    {
+      name: 'Aman Singh',
+      phone: '+919876543212',
+      karigariId: 'KG1001',
+      skills: ['Helper', 'Loading'],
+      city: 'Mohali',
+    },
+    {
+      name: 'Priya Sharma',
+      phone: '+919876543213',
+      karigariId: 'KG1002',
+      skills: ['Supervisor'],
+      city: 'Panchkula',
+    },
+    {
+      name: 'Dev Kumar',
+      phone: '+918707462709',
+      karigariId: 'KG1003',
+      skills: ['Plumber'],
+      city: 'Jalandhar',
+    },
+    {
+      name: 'Rajeev Pal',
+      phone: '+919006598280',
+      karigariId: 'KG1004',
+      skills: ['AC Technician'],
+      city: 'Ludhiana',
+    },
+    {
+      name: 'Arif Khan',
+      phone: '+917275890926',
+      karigariId: 'KG1005',
+      skills: ['Welder'],
+      city: 'Amritsar',
+    },
+    {
+      name: 'Test Worker',
+      phone: '+911234567898',
+      karigariId: 'KG1006',
+      skills: ['Helper'],
+      city: 'Delhi',
+    },
   ];
 
   const companies = [];
@@ -730,43 +907,24 @@ async function main() {
   }
 
   // -------------------------------------------------------------------------
-  // Shared workers + memberships on primary company (KBDL Corp)
+  // HR workforce (workforce_persons) + employments — no User rows on onboard
   // -------------------------------------------------------------------------
   const primary = companies[0];
-  const workers = [];
 
-  for (let i = 0; i < workerPool.length; i++) {
-    const w = workerPool[i];
-    const user = await prisma.user.create({
-      data: {
-        name: w.name,
-        phone_no: w.phone,
-        email: `worker${i + 1}@kbdl.dev`,
-        karigari_id: `KG${1000 + i}`,
-        city: w.city,
-        skills: w.skills,
-        experience: 1 + (i % 6),
-        preferences: { language: 'en-IN', theme: 'system' },
-        rating_avg: 3.5 + (i % 15) / 10,
-        rating_count: 2 + i * 3,
-        verification_level: 1,
-        extra_shift: true,
-      },
-    });
-    workers.push(user);
-  }
-
-  // Manager / employees on primary company
-  const managerMember = await prisma.companyMember.create({
-    data: {
-      user_id: workers[2].id,
-      company_id: primary.company.id,
-      department_id: primary.eng.id,
-      platform_type: 'EMPLOYEE',
-      role_id: primary.roleIds.MANAGER,
-      manager_company_member_id: primary.ownerMember.id,
-      is_active: true,
-    },
+  const { member: managerMember } = await createEmploymentStint({
+    fullName: workerPool[2].name,
+    phone: workerPool[2].phone,
+    karigariId: workerPool[2].karigariId,
+    companyId: primary.company.id,
+    departmentId: primary.eng.id,
+    roleId: primary.roleIds.MANAGER,
+    managerMemberId: primary.ownerMember.id,
+    employeeNo: 'EMP-MGR',
+    joinedAt: daysFromNow(-200),
+    isActive: true,
+    designationId: primary.designations[0]?.id,
+    seedAddresses: true,
+    city: workerPool[2].city,
   });
 
   const team = await prisma.team.create({
@@ -778,44 +936,54 @@ async function main() {
   });
 
   const employeeMembers = [];
-  for (let i = 0; i < workers.length; i++) {
+  for (let i = 0; i < workerPool.length; i++) {
     if (i === 2) continue; // manager already created
     const roleId =
       i === 0 ? primary.roleIds.SITE_SUPERVISOR : i === 1 ? primary.roleIds.TEAM_LEAD : primary.roleIds.EMPLOYEE;
-    const member = await prisma.companyMember.create({
-      data: {
-        user_id: workers[i].id,
-        company_id: primary.company.id,
-        department_id: primary.ops.id,
-        team_id: team.id,
-        platform_type: 'EMPLOYEE',
-        role_id: roleId,
-        manager_company_member_id: managerMember.id,
-        is_active: true,
-      },
+    const w = workerPool[i];
+    const { member } = await createEmploymentStint({
+      fullName: w.name,
+      phone: w.phone,
+      karigariId: w.karigariId,
+      companyId: primary.company.id,
+      departmentId: primary.ops.id,
+      teamId: team.id,
+      roleId,
+      managerMemberId: managerMember.id,
+      employeeNo: `EMP-${String(i + 1).padStart(3, '0')}`,
+      joinedAt: daysFromNow(-(30 + i * 10)),
+      isActive: true,
+      designationId: primary.designations[i % primary.designations.length]?.id,
+      seedAddresses: i < 2,
+      city: w.city,
     });
     employeeMembers.push(member);
-
-    await prisma.employeeEmployment.create({
-      data: {
-        company_id: primary.company.id,
-        employee_id: workers[i].id,
-        employee_no: `EMP-${String(i + 1).padStart(3, '0')}`,
-        employment_status: 'active',
-        joined_at: daysFromNow(-(30 + i * 10)),
-      },
-    });
   }
 
-  await prisma.employeeEmployment.create({
-    data: {
-      company_id: primary.company.id,
-      employee_id: workers[2].id,
-      employee_no: 'EMP-MGR',
-      employment_status: 'active',
-      joined_at: daysFromNow(-200),
-    },
-  });
+  // App users for marketplace / shift swap (first 5 workers — last 2 stay HR-only)
+  const APP_LINKED_WORKER_COUNT = 5;
+  const appWorkers = [];
+  for (let i = 0; i < APP_LINKED_WORKER_COUNT; i++) {
+    const w = workerPool[i];
+    const { user } = await linkAppUserForWorkforcePerson({
+      phone: w.phone,
+      userData: {
+        name: w.name,
+        phone_no: w.phone,
+        email: `worker${i + 1}@kbdl.dev`,
+        karigari_id: w.karigariId,
+        city: w.city,
+        skills: w.skills,
+        experience: 1 + (i % 6),
+        preferences: { language: 'en-IN', theme: 'system' },
+        rating_avg: 3.5 + (i % 15) / 10,
+        rating_count: 2 + i * 3,
+        verification_level: 1,
+        extra_shift: true,
+      },
+    });
+    appWorkers.push(user);
+  }
 
   // HR attendance + OT sample data (primary company field staff)
   await seedAttendanceForCompany({
@@ -886,41 +1054,40 @@ async function main() {
         is_active: true,
       },
     });
-    const whUser = await prisma.user.create({
-      data: {
-        name: 'Warehouse Lead AC',
-        email: 'aryan.warehouse@kbdl.dev',
-        phone_no: '+919870000011',
-        city: 'Jalandhar',
-        skills: ['Loader'],
-        preferences: { language: 'en-IN' },
-        verification_level: 1,
-        extra_shift: true,
-      },
-    });
-    await prisma.companyMember.create({
-      data: {
-        user_id: whUser.id,
-        company_id: co.company.id,
-        department_id: co.ops.id,
-        platform_type: 'EMPLOYEE',
-        role_id: co.roleIds.WAREHOUSE_LEAD,
-        manager_company_member_id: co.ownerMember.id,
-        is_active: true,
-      },
+    await createEmploymentStint({
+      fullName: 'Warehouse Lead AC',
+      phone: '+919870000011',
+      karigariId: 'KG-AC-WH',
+      companyId: co.company.id,
+      departmentId: co.ops.id,
+      roleId: co.roleIds.WAREHOUSE_LEAD,
+      managerMemberId: co.ownerMember.id,
+      employeeNo: 'AC-WH-01',
+      joinedAt: daysFromNow(-60),
+      isActive: true,
+      designationId: co.designations[0]?.id,
+      city: 'Jalandhar',
     });
   }
 
-  // A few employments on second company (employment history; membership is separate)
-  for (let i = 0; i < 3; i++) {
-    await prisma.employeeEmployment.create({
-      data: {
-        company_id: companies[1].company.id,
-        employee_id: workers[i].id,
-        employee_no: `AC-${i + 1}`,
-        employment_status: i === 0 ? 'pending' : 'active',
-        joined_at: daysFromNow(-15),
-      },
+  // Past employments at Aryan Corp (workers now active at KBDL — HR history demo)
+  const aryan = companies[1];
+  for (let i = 0; i < 2; i++) {
+    const w = workerPool[i];
+    await createEmploymentStint({
+      fullName: w.name,
+      phone: w.phone,
+      karigariId: w.karigariId,
+      companyId: aryan.company.id,
+      departmentId: aryan.ops.id,
+      roleId: aryan.roleIds.EMPLOYEE,
+      managerMemberId: aryan.ownerMember.id,
+      employeeNo: `AC-PAST-${i + 1}`,
+      joinedAt: daysFromNow(-400),
+      leftAt: daysFromNow(-120),
+      isActive: false,
+      separationReason: i === 0 ? 'resigned' : 'terminated',
+      designationId: aryan.designations[0]?.id,
     });
   }
 
@@ -974,7 +1141,7 @@ async function main() {
     data: [
       {
         job_id: jobs[0].id,
-        user_id: workers[0].id,
+        user_id: appWorkers[0].id,
         status: 'under_review',
         cover_letter: '4 years industrial wiring experience.',
         applied_at: daysFromNow(-2),
@@ -982,14 +1149,14 @@ async function main() {
       },
       {
         job_id: jobs[0].id,
-        user_id: workers[1].id,
+        user_id: appWorkers[1].id,
         status: 'applied',
         cover_letter: 'Available immediately.',
         applied_at: daysFromNow(-1),
       },
       {
         job_id: jobs[1].id,
-        user_id: workers[3].id,
+        user_id: appWorkers[3].id,
         status: 'shortlisted',
         cover_letter: 'Strong loader background.',
         applied_at: daysFromNow(-5),
@@ -1007,7 +1174,7 @@ async function main() {
   const shiftIds = [];
 
   for (let i = 0; i < 141; i++) {
-    const worker = workers[i % workers.length];
+    const worker = appWorkers[i % appWorkers.length];
     const status = shiftStatuses[i % shiftStatuses.length];
     const day = daysFromNow((i % 40) - 10);
     const start = atHour(day, 9 + (i % 8));
@@ -1023,7 +1190,7 @@ async function main() {
         assigned_company_member_id:
           co.company.id === primary.company.id ? employeeMembers[i % employeeMembers.length]?.id : null,
         original_employee_id: worker.id,
-        replacement_employee_id: status === 'approved' ? workers[(i + 1) % workers.length].id : null,
+        replacement_employee_id: status === 'approved' ? appWorkers[(i + 1) % appWorkers.length].id : null,
         created_by: i % 7 === 0 ? 'EMPLOYEE' : 'EMPLOYER',
         request_accepted: status === 'approved' || status === 'completed',
         shift_date: day,
@@ -1043,7 +1210,7 @@ async function main() {
   const appRows = [];
   for (let i = 0; i < 150; i++) {
     const shiftId = shiftIds[i % shiftIds.length];
-    const user = workers[i % workers.length];
+    const user = appWorkers[i % appWorkers.length];
     appRows.push({
       shift_id: shiftId,
       user_id: user.id,
@@ -1066,7 +1233,7 @@ async function main() {
   // Ratings (~36)
   // -------------------------------------------------------------------------
   for (let i = 0; i < 36; i++) {
-    const to = workers[i % workers.length];
+    const to = appWorkers[i % appWorkers.length];
     const from = owners[0];
     try {
       await prisma.rating.create({
@@ -1122,7 +1289,7 @@ async function main() {
   });
   await prisma.subscriptions.create({
     data: {
-      user_id: workers[0].id,
+      user_id: appWorkers[0].id,
       plan_id: workerPlan.id,
       subscription_platform_type: 'EMPLOYEE',
       status: 'active',
@@ -1160,14 +1327,14 @@ async function main() {
   // -------------------------------------------------------------------------
   // Notifications / tokens / prefs (dump ≈158 notifs, 55 push tokens)
   // -------------------------------------------------------------------------
-  for (const u of [...owners.slice(0, 3), ...workers]) {
+  for (const u of [...owners.slice(0, 3), ...appWorkers]) {
     await prisma.notificationPreference.create({
       data: { user_id: u.id, shiftSwap: true, jobAlert: true },
     });
   }
 
   for (let i = 0; i < 55; i++) {
-    const u = workers[i % workers.length];
+    const u = appWorkers[i % appWorkers.length];
     try {
       await prisma.pushToken.create({
         data: {
@@ -1185,7 +1352,7 @@ async function main() {
 
   const notifRows = [];
   for (let i = 0; i < 158; i++) {
-    const u = i % 2 === 0 ? owners[0] : workers[i % workers.length];
+    const u = i % 2 === 0 ? owners[0] : appWorkers[i % appWorkers.length];
     notifRows.push({
       user_id: u.id,
       type: i % 2 === 0 ? 'shift_swap_request' : 'job_application_update',
@@ -1260,6 +1427,8 @@ async function main() {
   const employeeShiftCount = await prisma.employeeShift.count();
   const attendanceCount = await prisma.attendance.count();
   const holidayCount = await prisma.companyHoliday.count();
+  const workforcePersonCount = await prisma.workforcePerson.count();
+  const hrOnlyWorkerCount = workerPool.length - appWorkers.length;
 
   console.log('');
   console.log('✅ Seed complete');
@@ -1277,15 +1446,19 @@ async function main() {
   console.log(`Employee shifts      : ${employeeShiftCount}`);
   console.log(`Attendances          : ${attendanceCount}`);
   console.log(`Company holidays     : ${holidayCount}`);
-  console.log(`Workers              : ${workers.length}`);
+  console.log(`Workforce persons    : ${workforcePersonCount}  (HR identity)`);
+  console.log(`App-linked workers   : ${appWorkers.length}`);
+  console.log(`HR-only workers      : ${hrOnlyWorkerCount}  (no app User yet)`);
   console.log(`Jobs                 : ${jobs.length}`);
   console.log(`Marketplace shifts   : ${shiftCount}`);
   console.log(`Shift applications   : ${appCount}`);
   console.log('Employer login email : employer@kbdl.dev');
   console.log('Employer phone       : +919876543210');
-  console.log('Worker phone         : +919876543211');
+  console.log('Worker phone (app)   : +919876543211');
+  console.log('HR-only worker phone : +917275890926  (Arif — no User row)');
   console.log('Local OTP (login)    : 123456');
   console.log('────────────────────────────────────────');
+  console.log('HR employments use workforce_persons; app User rows are linked separately.');
   console.log('Departments & roles are per-company catalogs.');
   console.log('Members store role_id only — rename CompanyRole.name without rewriting members.');
   console.log('HR: work_shifts ≠ marketplace shifts. Attendance keyed by company_member_id + date.');

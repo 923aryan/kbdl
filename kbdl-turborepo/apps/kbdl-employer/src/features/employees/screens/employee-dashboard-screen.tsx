@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Bell,
   Briefcase,
@@ -36,23 +37,51 @@ import {
   X,
 } from 'lucide-react';
 
-import { useFilteredEmployees } from '../hooks/use-employee-hook';
+import { useEmployeesList } from '../hooks/use-employees-list';
 import { useMetaSearch } from '../hooks/use-meta-search';
 import { AsyncSearchSelect } from '../components/async-search-select';
+import { AddressFormBlock } from '../components/address-form-block';
+import { AsyncMultiSearchSelect } from '../components/async-multi-search-select';
+import { OnboardErrorModal } from '../components/onboard-error-modal';
+import { extractOnboardApiErrors } from '../lib/onboard-error-messages';
+import { filterBanks } from '../lib/indian-banks';
+import {
+  filterOptions,
+  INDIAN_LANGUAGES,
+  INDIAN_RELIGIONS,
+  joinCommaList,
+  parseCommaList,
+} from '../lib/personal-options';
 import {
   fetchDepartmentsMeta,
   fetchDesignationsMeta,
+  fetchEmployeeDetails,
+  fetchNextEmployeeNumber,
   fetchOnboardMetaInitial,
   fetchSupervisorsMeta,
   fetchWorkShiftsMeta,
+  uploadEmployeeDocument,
+  addEmployeeDocument,
   type MetaDepartment,
   type MetaDesignation,
   type MetaSupervisor,
   type MetaWorkShift,
 } from '../api';
-import { api } from '@/lib/api-client';
+import { mapEmploymentDtoToEmployee } from '../lib/employee-detail-mapper';
 import {
-  designations,
+  detailTabFromSearchParam,
+  EMPLOYEE_LIST_PATH,
+  EMPLOYEE_ONBOARD_PATH,
+  employeeDetailPath,
+} from '../lib/employee-routes';
+import {
+  displayNameFromFileKey,
+  formatDocumentStoredValue,
+  openStoredDocument,
+} from '../lib/document-upload';
+import { api } from '@/lib/api-client';
+import type { EmployeeEmploymentDTO } from '@repo/types';
+import {
   dropdownOptions,
   statuses,
   useEmployeeStore,
@@ -61,6 +90,12 @@ import {
   type PaymentMethod,
   type Status,
 } from '../stores/use-employee-store';
+
+type DocumentUploadContext = {
+  employmentId: string;
+  documentType: string;
+  documentNumber?: string;
+};
 
 const detailTabs: DetailTab[] = [
   'Personal Info',
@@ -81,6 +116,52 @@ const statusStyle: Record<Status, string> = {
   Absent: 'border-[#F54A4A] bg-[#FEE9E5] text-[#F54A4A]',
 };
 
+type OnboardDocument = {
+  id: string;
+  documentType: string;
+  documentNumber: string;
+  fileKey: string;
+  fileName: string;
+};
+
+const ONBOARD_DOCUMENT_TYPES = [
+  'Aadhaar Card',
+  'PAN Card',
+  'Driving License',
+  'Other Document',
+] as const;
+
+const createOnboardDocument = (documentType = 'Aadhaar Card'): OnboardDocument => ({
+  id: crypto.randomUUID(),
+  documentType,
+  documentNumber: '',
+  fileKey: '',
+  fileName: '',
+});
+
+const getUploadedOnboardDocuments = (documents: OnboardDocument[]) =>
+  documents.filter((doc) => doc.fileKey.trim() && doc.documentType.trim());
+
+const validateOnboardDocuments = (documents: OnboardDocument[], action: 'draft' | 'submit') => {
+  if (action === 'draft') return null;
+
+  const uploaded = getUploadedOnboardDocuments(documents);
+  if (uploaded.length === 0) {
+    return 'Upload at least one document before submitting the profile.';
+  }
+
+  const incomplete = documents.some(
+    (doc) =>
+      (doc.documentType.trim() || doc.fileKey.trim()) &&
+      !(doc.documentType.trim() && doc.fileKey.trim()),
+  );
+  if (incomplete) {
+    return 'Each document row needs both a document type and an uploaded file.';
+  }
+
+  return null;
+};
+
 type OnboardFormState = {
   fullName: string;
   mobileNumber: string;
@@ -90,7 +171,28 @@ type OnboardFormState = {
   dateOfBirth: string;
   gender: string;
   address: string;
+  presentAddressLine1: string;
+  presentCity: string;
+  presentState: string;
+  presentPincode: string;
+  permanentAddressLine1: string;
+  permanentCity: string;
+  permanentState: string;
+  permanentPincode: string;
+  sameAsPresentAddress: string;
   bloodGroup: string;
+  alternatePhone: string;
+  maritalStatus: string;
+  fatherName: string;
+  motherName: string;
+  nationality: string;
+  religion: string;
+  languagesKnown: string;
+  probationPeriodMonths: string;
+  noticePeriodDays: string;
+  weeklyOff: string;
+  workingHours: string;
+  confirmationDate: string;
   emergencyContactName: string;
   emergencyContactRelation: string;
   emergencyContactNumber: string;
@@ -117,18 +219,22 @@ type OnboardFormState = {
   accountHolderName: string;
   accountNumber: string;
   bankName: string;
+  bankNameManual: string;
   ifscCode: string;
   aadhaarNumber: string;
   panNumber: string;
   drivingLicenseNumber: string;
-  identityDocuments: string;
+  voterId: string;
+  uanNumber: string;
+  esiNumber: string;
+  pfNumber: string;
+  documents: OnboardDocument[];
   basicSalary: string;
   salaryType: string;
   salaryPaymentFrequency: string;
   overtimeEligible: string;
   pfApplicable: string;
   esiApplicable: string;
-  additionalDocuments: string;
   notes: string;
 };
 
@@ -141,7 +247,28 @@ const emptyOnboardForm: OnboardFormState = {
   dateOfBirth: '',
   gender: '',
   address: '',
+  presentAddressLine1: '',
+  presentCity: '',
+  presentState: '',
+  presentPincode: '',
+  permanentAddressLine1: '',
+  permanentCity: '',
+  permanentState: '',
+  permanentPincode: '',
+  sameAsPresentAddress: 'Yes',
   bloodGroup: '',
+  alternatePhone: '',
+  maritalStatus: '',
+  fatherName: '',
+  motherName: '',
+  nationality: 'Indian',
+  religion: '',
+  languagesKnown: '',
+  probationPeriodMonths: '',
+  noticePeriodDays: '',
+  weeklyOff: 'Sunday',
+  workingHours: '',
+  confirmationDate: '',
   emergencyContactName: '',
   emergencyContactRelation: '',
   emergencyContactNumber: '',
@@ -168,18 +295,22 @@ const emptyOnboardForm: OnboardFormState = {
   accountHolderName: '',
   accountNumber: '',
   bankName: '',
+  bankNameManual: '',
   ifscCode: '',
   aadhaarNumber: '',
   panNumber: '',
   drivingLicenseNumber: '',
-  identityDocuments: '',
+  voterId: '',
+  uanNumber: '',
+  esiNumber: '',
+  pfNumber: '',
+  documents: [],
   basicSalary: '',
   salaryType: '',
   salaryPaymentFrequency: '',
   overtimeEligible: 'Yes',
   pfApplicable: 'Yes',
   esiApplicable: 'Yes',
-  additionalDocuments: '',
   notes: '',
 };
 
@@ -249,7 +380,12 @@ const parseNonNegativeNumber = (value: string) => {
   return Number.isFinite(num) ? num : undefined;
 };
 
-/** Build JSON body for POST /operations/employer/onboard (document fields are https URLs). */
+const OTHER_BANK_OPTION = 'Other Bank (type below)';
+
+const resolveBankName = (form: OnboardFormState) =>
+  form.bankName === OTHER_BANK_OPTION ? form.bankNameManual.trim() : form.bankName.trim();
+
+/** Build JSON body for POST /operations/employer/onboard (document fields are S3 fileKeys). */
 const buildOnboardApiPayload = (
   form: OnboardFormState,
   paymentMethod: PaymentMethod,
@@ -271,13 +407,97 @@ const buildOnboardApiPayload = (
         ? emergencyPhoneDigits.slice(2)
         : form.emergencyContactNumber.trim() || undefined;
 
+  const alternatePhoneDigits = form.alternatePhone.replace(/\D/g, '');
+  const alternatePhone =
+    alternatePhoneDigits.length === 10
+      ? alternatePhoneDigits
+      : alternatePhoneDigits.length === 12 && alternatePhoneDigits.startsWith('91')
+        ? alternatePhoneDigits.slice(2)
+        : form.alternatePhone.trim() || undefined;
+
+  const hasStructuredPresent =
+    form.presentAddressLine1.trim() &&
+    form.presentCity.trim() &&
+    form.presentState.trim() &&
+    form.presentPincode.trim();
+
+  const presentAddress = hasStructuredPresent
+    ? {
+        line1: form.presentAddressLine1.trim(),
+        city: form.presentCity.trim(),
+        state: form.presentState.trim(),
+        pincode: form.presentPincode.trim(),
+      }
+    : undefined;
+
+  const useSamePermanent = form.sameAsPresentAddress.trim().toLowerCase() === 'yes';
+  const hasStructuredPermanent =
+    !useSamePermanent &&
+    form.permanentAddressLine1.trim() &&
+    form.permanentCity.trim() &&
+    form.permanentState.trim() &&
+    form.permanentPincode.trim();
+
+  const permanentAddress = useSamePermanent
+    ? presentAddress
+    : hasStructuredPermanent
+      ? {
+          line1: form.permanentAddressLine1.trim(),
+          city: form.permanentCity.trim(),
+          state: form.permanentState.trim(),
+          pincode: form.permanentPincode.trim(),
+        }
+      : undefined;
+
+  const mapMaritalStatus = (value: string) => {
+    const key = value.trim().toLowerCase();
+    if (['unmarried', 'married', 'divorced', 'widowed'].includes(key)) return key;
+    return undefined;
+  };
+
   const personal = {
     ...(form.fullName.trim() ? { full_name: form.fullName.trim() } : {}),
     ...(form.email.trim() ? { email: form.email.trim() } : {}),
     ...(form.dateOfBirth.trim() ? { date_of_birth: form.dateOfBirth.trim() } : {}),
     ...(mapGender(form.gender) ? { gender: mapGender(form.gender) } : {}),
-    ...(form.address.trim() ? { address: form.address.trim() } : {}),
+    ...(form.address.trim() && !presentAddress ? { address: form.address.trim() } : {}),
+    ...(presentAddress
+      ? {
+          addresses: {
+            present: presentAddress,
+            ...(permanentAddress ? { permanent: permanentAddress } : {}),
+          },
+        }
+      : {}),
     ...(form.bloodGroup.trim() ? { blood_group: form.bloodGroup.trim() } : {}),
+    ...(alternatePhone ? { alternate_phone: alternatePhone } : {}),
+    ...(mapMaritalStatus(form.maritalStatus)
+      ? { marital_status: mapMaritalStatus(form.maritalStatus) }
+      : {}),
+    ...(form.fatherName.trim() ? { father_name: form.fatherName.trim() } : {}),
+    ...(form.motherName.trim() ? { mother_name: form.motherName.trim() } : {}),
+    ...(form.nationality.trim() ? { nationality: form.nationality.trim() } : {}),
+    ...(form.religion.trim() ? { religion: form.religion.trim() } : {}),
+    ...(form.languagesKnown.trim() ? { languages_known: form.languagesKnown.trim() } : {}),
+    ...((form.probationPeriodMonths.trim() ||
+      form.noticePeriodDays.trim() ||
+      form.weeklyOff.trim() ||
+      form.workingHours.trim() ||
+      form.confirmationDate.trim()) && {
+      employment_terms: {
+        ...(parseNonNegativeNumber(form.probationPeriodMonths) !== undefined
+          ? { probation_period_months: Math.floor(Number(form.probationPeriodMonths)) }
+          : {}),
+        ...(parseNonNegativeNumber(form.noticePeriodDays) !== undefined
+          ? { notice_period_days: Math.floor(Number(form.noticePeriodDays)) }
+          : {}),
+        ...(form.weeklyOff.trim() ? { weekly_off: form.weeklyOff.trim() } : {}),
+        ...(form.workingHours.trim() ? { working_hours: form.workingHours.trim() } : {}),
+        ...(form.confirmationDate.trim()
+          ? { confirmation_date: form.confirmationDate.trim() }
+          : {}),
+      },
+    }),
     ...((form.emergencyContactName.trim() ||
       form.emergencyContactRelation.trim() ||
       emergencyPhone) && {
@@ -351,10 +571,13 @@ const buildOnboardApiPayload = (
         ? { account_holder_name: form.accountHolderName.trim() }
         : {}),
       ...(form.accountNumber.trim() ? { account_number: form.accountNumber.trim() } : {}),
-      ...(form.bankName.trim() ? { bank_name: form.bankName.trim() } : {}),
+      ...(resolveBankName(form) ? { bank_name: resolveBankName(form) } : {}),
       ...(form.ifscCode.trim() ? { ifsc_code: form.ifscCode.trim().toUpperCase() } : {}),
     };
   }
+
+  const uploadedDocuments = getUploadedOnboardDocuments(form.documents);
+  const primaryDocument = uploadedDocuments[0];
 
   const identity = {
     ...(form.aadhaarNumber.trim() ? { aadhaar_number: form.aadhaarNumber.trim() } : {}),
@@ -362,11 +585,12 @@ const buildOnboardApiPayload = (
     ...(form.drivingLicenseNumber.trim()
       ? { driving_license_number: form.drivingLicenseNumber.trim() }
       : {}),
-    ...(form.identityDocuments.trim()
-      ? { identity_document_url: form.identityDocuments.trim() }
-      : {}),
-    ...(form.additionalDocuments.trim()
-      ? { additional_document_url: form.additionalDocuments.trim() }
+    ...(form.voterId.trim() ? { voter_id: form.voterId.trim() } : {}),
+    ...(form.uanNumber.trim() ? { uan_number: form.uanNumber.trim() } : {}),
+    ...(form.esiNumber.trim() ? { esi_number: form.esiNumber.trim() } : {}),
+    ...(form.pfNumber.trim() ? { pf_number: form.pfNumber.trim() } : {}),
+    ...(primaryDocument?.fileKey
+      ? { identity_document_url: primaryDocument.fileKey.trim() }
       : {}),
   };
 
@@ -443,7 +667,7 @@ const createOnboardDetails = (form: OnboardFormState, paymentMethod: PaymentMeth
     ['CTC', formatSalary(form.basicSalary || form.wageAmount, form.salaryType || form.upiPaymentFrequency)],
   ],
   bank: [
-    ['Bank Name', form.bankName],
+    ['Bank Name', resolveBankName(form) || form.bankName],
     ['Account Number', form.accountNumber],
     ['IFSC Code', form.ifscCode],
     ['Account Holder Name', form.accountHolderName],
@@ -458,17 +682,18 @@ const createOnboardDetails = (form: OnboardFormState, paymentMethod: PaymentMeth
     ['PF Applicable', form.pfApplicable],
     ['ESI Applicable', form.esiApplicable],
   ],
-  documents: [
-    ['Aadhaar Card', form.aadhaarNumber, form.identityDocuments, '-', form.identityDocuments ? 'Uploaded' : 'Pending Upload'],
-    ['PAN Card', form.panNumber, form.identityDocuments, '-', form.identityDocuments ? 'Uploaded' : 'Pending Upload'],
-    ['Driving License', form.drivingLicenseNumber, form.identityDocuments, '-', form.drivingLicenseNumber && form.identityDocuments ? 'Uploaded' : 'Pending Upload'],
-    ['Additional Documents', '-', form.additionalDocuments, '-', form.additionalDocuments ? 'Uploaded' : 'Pending Upload'],
-  ],
+  documents: getUploadedOnboardDocuments(form.documents).map((doc) => [
+    doc.documentType,
+    doc.documentNumber || '-',
+    doc.fileKey,
+    '-',
+    'Uploaded',
+  ]),
   notes: form.notes,
 });
 
 const hasRequiredDocuments = (form: OnboardFormState) =>
-  Boolean(form.aadhaarNumber.trim() && form.panNumber.trim() && form.identityDocuments.trim() && form.additionalDocuments.trim());
+  getUploadedOnboardDocuments(form.documents).length > 0;
 
 const createEmployeeFromForm = (form: OnboardFormState, paymentMethod: PaymentMethod, action: 'draft' | 'submit'): Employee => {
   const employeeNo = form.employeeNumber.trim();
@@ -492,83 +717,213 @@ const createEmployeeFromForm = (form: OnboardFormState, paymentMethod: PaymentMe
   };
 };
 
-export const EmployeeDashboardScreen = () => {
+function EmployeesPageShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#f7f7f8] text-[#111827]">
+      <TopBar />
+      <main className="p-[20px]">{children}</main>
+    </div>
+  );
+}
+
+export function EmployeeListScreen() {
+  const router = useRouter();
   const {
-    mode,
-    selectedEmployee,
-    activeTab,
     search,
     selectedDesignations,
     selectedStatuses,
     employeeVersion,
-    paymentMethod,
-    uploadOpen,
-    setMode,
-    setSelectedEmployee,
-    setActiveTab,
     setSearch,
     setSelectedDesignations,
     setSelectedStatuses,
-    setPaymentMethod,
-    setUploadOpen,
-    addOnboardEmployee,
   } = useEmployeeStore();
 
-  const filteredEmployees = useFilteredEmployees({
+  const [page, setPage] = useState(1);
+  const [roster, setRoster] = useState<'active' | 'past'>('active');
+
+  const { employees, facets, pagination, isFetching, isInitialLoading, error } = useEmployeesList({
+    roster,
     search,
     selectedDesignations,
     selectedStatuses,
+    page,
     refreshKey: employeeVersion,
   });
 
-  const openDetails = (employee: Employee, tab: DetailTab = 'Personal Info') => {
-    setSelectedEmployee(employee);
-    setActiveTab(tab);
-    setMode('details');
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedDesignations, selectedStatuses, roster]);
+
+  const designationOptions = useMemo(() => {
+    const fromFacets = facets?.designation ? Object.keys(facets.designation) : [];
+    const merged = new Set([...fromFacets, ...selectedDesignations]);
+    return [...merged].sort((a, b) => a.localeCompare(b));
+  }, [facets?.designation, selectedDesignations]);
+
+  const statusOptions = useMemo(() => {
+    const fromFacets = facets?.status ? Object.keys(facets.status) : [];
+    const merged = new Set([...fromFacets, ...statuses, ...selectedStatuses]);
+    return [...merged].sort((a, b) => a.localeCompare(b));
+  }, [facets?.status, selectedStatuses]);
+
+  const openDetails = (employee: Employee) => {
+    if (!employee.employmentId) return;
+    router.push(employeeDetailPath(employee.employmentId));
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f7f8] text-[#111827]">
-      <TopBar />
-      <main className="p-[20px]">
-        {mode === 'list' && (
-          <EmployeeList
-            employees={filteredEmployees}
-            search={search}
-            selectedDesignations={selectedDesignations}
-            selectedStatuses={selectedStatuses}
-            onSearch={setSearch}
-            onDesignations={setSelectedDesignations}
-            onStatuses={setSelectedStatuses}
-            onAdd={() => setMode('add')}
-            onView={openDetails}
-          />
-        )}
-
-        {mode === 'details' && (
-          <EmployeeDetails
-            employee={selectedEmployee}
-            activeTab={activeTab}
-            onTab={setActiveTab}
-            onBack={() => setMode('list')}
-            onUpload={() => setUploadOpen(true)}
-          />
-        )}
-
-        {mode === 'add' && (
-          <AddEmployee
-            paymentMethod={paymentMethod}
-            onPaymentMethod={setPaymentMethod}
-            onAddEmployee={addOnboardEmployee}
-            onBack={() => setMode('list')}
-          />
-        )}
-      </main>
-
-      {uploadOpen && <UploadModal onClose={() => setUploadOpen(false)} />}
-    </div>
+    <EmployeesPageShell>
+      <EmployeeList
+        employees={employees}
+        roster={roster}
+        search={search}
+        selectedDesignations={selectedDesignations}
+        selectedStatuses={selectedStatuses}
+        designationOptions={designationOptions}
+        statusOptions={statusOptions}
+        designationFacetCounts={facets?.designation}
+        statusFacetCounts={facets?.status}
+        page={pagination.page}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        isFetching={isFetching}
+        isInitialLoading={isInitialLoading}
+        error={error}
+        onSearch={setSearch}
+        onDesignations={setSelectedDesignations}
+        onStatuses={setSelectedStatuses}
+        onPageChange={setPage}
+        onRosterChange={setRoster}
+        onAdd={() => router.push(EMPLOYEE_ONBOARD_PATH)}
+        onView={openDetails}
+      />
+    </EmployeesPageShell>
   );
-};
+}
+
+export function EmployeeDetailScreen({ employmentId }: { employmentId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { uploadOpen, setUploadOpen } = useEmployeeStore();
+
+  const activeTab = detailTabFromSearchParam(searchParams.get('tab'));
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [detailLoading, setDetailLoading] = useState(true);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [uploadContext, setUploadContext] = useState<DocumentUploadContext | null>(null);
+
+  const refreshEmployee = (fallback?: Employee) => {
+    setDetailLoading(true);
+    setDetailError(null);
+    return fetchEmployeeDetails(employmentId)
+      .then((dto) => {
+        const mapped = mapEmploymentDtoToEmployee(dto, fallback ?? employee ?? undefined);
+        setEmployee(mapped);
+        return mapped;
+      })
+      .catch((err: unknown) => {
+        setDetailError(err instanceof Error ? err.message : 'Failed to load employee details');
+        throw err;
+      })
+      .finally(() => setDetailLoading(false));
+  };
+
+  useEffect(() => {
+    void refreshEmployee();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when employment id changes
+  }, [employmentId]);
+
+  const handleTabChange = (tab: DetailTab) => {
+    router.replace(employeeDetailPath(employmentId, tab));
+  };
+
+  const handleDocumentUploadRequest = (ctx: Omit<DocumentUploadContext, 'employmentId'>) => {
+    setUploadContext({
+      employmentId,
+      documentType: ctx.documentType,
+      documentNumber: ctx.documentNumber,
+    });
+    setUploadOpen(true);
+  };
+
+  if (!employee && detailLoading) {
+    return (
+      <EmployeesPageShell>
+        <p className="py-12 text-center text-sm text-[#676767]">Loading employee profile…</p>
+      </EmployeesPageShell>
+    );
+  }
+
+  return (
+    <EmployeesPageShell>
+      <EmployeeDetails
+        employee={
+          employee ?? {
+            id: employmentId.slice(0, 8).toUpperCase(),
+            uid: '-',
+            name: '-',
+            email: '',
+            phone: '',
+            designation: '-',
+            status: 'Onboard',
+            rating: 0,
+            joined: '-',
+            location: '',
+            department: '',
+            salary: '-',
+            employmentId,
+          }
+        }
+        activeTab={activeTab}
+        loading={detailLoading}
+        error={detailError}
+        onTab={handleTabChange}
+        onBack={() => router.push(EMPLOYEE_LIST_PATH)}
+        onUpload={handleDocumentUploadRequest}
+      />
+
+      {uploadOpen && uploadContext && (
+        <UploadModal
+          employmentId={uploadContext.employmentId}
+          documentType={uploadContext.documentType}
+          documentNumber={uploadContext.documentNumber}
+          onClose={() => {
+            setUploadOpen(false);
+            setUploadContext(null);
+          }}
+          onSuccess={() => {
+            void refreshEmployee(employee ?? undefined).finally(() => {
+              setUploadOpen(false);
+              setUploadContext(null);
+            });
+          }}
+        />
+      )}
+    </EmployeesPageShell>
+  );
+}
+
+export function EmployeeOnboardScreen() {
+  const router = useRouter();
+  const { paymentMethod, setPaymentMethod, bumpEmployeeListVersion } = useEmployeeStore();
+
+  return (
+    <EmployeesPageShell>
+      <AddEmployee
+        paymentMethod={paymentMethod}
+        onPaymentMethod={setPaymentMethod}
+        onAddEmployee={() => {
+          bumpEmployeeListVersion();
+          router.push(EMPLOYEE_LIST_PATH);
+        }}
+        onBack={() => router.push(EMPLOYEE_LIST_PATH)}
+      />
+    </EmployeesPageShell>
+  );
+}
+
+/** @deprecated Use route-based screens: EmployeeListScreen, EmployeeDetailScreen, EmployeeOnboardScreen */
+export const EmployeeDashboardScreen = EmployeeListScreen;
 
 function TopBar() {
   return (
@@ -603,33 +958,55 @@ function TopBar() {
 
 function EmployeeList({
   employees,
+  roster,
   search,
   selectedDesignations,
   selectedStatuses,
+  designationOptions,
+  statusOptions,
+  designationFacetCounts,
+  statusFacetCounts,
+  page,
+  totalPages,
+  total,
+  isFetching,
+  isInitialLoading,
+  error,
   onSearch,
   onDesignations,
   onStatuses,
+  onPageChange,
+  onRosterChange,
   onAdd,
   onView,
 }: {
   employees: Employee[];
+  roster: 'active' | 'past';
   search: string;
   selectedDesignations: string[];
   selectedStatuses: Status[];
+  designationOptions: string[];
+  statusOptions: string[];
+  designationFacetCounts?: Record<string, number>;
+  statusFacetCounts?: Record<string, number>;
+  page: number;
+  totalPages: number;
+  total: number;
+  isFetching: boolean;
+  isInitialLoading: boolean;
+  error: string | null;
   onSearch: (value: string) => void;
   onDesignations: (value: string[]) => void;
   onStatuses: (value: Status[]) => void;
+  onPageChange: (page: number) => void;
+  onRosterChange: (roster: 'active' | 'past') => void;
   onAdd: () => void;
   onView: (employee: Employee) => void;
 }) {
-  const pageSize = 10;
-  const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(employees.length / pageSize));
-  const activePage = Math.min(currentPage, totalPages);
-  const paginatedEmployees = employees.slice((activePage - 1) * pageSize, activePage * pageSize);
+  const activePage = Math.min(page, totalPages);
 
   return (
-    <section className="rounded-[20px] border border-[#D3D3D3] bg-white p-[20px] shadow-sm ">
+    <section className={`rounded-[20px] border border-[#D3D3D3] bg-white p-[20px] shadow-sm ${isFetching && !isInitialLoading ? 'opacity-90' : ''}`}>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-normal">EMPLOYEES</h1>
@@ -642,6 +1019,33 @@ function EmployeeList({
           <Plus className="h-5 w-5" />
           Add New Onboard
         </button>
+      </div>
+
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="inline-flex rounded-lg border border-[#D3D3D3] p-1">
+          <button
+            type="button"
+            onClick={() => onRosterChange('active')}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              roster === 'active'
+                ? 'bg-[#0658C2] text-white'
+                : 'text-[#676767] hover:bg-[#FAFAFA]'
+            }`}
+          >
+            Current Employees
+          </button>
+          <button
+            type="button"
+            onClick={() => onRosterChange('past')}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              roster === 'past'
+                ? 'bg-[#0658C2] text-white'
+                : 'text-[#676767] hover:bg-[#FAFAFA]'
+            }`}
+          >
+            Left / Terminated
+          </button>
+        </div>
       </div>
 
       <div className="mb-5 flex flex-col gap-4 sm:flex-row xl:items-center xl:justify-between">
@@ -658,19 +1062,27 @@ function EmployeeList({
           <MultiSelect
             label="All Designations"
             selectedLabel="Designation"
-            options={designations}
+            options={designationOptions}
             selected={selectedDesignations}
+            facetCounts={designationFacetCounts}
             onChange={onDesignations}
           />
           <MultiSelect
             label="All Status"
             selectedLabel="Status"
-            options={statuses}
+            options={statusOptions}
             selected={selectedStatuses}
+            facetCounts={statusFacetCounts}
             onChange={(items) => onStatuses(items as Status[])}
           />
         </div>
       </div>
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] border-collapse text-left rounded-t-[12px] overflow-hidden">
@@ -686,7 +1098,20 @@ function EmployeeList({
             </tr>
           </thead>
           <tbody>
-            {paginatedEmployees.map((employee) => (
+            {isInitialLoading ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#676767]">
+                  Loading employees…
+                </td>
+              </tr>
+            ) : employees.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-5 py-8 text-center text-sm text-[#676767]">
+                  No employees found
+                </td>
+              </tr>
+            ) : (
+              employees.map((employee) => (
               <tr key={employee.id} className="border-b border-[#D3D3D3] text-sm">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-3">
@@ -722,11 +1147,21 @@ function EmployeeList({
                   </button>
                 </td>
               </tr>
-            ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
-      <Pagination currentPage={activePage} totalPages={totalPages} onPageChange={setCurrentPage} />
+      <Pagination
+        currentPage={activePage}
+        totalPages={Math.max(1, totalPages)}
+        onPageChange={onPageChange}
+      />
+      {!isInitialLoading && total > 0 && (
+        <p className="mt-2 text-center text-xs text-[#676767]">
+          Showing page {activePage} of {Math.max(1, totalPages)} ({total} employees)
+        </p>
+      )}
     </section>
   );
 }
@@ -736,12 +1171,14 @@ function MultiSelect({
   selectedLabel,
   options,
   selected,
+  facetCounts,
   onChange,
 }: {
   label: string;
   selectedLabel: string;
   options: string[];
   selected: string[];
+  facetCounts?: Record<string, number>;
   onChange: (items: string[]) => void;
 }) {
   const { openDropdown, setOpenDropdown } = useEmployeeStore();
@@ -759,6 +1196,11 @@ function MultiSelect({
       !selected.includes(option) &&
       option.toLowerCase().includes(search.toLowerCase())
   );
+
+  const formatOption = (option: string) => {
+    const count = facetCounts?.[option];
+    return count != null ? `${option} (${count})` : option;
+  };
 
   return (
     <div className="relative">
@@ -828,7 +1270,7 @@ function MultiSelect({
                     onClick={() => toggle(option)}
                     className="flex w-full items-center justify-between rounded-md bg-[#DBEAFF] px-[16px] py-[9px] text-[14px] text-left text-[#0658C2] cursor-pointer"
                   >
-                    {option}
+                    {formatOption(option)}
 
                     <span className="relative h-4 w-4 rounded bg-white">
                       <span className="absolute inset-0 bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] top-[-2px] left-[2px] bg-no-repeat w-[22px]" />
@@ -851,7 +1293,7 @@ function MultiSelect({
                   onClick={() => toggle(option)}
                   className="group flex w-full items-center justify-between rounded-md border border-[#D3D3D3] px-[16px] py-[9px] text-[14px] text-left hover:bg-[#DBEAFF] cursor-pointer hover:border-transparent hover:text-[#0658C2]"
                 >
-                  {option}
+                  {formatOption(option)}
 
                   <span className="h-4 w-4 rounded border border-[#D3D3D3] group-hover:bg-white group-hover:border-transparent" />
                 </button>
@@ -869,20 +1311,29 @@ function MultiSelect({
 function EmployeeDetails({
   employee,
   activeTab,
+  loading,
+  error,
   onTab,
   onBack,
   onUpload,
 }: {
   employee: Employee;
   activeTab: DetailTab;
+  loading?: boolean;
+  error?: string | null;
   onTab: (tab: DetailTab) => void;
   onBack: () => void;
-  onUpload: () => void;
+  onUpload: (ctx: Omit<DocumentUploadContext, 'employmentId'>) => void;
 }) {
   return (
     <section className="rounded-[24px] border border-[#D3D3D3] bg-white p-[20px] shadow-sm">
       <PageTitle title="Employee Details" crumb="Employees > Employee Details" onBack={onBack} />
       <EmployeeHero employee={employee} />
+      {error && (
+        <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="mt-5 grid rounded-xl border border-[#D3D3D3] bg-white shadow-sm sm:grid-cols-3 lg:grid-cols-6 overflow-hidden">
         {detailTabs.map((tab) => (
           <button
@@ -897,12 +1348,18 @@ function EmployeeDetails({
         ))}
       </div>
       <div className="mt-5">
-        {activeTab === 'Personal Info' && <PersonalInfo employee={employee} />}
-        {activeTab === 'Job & Work Info' && <JobWorkInfo employee={employee} />}
-        {activeTab === 'Documents' && <DocumentsTab employee={employee} onUpload={onUpload} />}
-        {activeTab === 'Bank & Payments' && <BankPayments employee={employee} />}
-        {activeTab === 'Attendance' && <Attendance />}
-        {activeTab === 'Leave' && <LeaveTab />}
+        {loading ? (
+          <p className="py-12 text-center text-sm text-[#676767]">Loading employee profile…</p>
+        ) : (
+          <>
+            {activeTab === 'Personal Info' && <PersonalInfo employee={employee} />}
+            {activeTab === 'Job & Work Info' && <JobWorkInfo employee={employee} />}
+            {activeTab === 'Documents' && <DocumentsTab employee={employee} onUpload={onUpload} />}
+            {activeTab === 'Bank & Payments' && <BankPayments employee={employee} />}
+            {activeTab === 'Attendance' && <Attendance />}
+            {activeTab === 'Leave' && <LeaveTab />}
+          </>
+        )}
       </div>
     </section>
   );
@@ -919,6 +1376,18 @@ function EmployeeHero({ employee }: { employee: Employee }) {
     department: employee.department,
     salary: employee.salary,
   });
+
+  useEffect(() => {
+    setDraft({
+      name: employee.name,
+      designation: employee.designation,
+      phone: employee.phone,
+      email: employee.email,
+      location: employee.location,
+      department: employee.department,
+      salary: employee.salary,
+    });
+  }, [employee]);
 
   const heroInput = (key: keyof typeof draft, className = '') => (
     <input
@@ -972,11 +1441,11 @@ function EmployeeHero({ employee }: { employee: Employee }) {
         </div>
         <div className="grid gap-5 border-[#D3D3D3] grid-cols-2 xl:border-l xl:pl-8">
           <HeroMetric icon={Calendar} label="Date of Joining" value={displayOrDash(employee.joined)} />
-          <HeroMetric icon={MapPin} label="Work Location" value={draft.location} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, location: value }))} />
+          <HeroMetric icon={MapPin} label="Work Location" value={displayOrDash(draft.location)} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, location: value }))} />
           <HeroMetric icon={Users} label="Reporting Manager" value={displayOrDash(employee.onboardDetails?.payroll.find(([label]) => label === 'Reporting Manager')?.[1])} />
           <HeroMetric icon={Briefcase} label="Job Type" value={displayOrDash(employee.onboardDetails?.job.find(([label]) => label === 'Job Type')?.[1])} />
           <HeroMetric icon={Building2} label="Department" value={draft.department} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, department: value }))} />
-          <HeroMetric icon={CreditCard} label="Salary" value={draft.salary} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, salary: value }))} />
+          <HeroMetric icon={CreditCard} label="Salary" value={displayOrDash(draft.salary)} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, salary: value }))} />
         </div>
       </div>
       {/* <button
@@ -991,59 +1460,23 @@ function EmployeeHero({ employee }: { employee: Employee }) {
 
 function PersonalInfo({ employee }: { employee: Employee }) {
   const details = employee.onboardDetails;
+  const emptyRow: string[][] = [['—', 'No data available']];
 
   return (
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-      <InfoCard title="Personal Information" icon={IdCard} rows={[
-        ...(details?.personal ?? [
-        ['Full Name', 'Aman Barwal'],
-        ['Date of Birth', '09 April 2002'],
-        ['Gender', 'Male'],
-        ['Marital Status', 'Unmarried'],
-        ["Father's Name", 'Suresh Yadav'],
-        ["Mother's Name", 'Kamla Devi'],
-        ['Nationality', 'Indian'],
-        ['Religion', 'Hindu'],
-        ['Language Known', 'Hindi, Basic English'],
-        ['Blood Group', 'AB+'],
-        ]),
-      ]} />
+      <InfoCard title="Personal Information" icon={IdCard} rows={details?.personal ?? emptyRow} />
       <div className="space-y-4">
-        <InfoCard title="Contact Information" icon={Phone} rows={details?.contact ?? [
-          ['Mobile Number', '+91 8894853644'],
-          ['Alternate Number', '+91 7865784536'],
-          ['Email', 'abhi7321@gmail.com'],
-          ['Present Address', 'H. No. 220, Village Bir, Teh Joginder Nager, Distt Mandi (HP) - 175032'],
-          ['Permanent Address', 'H. No. 220, Village Bir, Teh Joginder Nager, Distt Mandi (HP) - 175032'],
-        ]} />
+        <InfoCard title="Contact Information" icon={Phone} rows={details?.contact ?? emptyRow} />
                 </div>
         <div className="space-y-4">
-        <InfoCard title="Emergency Contact" icon={Phone} rows={details?.emergency ?? [
-          ['Contact Name', 'Suresh Yadav'],
-          ['Relation', 'Father'],
-          ['Mobile Number', '+91 8894853644'],
-        ]} />
+        <InfoCard title="Emergency Contact" icon={Phone} rows={details?.emergency ?? emptyRow} />
 
       </div>
       <div className="space-y-4">
-        <InfoCard title="Identity Details" icon={IdCard} rows={details?.identity ?? [
-          ['Aadhaar Number', 'xxxx-xxxx-1234'],
-          ['PAN Number', 'ABCDE1234F'],
-          ['Voter ID', 'HP/07/2020/12345'],
-          ['Driving License', '-'],
-          ['UAN Number', '102345678978'],
-          ['ESI Number', '5738453657'],
-          ['PF Number', 'HP/FRT/12546/000'],
-        ]} />
+        <InfoCard title="Identity Details" icon={IdCard} rows={details?.identity ?? emptyRow} />
       </div>
       <div className="space-y-4">
-        <InfoCard title="Other Information" icon={Briefcase} rows={details?.other ?? [
-          ['Employee Type', 'Worker'],
-          ['Probation Period', '3 Months'],
-          ['Notice Period', '15 Days'],
-          ['Working Timing', ''],
-          ['Weekly Off', 'Sunday'],
-        ]} />
+        <InfoCard title="Other Information" icon={Briefcase} rows={details?.other ?? emptyRow} />
       </div>
     </div>
   );
@@ -1051,6 +1484,7 @@ function PersonalInfo({ employee }: { employee: Employee }) {
 
 function JobWorkInfo({ employee }: { employee: Employee }) {
   const details = employee.onboardDetails;
+  const emptyRow: string[][] = [['—', 'No data available']];
   const jobRows = details?.job.map(([label, value]): string[] => [
     label || '',
     label === 'Employee Status' ? employee.status : value || '',
@@ -1058,49 +1492,29 @@ function JobWorkInfo({ employee }: { employee: Employee }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-      <InfoCard title="Job Information" icon={Briefcase} rows={jobRows ?? [
-        ['Department', 'Maintenance'],
-        ['Job Title', 'Electrician'],
-        ['Job Role', 'Electrician'],
-        ['Job Type', 'Full Time'],
-        ['Work Location', 'Chandigarh Plant 1'],
-        ['Date of Joining', '02 June 2026'],
-        ['Confirmation Date', '02 Sep 2026'],
-        ['Employee Status', 'Active'],
-      ]} />
-      <InfoCard title="Work Details" icon={Wrench} rows={details?.work ?? [
-        ['Shift', 'General Shift'],
-        ['Working Time', '06:00 AM - 05:00PM'],
-        ['Break Time', '01:00 PM - 02:00PM'],
-        ['Weekly Off', 'Sunday'],
-        ['Overtime Eligible', 'Yes'],
-        ['Overtime Type', 'Paid'],
-        ['Travel Required', 'No'],
-      ]} />
-      <InfoCard title="Reporting & Payroll" icon={Users} rows={details?.payroll ?? [
-        ['Reporting Manager', 'Abhinav Barwal'],
-        ['Payroll Group', 'Monthly Paid Worker'],
-        ['Pay Schedule', 'Monthly'],
-        ['Salary Structure', 'Electrician - Grade 2'],
-        ['CTC', '₹ 100,000 / Month'],
-        ['Payment Mode', 'Bank Transfer'],
-      ]} />
+      <InfoCard title="Job Information" icon={Briefcase} rows={jobRows ?? emptyRow} />
+      <InfoCard title="Work Details" icon={Wrench} rows={details?.work ?? emptyRow} />
+      <InfoCard title="Reporting & Payroll" icon={Users} rows={details?.payroll ?? emptyRow} />
     </div>
   );
 }
 
-function DocumentsTab({ employee, onUpload }: { employee: Employee; onUpload: () => void }) {
-  const [documents, setDocuments] = useState(employee.onboardDetails?.documents ?? [
-    ['Aadhaar Card', 'XXXX-XXXX-5476', '30 May 2025', '-', 'Uploaded'],
-    ['PAN Card', 'DFGTH6745A', '30 May 2025', '-', 'Uploaded'],
-    ['Driving License', 'HP29 5676XXXX', '30 May 2025', '09 June 2032', 'Uploaded'],
-    ['Education Certificate', '-', '30 May 2025', '-', 'Uploaded'],
-    ['Experience Certificate', 'EMP/2023/4657', '30 May 2025', '-', 'Uploaded'],
-    ['Medical Fitness Certificate', 'MED/00067/0095', '30 May 2025', '01 June 2026', 'Expired'],
-    ['Police Verification', '-', '-', '-', 'Pending Upload'],
-    ['Passport Size Photo', '-', '-', '-', 'Pending Upload'],
-  ]);
+function DocumentsTab({
+  employee,
+  onUpload,
+}: {
+  employee: Employee;
+  onUpload: (ctx: Omit<DocumentUploadContext, 'employmentId'>) => void;
+}) {
+  const [documents, setDocuments] = useState<string[][]>(employee.onboardDetails?.documents ?? []);
   const [editingRows, setEditingRows] = useState<number[]>([]);
+  const [openingDoc, setOpeningDoc] = useState(false);
+  const [docActionError, setDocActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDocuments(employee.onboardDetails?.documents ?? []);
+  }, [employee.onboardDetails?.documents]);
+
   const updateDocument = (rowIndex: number, cellIndex: number, value: string) => {
     setDocuments((items) =>
       items.map((row, index) =>
@@ -1112,13 +1526,36 @@ function DocumentsTab({ employee, onUpload }: { employee: Employee; onUpload: ()
       ),
     );
   };
+
   const addDocument = () => {
-    setDocuments((items) => [...items, ['New Document', '', '', '', 'Pending Upload']]);
-    setEditingRows((items) => [...items, documents.length]);
+    onUpload({ documentType: 'Other Document' });
+  };
+
+  const handleOpenDocument = async (fileRef: string) => {
+    if (!fileRef?.trim() || fileRef === '-') return;
+    setOpeningDoc(true);
+    setDocActionError(null);
+    try {
+      await openStoredDocument(fileRef);
+    } catch (error) {
+      setDocActionError((error as Error).message || 'Could not open document');
+    } finally {
+      setOpeningDoc(false);
+    }
+  };
+
+  const renderDocumentCell = (cell: string | undefined, cellIndex: number) => {
+    if (cellIndex === 2) return formatDocumentStoredValue(cell ?? '');
+    return cell ?? '';
   };
 
   return (
     <div className="outer-main">
+      {docActionError && (
+        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {docActionError}
+        </p>
+      )}
       <div className="table-data overflow-x-auto">
         <table className="w-full min-w-[1000px] border-collapse text-left text-sm rounded-t-[12px] overflow-hidden">
           <thead>
@@ -1132,10 +1569,18 @@ function DocumentsTab({ employee, onUpload }: { employee: Employee; onUpload: ()
             </tr>
           </thead>
           <tbody>
+            {documents.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-10 text-center text-sm text-[#676767]">
+                  No documents yet. Use ADD DOCUMENT to upload files.
+                </td>
+              </tr>
+            )}
             {documents.map(([type, number, uploaded, expiry, status], rowIndex) => {
               const editing = editingRows.includes(rowIndex);
+              const fileRef = uploaded?.trim() && uploaded !== '-' ? uploaded : '';
               return (
-              <tr key={type} className="border-b border-[#D3D3D3]">
+              <tr key={`${type}-${rowIndex}`} className="border-b border-[#D3D3D3]">
                 {[type, number, uploaded, expiry].map((cell, cellIndex) => (
                   <td key={cellIndex} className="px-5 py-4">
                     {editing ? (
@@ -1145,7 +1590,7 @@ function DocumentsTab({ employee, onUpload }: { employee: Employee; onUpload: ()
                         className="h-9 w-full rounded-md border border-[#D3D3D3] px-3 outline-none focus:border-[#0658C2]"
                       />
                     ) : (
-                      cell
+                      renderDocumentCell(cell, cellIndex)
                     )}
                   </td>
                 ))}
@@ -1175,15 +1620,33 @@ function DocumentsTab({ employee, onUpload }: { employee: Employee; onUpload: ()
                       {editing ? 'Save' : 'Edit'}
                     </button>
                     {status === 'Pending Upload' ? (
-                      <button type="button" onClick={onUpload}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onUpload({
+                            documentType: type ?? 'Document',
+                            documentNumber: number && number !== '-' ? number : undefined,
+                          })
+                        }
+                      >
                         Upload
                       </button>
                     ) : (
                       <>
-                      <button onClick={onUpload} aria-label={`View ${type}`}>
+                      <button
+                        type="button"
+                        disabled={!fileRef || openingDoc}
+                        onClick={() => void handleOpenDocument(fileRef)}
+                        aria-label={`View ${type}`}
+                      >
                         <Eye className="h-5 w-5" />
                       </button>
-                      <button aria-label={`Download ${type}`}>
+                      <button
+                        type="button"
+                        disabled={!fileRef || openingDoc}
+                        onClick={() => void handleOpenDocument(fileRef)}
+                        aria-label={`Download ${type}`}
+                      >
                         <Download className="h-5 w-5" />
                       </button>
                       </>
@@ -1551,22 +2014,58 @@ function AddEmployee({
 }: {
   paymentMethod: PaymentMethod;
   onPaymentMethod: (method: PaymentMethod) => void;
-  onAddEmployee: (employee: Employee) => void;
+  onAddEmployee: () => void;
   onBack: () => void;
 }) {
   const [form, setForm] = useState<OnboardFormState>(emptyOnboardForm);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
+  const [errorModal, setErrorModal] = useState<{
+    open: boolean;
+    title: string;
+    errors: { label: string; message: string }[];
+  }>({ open: false, title: '', errors: [] });
   const [metaLoading, setMetaLoading] = useState(true);
   const [metaError, setMetaError] = useState<string | null>(null);
   const [initialDepartments, setInitialDepartments] = useState<MetaDepartment[]>([]);
   const [initialDesignations, setInitialDesignations] = useState<MetaDesignation[]>([]);
   const [initialSupervisors, setInitialSupervisors] = useState<MetaSupervisor[]>([]);
   const [initialWorkShifts, setInitialWorkShifts] = useState<MetaWorkShift[]>([]);
+  const [religionSearch, setReligionSearch] = useState('');
+  const [languageSearch, setLanguageSearch] = useState('');
+  const [bankSearch, setBankSearch] = useState('');
+
+  const bankOptions = useMemo(
+    () =>
+      filterBanks(bankSearch).map((bank) => ({
+        id: bank,
+        label: bank,
+      })),
+    [bankSearch],
+  );
+
+  const religionOptions = useMemo(
+    () =>
+      filterOptions(INDIAN_RELIGIONS, religionSearch).map((religion) => ({
+        id: religion,
+        label: religion,
+      })),
+    [religionSearch],
+  );
+
+  const languageOptions = useMemo(
+    () =>
+      filterOptions(INDIAN_LANGUAGES, languageSearch).map((language) => ({
+        id: language,
+        label: language,
+      })),
+    [languageSearch],
+  );
+
+  const selectedLanguages = useMemo(() => parseCommaList(form.languagesKnown), [form.languagesKnown]);
 
   const setValue = (key: keyof OnboardFormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
-    setMessage('');
+    setErrorModal((current) => (current.open ? { ...current, open: false } : current));
   };
 
   useEffect(() => {
@@ -1581,6 +2080,10 @@ function AddEmployee({
         setInitialDesignations(meta.designations);
         setInitialSupervisors(meta.supervisors);
         setInitialWorkShifts(meta.workShifts);
+        setForm((current) => ({
+          ...current,
+          employeeNumber: current.employeeNumber.trim() || meta.nextEmployeeNo,
+        }));
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -1616,24 +2119,50 @@ function AddEmployee({
 
   const saveEmployee = async (action: 'draft' | 'submit') => {
     setSubmitting(true);
-    setMessage('');
+    setErrorModal((current) => ({ ...current, open: false }));
+
+    const documentError = validateOnboardDocuments(form.documents, action);
+    if (documentError) {
+      setErrorModal({
+        open: true,
+        title: 'Documents required',
+        errors: [{ label: 'Documents', message: documentError }],
+      });
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const payload = buildOnboardApiPayload(form, paymentMethod, action);
-      await api.post('/operations/employer/onboard', payload);
-      onAddEmployee(createEmployeeFromForm(form, paymentMethod, action));
+      const response = await api.post<EmployeeEmploymentDTO>('/operations/employer/onboard', payload);
+      const employmentId = response.data.id;
+
+      const uploadedDocs = getUploadedOnboardDocuments(form.documents);
+      for (const doc of uploadedDocs.slice(1)) {
+        await addEmployeeDocument(employmentId, {
+          document_type: doc.documentType.trim(),
+          file_key: doc.fileKey.trim(),
+          file_name: doc.fileName.trim() || undefined,
+          ...(doc.documentNumber.trim() ? { document_number: doc.documentNumber.trim() } : {}),
+        });
+      }
+
+      onAddEmployee();
     } catch (error) {
-      const details = (error as { details?: Array<{ field?: string; message?: string }> })?.details;
-      const firstIssue = Array.isArray(details) ? details[0] : undefined;
-      const detailMsg = firstIssue?.message
-        ? `${firstIssue.field ? `${firstIssue.field}: ` : ''}${firstIssue.message}`
-        : undefined;
-      setMessage(
-        detailMsg ||
-          (error instanceof Error
-            ? error.message
-            : 'Unable to onboard employee. Check validation errors and try again.'),
-      );
+      const parsed = extractOnboardApiErrors(error);
+      const errWithCode = error as { code?: string };
+      if (errWithCode.code === 'EMPLOYEE_NO_EXISTS') {
+        fetchNextEmployeeNumber()
+          .then((response) => {
+            setForm((current) => ({ ...current, employeeNumber: response.data.employee_no }));
+          })
+          .catch(() => undefined);
+      }
+      setErrorModal({
+        open: true,
+        title: parsed.title,
+        errors: parsed.errors,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -1644,13 +2173,10 @@ function AddEmployee({
         <Field label="Aadhaar Number" required placeholder="Enter Aadhaar Number" value={form.aadhaarNumber} onChange={(value) => setValue('aadhaarNumber', value)} />
         <Field label="PAN Number" required placeholder="Enter PAN Number" value={form.panNumber} onChange={(value) => setValue('panNumber', value)} />
         <Field label="Driving License Number (if applicable)" placeholder="Enter Driving License Number" value={form.drivingLicenseNumber} onChange={(value) => setValue('drivingLicenseNumber', value)} />
-        <Field
-          label="Identity Document Link"
-          required
-          placeholder="https://… (document URL, not file upload)"
-          value={form.identityDocuments}
-          onChange={(value) => setValue('identityDocuments', value)}
-        />
+        <Field label="Voter ID" placeholder="Enter Voter ID" value={form.voterId} onChange={(value) => setValue('voterId', value)} />
+        <Field label="UAN Number" placeholder="12-digit UAN" value={form.uanNumber} onChange={(value) => setValue('uanNumber', value)} />
+        <Field label="ESI Number" placeholder="Enter ESI Number" value={form.esiNumber} onChange={(value) => setValue('esiNumber', value)} />
+        <Field label="PF Number" placeholder="Enter PF Number" value={form.pfNumber} onChange={(value) => setValue('pfNumber', value)} />
       </FormPanel>
       <FormPanel title="Salary Details" icon={WalletCards} columns="single">
         <Field label="Basic Salary / Wage" required placeholder="Enter amount" value={form.basicSalary} onChange={(value) => setValue('basicSalary', value)} />
@@ -1675,16 +2201,113 @@ function AddEmployee({
           <Field label="Email" placeholder="Enter email" value={form.email} onChange={(value) => setValue('email', value)} />
           <Field label="Date of Birth" required type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.dateOfBirth} onChange={(value) => setValue('dateOfBirth', value)} />
           <SelectField label="Gender" required placeholder="Select Gender" options={dropdownOptions.gender} value={form.gender} onChange={(value) => setValue('gender', value)} />
-          <Field label="Address" required placeholder="Enter complete address" value={form.address} onChange={(value) => setValue('address', value)} />
+          <SelectField label="Marital Status" placeholder="Select Marital Status" options={dropdownOptions.maritalStatus} value={form.maritalStatus} onChange={(value) => setValue('maritalStatus', value)} />
+          <Field label="Father's Name" placeholder="Enter father's name" value={form.fatherName} onChange={(value) => setValue('fatherName', value)} />
+          <Field label="Mother's Name" placeholder="Enter mother's name" value={form.motherName} onChange={(value) => setValue('motherName', value)} />
+          <Field label="Nationality" placeholder="Indian" value={form.nationality} onChange={(value) => setValue('nationality', value)} />
+          <AsyncSearchSelect
+            label="Religion"
+            placeholder="Search religion"
+            valueId={form.religion}
+            valueLabel={form.religion}
+            search={religionSearch}
+            onSearchChange={setReligionSearch}
+            options={religionOptions}
+            onSelect={(option) => setValue('religion', option.label)}
+            onClear={() => setValue('religion', '')}
+          />
+          <AsyncMultiSearchSelect
+            label="Languages Known"
+            placeholder="Search and select languages"
+            selected={selectedLanguages}
+            search={languageSearch}
+            onSearchChange={setLanguageSearch}
+            options={languageOptions}
+            onAdd={(language) =>
+              setValue('languagesKnown', joinCommaList([...selectedLanguages, language]))
+            }
+            onRemove={(language) =>
+              setValue(
+                'languagesKnown',
+                joinCommaList(selectedLanguages.filter((item) => item !== language)),
+              )
+            }
+            onClear={() => setValue('languagesKnown', '')}
+          />
+          <Field label="Alternate Mobile" placeholder="Enter alternate number (not unique — can repeat)" value={form.alternatePhone} onChange={(value) => setValue('alternatePhone', value)} />
+          <Field label="Legacy Address (optional)" placeholder="Or enter full address as single line" value={form.address} onChange={(value) => setValue('address', value)} />
           <SelectField label="Blood Group" required placeholder="Select Blood Group" options={dropdownOptions.blood} value={form.bloodGroup} onChange={(value) => setValue('bloodGroup', value)} />
           <Field label="Emergency Contact Name" required placeholder="Enter emergency contact name" value={form.emergencyContactName} onChange={(value) => setValue('emergencyContactName', value)} />
           <Field label="Emergency Contact Relation" required placeholder="Enter emergency contact relation" value={form.emergencyContactRelation} onChange={(value) => setValue('emergencyContactRelation', value)} />
-          <Field label="Emergency Contact Number" required placeholder="Enter emergency contact number" value={form.emergencyContactNumber} onChange={(value) => setValue('emergencyContactNumber', value)} />
+          <Field label="Emergency Contact Number" required placeholder="Enter emergency contact number (not unique)" value={form.emergencyContactNumber} onChange={(value) => setValue('emergencyContactNumber', value)} />
+        </FormPanel>
+
+        <FormPanel title="Current Address (Present)" icon={MapPin} columns="single">
+          <AddressFormBlock
+            title="Where the employee currently lives"
+            required
+            values={{
+              line1: form.presentAddressLine1,
+              city: form.presentCity,
+              state: form.presentState,
+              pincode: form.presentPincode,
+            }}
+            onChange={(patch) => {
+              setForm((current) => ({
+                ...current,
+                ...(patch.line1 !== undefined ? { presentAddressLine1: patch.line1 } : {}),
+                ...(patch.city !== undefined ? { presentCity: patch.city } : {}),
+                ...(patch.state !== undefined ? { presentState: patch.state } : {}),
+                ...(patch.pincode !== undefined ? { presentPincode: patch.pincode } : {}),
+              }));
+            }}
+          />
+        </FormPanel>
+
+        <FormPanel title="Permanent Address" icon={MapPin} columns="single">
+          <RadioGroup label="Permanent same as Current" options={['Yes', 'No']} value={form.sameAsPresentAddress} onChange={(value) => setValue('sameAsPresentAddress', value)} />
+          {form.sameAsPresentAddress.trim().toLowerCase() === 'no' ? (
+            <AddressFormBlock
+              title="Permanent / native address"
+              values={{
+                line1: form.permanentAddressLine1,
+                city: form.permanentCity,
+                state: form.permanentState,
+                pincode: form.permanentPincode,
+              }}
+              onChange={(patch) => {
+                setForm((current) => ({
+                  ...current,
+                  ...(patch.line1 !== undefined ? { permanentAddressLine1: patch.line1 } : {}),
+                  ...(patch.city !== undefined ? { permanentCity: patch.city } : {}),
+                  ...(patch.state !== undefined ? { permanentState: patch.state } : {}),
+                  ...(patch.pincode !== undefined ? { permanentPincode: patch.pincode } : {}),
+                }));
+              }}
+            />
+          ) : (
+            <p className="text-sm text-[#676767]">
+              Permanent address will be copied from current address on submit.
+            </p>
+          )}
         </FormPanel>
 
         <FormPanel title="Job Information" icon={Briefcase}>
-          <Field label="Employee Number" placeholder="Enter employee number" value={form.employeeNumber} onChange={(value) => setValue('employeeNumber', value)} />
-          <Field label="Karigari ID" placeholder="Enter Karigari ID" value={form.karigariId} onChange={(value) => setValue('karigariId', value)} />
+          <Field
+            label="Employee Number"
+            placeholder="Auto-generated from company sequence"
+            value={form.employeeNumber}
+            onChange={(value) => setValue('employeeNumber', value)}
+          />
+          <p className="-mt-2 text-xs text-[#676767]">
+            Suggested next number from your company (EMP-001, EMP-002…). You can edit if needed.
+          </p>
+          <Field
+            label="Karigari ID"
+            placeholder="Platform worker ID e.g. KG1000 (globally unique if set)"
+            value={form.karigariId}
+            onChange={(value) => setValue('karigariId', value)}
+          />
           <AsyncSearchSelect
             label="Designation"
             required
@@ -1706,7 +2329,6 @@ function AddEmployee({
                 designationId: option.id,
                 designationLabel: option.label,
               }));
-              setMessage('');
             }}
             onClear={() =>
               setForm((current) => ({
@@ -1737,7 +2359,6 @@ function AddEmployee({
                 departmentId: option.id,
                 departmentLabel: option.label,
               }));
-              setMessage('');
             }}
             onClear={() =>
               setForm((current) => ({
@@ -1769,7 +2390,6 @@ function AddEmployee({
                 reportingSupervisorId: option.id,
                 reportingSupervisorLabel: option.label,
               }));
-              setMessage('');
             }}
             onClear={() =>
               setForm((current) => ({
@@ -1802,7 +2422,6 @@ function AddEmployee({
                 workShiftId: option.id,
                 workShiftLabel: option.label,
               }));
-              setMessage('');
             }}
             onClear={() =>
               setForm((current) => ({
@@ -1812,6 +2431,11 @@ function AddEmployee({
               }))
             }
           />
+          <Field label="Probation Period (months)" placeholder="e.g. 3" value={form.probationPeriodMonths} onChange={(value) => setValue('probationPeriodMonths', value)} />
+          <Field label="Notice Period (days)" placeholder="e.g. 15" value={form.noticePeriodDays} onChange={(value) => setValue('noticePeriodDays', value)} />
+          <Field label="Weekly Off" placeholder="Sunday" value={form.weeklyOff} onChange={(value) => setValue('weeklyOff', value)} />
+          <Field label="Working Hours" placeholder="e.g. 09:00 AM - 06:00 PM" value={form.workingHours} onChange={(value) => setValue('workingHours', value)} />
+          <Field label="Confirmation Date" type="date" placeholder="YYYY-MM-DD" icon={Calendar} value={form.confirmationDate} onChange={(value) => setValue('confirmationDate', value)} />
           <Field label="Work Location / Site" placeholder="Enter work location or site" value={form.workLocation} onChange={(value) => setValue('workLocation', value)} />
         </FormPanel>
 
@@ -1849,7 +2473,30 @@ function AddEmployee({
             <FormPanel title="Bank Details" icon={Landmark}>
               <Field label="Account Holder Name" required placeholder="Enter Account Holder Name" value={form.accountHolderName} onChange={(value) => setValue('accountHolderName', value)} />
               <Field label="Account Number" required placeholder="Enter Account Number" value={form.accountNumber} onChange={(value) => setValue('accountNumber', value)} />
-              <SelectField label="Bank Name" required placeholder="Select Bank" options={dropdownOptions.bank} value={form.bankName} onChange={(value) => setValue('bankName', value)} />
+              <AsyncSearchSelect
+                label="Bank Name"
+                required
+                placeholder="Search bank (SBI, HDFC, ICICI…)"
+                valueId={form.bankName}
+                valueLabel={form.bankName}
+                search={bankSearch}
+                onSearchChange={setBankSearch}
+                options={bankOptions}
+                onSelect={(option) => setValue('bankName', option.label)}
+                onClear={() => {
+                  setValue('bankName', '');
+                  setValue('bankNameManual', '');
+                }}
+              />
+              {form.bankName === OTHER_BANK_OPTION && (
+                <Field
+                  label="Enter Bank Name"
+                  required
+                  placeholder="Type your bank name"
+                  value={form.bankNameManual}
+                  onChange={(value) => setValue('bankNameManual', value)}
+                />
+              )}
               <Field label="IFSC Code" required placeholder="Enter IFSC Code" value={form.ifscCode} onChange={(value) => setValue('ifscCode', value)} />
             </FormPanel>
             {identitySalaryPanels}
@@ -1858,25 +2505,21 @@ function AddEmployee({
 
         {paymentMethod !== 'bank' && identitySalaryPanels}
 
-        <FormPanel title="Additional Documents & Notes" icon={FileText}>
-          <Field
-            label="Additional Document Link"
-            placeholder="https://… (required for Probation on submit)"
-            value={form.additionalDocuments}
-            onChange={(value) => setValue('additionalDocuments', value)}
+        <FormPanel title="Documents & Notes" icon={FileText} columns="single">
+          <OnboardDocumentsSection
+            documents={form.documents}
+            notes={form.notes}
+            onDocumentsChange={(documents) => setForm((current) => ({ ...current, documents }))}
+            onNotesChange={(value) => setValue('notes', value)}
           />
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold">Notes (Optional)</span>
-            <textarea
-              value={form.notes}
-              onChange={(event) => setValue('notes', event.target.value)}
-              className="h-[150px] w-full resize-none rounded-lg border border-[#D3D3D3] px-4 py-3 text-sm outline-none focus:border-[#0658C2]"
-              placeholder="Enter any additional notes"
-            />
-          </label>
         </FormPanel>
 
-        {message && <p className="rounded-lg bg-[#FEE9E5] px-4 py-3 text-sm font-semibold text-[#F54A4A]">{message}</p>}
+        <OnboardErrorModal
+          open={errorModal.open}
+          title={errorModal.title}
+          errors={errorModal.errors}
+          onClose={() => setErrorModal((current) => ({ ...current, open: false }))}
+        />
 
         <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:justify-end">
           <button type="button" disabled={submitting} onClick={() => saveEmployee('draft')} className="h-12 rounded-xl border border-[#0658C2] px-8 text-base font-semibold text-[#0658C2] disabled:opacity-60">
@@ -1943,6 +2586,149 @@ function InfoCard({ title, icon: Icon, rows }: { title: string; icon: typeof Use
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function OnboardDocumentsSection({
+  documents,
+  notes,
+  onDocumentsChange,
+  onNotesChange,
+}: {
+  documents: OnboardDocument[];
+  notes: string;
+  onDocumentsChange: (documents: OnboardDocument[]) => void;
+  onNotesChange: (value: string) => void;
+}) {
+  const updateDocument = (id: string, patch: Partial<OnboardDocument>) => {
+    onDocumentsChange(
+      documents.map((doc) => (doc.id === id ? { ...doc, ...patch } : doc)),
+    );
+  };
+
+  const removeDocument = (id: string) => {
+    onDocumentsChange(documents.filter((doc) => doc.id !== id));
+  };
+
+  const addDocument = () => {
+    onDocumentsChange([...documents, createOnboardDocument()]);
+  };
+
+  const uploadedCount = getUploadedOnboardDocuments(documents).length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold">
+            Employee Documents <span className="text-[#F54A4A]">*</span>
+          </p>
+          <p className="text-xs text-[#676767]">
+            Add at least one document. JPG, PNG, WEBP or PDF — max 5MB each.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={addDocument}
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#0658C2] px-4 text-sm font-semibold text-white"
+        >
+          <Plus className="h-4 w-4" /> Add Document
+        </button>
+      </div>
+
+      {documents.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-[#D3D3D3] bg-[#FAFAFA] px-6 py-10 text-center">
+          <FileText className="mx-auto h-8 w-8 text-[#0658C2]" />
+          <p className="mt-3 text-sm font-semibold">No documents added yet</p>
+          <p className="mt-1 text-xs text-[#676767]">
+            Click &quot;Add Document&quot; to upload Aadhaar, PAN, or other files.
+          </p>
+          <button
+            type="button"
+            onClick={addDocument}
+            className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg border border-[#0658C2] px-4 text-sm font-semibold text-[#0658C2]"
+          >
+            <Plus className="h-4 w-4" /> Add Document
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {documents.map((doc, index) => (
+            <div
+              key={doc.id}
+              className="rounded-xl border border-[#D3D3D3] bg-[#FAFAFA] p-4"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">Document {index + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => removeDocument(doc.id)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#F54A4A]"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove
+                </button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-semibold">
+                    Document Type <span className="text-[#F54A4A]">*</span>
+                  </span>
+                  <select
+                    value={doc.documentType}
+                    onChange={(event) => updateDocument(doc.id, { documentType: event.target.value })}
+                    className="h-11 w-full rounded-lg border border-[#D3D3D3] bg-white px-4 text-sm outline-none focus:border-[#0658C2]"
+                  >
+                    <option value="">Select type</option>
+                    {ONBOARD_DOCUMENT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Field
+                  label="Document Number"
+                  placeholder="Optional ID / number"
+                  value={doc.documentNumber}
+                  onChange={(value) => updateDocument(doc.id, { documentNumber: value })}
+                />
+              </div>
+
+              <div className="mt-4">
+                <DocumentUploadField
+                  label="Upload File"
+                  required
+                  hint="JPG, PNG, WEBP or PDF"
+                  fileKey={doc.fileKey}
+                  fileName={doc.fileName}
+                  onUploaded={(fileKey, name) =>
+                    updateDocument(doc.id, { fileKey, fileName: name })
+                  }
+                  onClear={() => updateDocument(doc.id, { fileKey: '', fileName: '' })}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {uploadedCount > 0 && (
+        <p className="text-xs font-medium text-[#0658C2]">
+          {uploadedCount} document{uploadedCount === 1 ? '' : 's'} ready to save
+        </p>
+      )}
+
+      <label className="block border-t border-[#ECECEC] pt-5">
+        <span className="mb-2 block text-sm font-semibold">Notes (Optional)</span>
+        <textarea
+          value={notes}
+          onChange={(event) => onNotesChange(event.target.value)}
+          className="h-[120px] w-full resize-none rounded-lg border border-[#D3D3D3] px-4 py-3 text-sm outline-none focus:border-[#0658C2]"
+          placeholder="Enter any additional notes"
+        />
+      </label>
     </div>
   );
 }
@@ -2125,15 +2911,81 @@ function PaymentOption({ label, active, onClick }: { label: string; active: bool
 type UploadBoxProps = {
   label?: string;
   required?: boolean;
+  hint?: string;
   onFileSelect?: (file: File) => void;
   fileName?: string;
+  disabled?: boolean;
 };
+
+function DocumentUploadField({
+  label,
+  required,
+  hint,
+  fileKey,
+  fileName,
+  onUploaded,
+  onClear,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  fileKey: string;
+  fileName: string;
+  onUploaded: (fileKey: string, displayName: string) => void;
+  onClear: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFileSelect = async (file: File) => {
+    setUploading(true);
+    setError('');
+    try {
+      const result = await uploadEmployeeDocument(file);
+      onUploaded(result.fileKey, result.fileName);
+    } catch (err) {
+      setError((err as Error).message || 'Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const displayName = fileName || (fileKey ? displayNameFromFileKey(fileKey) : '');
+
+  return (
+    <div>
+      <UploadBox
+        label={label}
+        required={required}
+        hint={hint}
+        fileName={uploading ? 'Uploading…' : displayName || undefined}
+        disabled={uploading}
+        onFileSelect={(file) => void handleFileSelect(file)}
+      />
+      {fileKey && !uploading && (
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-[#D3D3D3] bg-[#F9FAFF] px-3 py-2 text-sm">
+          <span className="truncate text-[#0658C2]">{displayName || 'Document uploaded'}</span>
+          <button
+            type="button"
+            onClick={onClear}
+            className="shrink-0 text-xs font-semibold text-[#676767] hover:text-[#F54A4A]"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}
 
 function UploadBox({
   label,
   required,
+  hint,
   onFileSelect,
   fileName,
+  disabled,
 }: UploadBoxProps) {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -2143,10 +2995,11 @@ function UploadBox({
     if (!file) return;
 
     onFileSelect?.(file);
+    e.target.value = '';
   };
 
   return (
-    <label className="block cursor-pointer">
+    <label className={`block ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
       {label && (
         <span className="mb-2 block text-sm font-semibold">
           {label}
@@ -2164,14 +3017,15 @@ function UploadBox({
         </p>
 
         <p className="text-xs text-[#676767]">
-          {fileName || 'PDF, JPG, PNG (Max 5MB)'}
+          {fileName || hint || 'JPG, PNG, WEBP or PDF (max 5MB)'}
         </p>
       </div>
 
       <input
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
+        accept=".pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,application/pdf"
         className="hidden"
+        disabled={disabled}
         onChange={handleChange}
       />
     </label>
@@ -2179,28 +3033,61 @@ function UploadBox({
 }
 
 function UploadModal({
+  employmentId,
+  documentType: initialDocumentType,
+  documentNumber: initialDocumentNumber,
   onClose,
+  onSuccess,
 }: {
+  employmentId: string;
+  documentType: string;
+  documentNumber?: string;
   onClose: () => void;
+  onSuccess: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [documentType, setDocumentType] = useState(initialDocumentType);
+  const [documentNumber, setDocumentNumber] = useState(initialDocumentNumber ?? '');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
+    setError('');
 
-    if (selectedFile.type.startsWith("image/")) {
-      setPreviewUrl(
-        URL.createObjectURL(selectedFile)
-      );
+    if (selectedFile.type.startsWith('image/')) {
+      setPreviewUrl(URL.createObjectURL(selectedFile));
     } else {
-      setPreviewUrl("");
+      setPreviewUrl('');
     }
   };
 
   const removeFile = () => {
     setFile(null);
-    setPreviewUrl("");
+    setPreviewUrl('');
+  };
+
+  const handleSubmit = async () => {
+    if (!file || !documentType.trim()) return;
+    setUploading(true);
+    setError('');
+    try {
+      const uploaded = await uploadEmployeeDocument(file);
+      await addEmployeeDocument(employmentId, {
+        document_type: documentType.trim(),
+        ...(documentNumber.trim() ? { document_number: documentNumber.trim() } : {}),
+        file_key: uploaded.fileKey,
+        file_name: uploaded.fileName,
+        ...(expiryDate.trim() ? { expiry_date: expiryDate.trim() } : {}),
+      });
+      onSuccess();
+    } catch (err) {
+      setError((err as Error).message || 'Could not save document');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -2215,9 +3102,45 @@ function UploadModal({
             </button>
           </div>
           <div className="max-h-[450px] 2xl:max-h-full overflow-y-auto">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="mb-2 block text-sm font-semibold">
+                Document Type <span className="text-[#F54A4A]">*</span>
+              </span>
+              <input
+                value={documentType}
+                onChange={(event) => setDocumentType(event.target.value)}
+                className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
+                placeholder="e.g. Education Certificate"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Document Number</span>
+              <input
+                value={documentNumber}
+                onChange={(event) => setDocumentNumber(event.target.value)}
+                className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
+                placeholder="Optional"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold">Expiry Date</span>
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(event) => setExpiryDate(event.target.value)}
+                className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
+              />
+            </label>
+          </div>
 
-          <div>
-            <UploadBox onFileSelect={handleFileSelect} />
+          <div className="mt-4">
+            <UploadBox
+              hint="JPG, PNG, WEBP or PDF (max 5MB)"
+              onFileSelect={handleFileSelect}
+              disabled={uploading}
+              fileName={file?.name}
+            />
           </div>
 
           {file && (
@@ -2261,19 +3184,25 @@ function UploadModal({
             </>
           )}
 
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
           <div className="mt-[16px] flex justify-end gap-4">
             <button
+              type="button"
               onClick={onClose}
-              className="h-12 rounded-xl border border-[#0658C2] px-8 font-semibold text-[#0658C2] cursor-pointer"
+              disabled={uploading}
+              className="h-12 rounded-xl border border-[#0658C2] px-8 font-semibold text-[#0658C2] cursor-pointer disabled:opacity-50"
             >
               Cancel
             </button>
 
             <button
-              disabled={!file}
+              type="button"
+              disabled={!file || !documentType.trim() || uploading}
+              onClick={() => void handleSubmit()}
               className="h-12 rounded-xl bg-[#0658C2] px-8 font-semibold text-white disabled:opacity-50 cursor-pointer"
             >
-              Upload Document
+              {uploading ? 'Uploading…' : 'Upload Document'}
             </button>
           </div>
           </div>

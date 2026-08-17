@@ -1,0 +1,123 @@
+// =============================================================================
+// COMPANY SETTINGS — one-row-per-company configuration
+// =============================================================================
+// PayrollSettings     → pay cycle / cutoff
+// StatutorySettings   → PF / ESIC / PT rates
+// PaymentSettings     → disbursement methods
+// CompanyWorkSchedule → which weekdays work + day length rules
+// OvertimeSettings    → OT multipliers, holiday/week-off OT flags
+// =============================================================================
+/// Pay cycle — one row per company (Payroll Settings UI)
+model PayrollSettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  pay_frequency         String  @default("monthly") @db.VarChar
+  pay_day               String  @default("last_working_day") @db.VarChar
+  payroll_cutoff_day    Int     @default(28)
+  financial_year_start  String  @default("april") @db.VarChar
+  lock_after_processing Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("payroll_settings")
+}
+
+/// Statutory deduction rates — one row per company
+model StatutorySettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  employee_pf_rate   Decimal @default(12.00) @db.Decimal(5, 2)
+  employer_pf_rate   Decimal @default(12.00) @db.Decimal(5, 2)
+  employee_esic_rate Decimal @default(0.75) @db.Decimal(5, 2)
+  employer_esic_rate Decimal @default(3.25) @db.Decimal(5, 2)
+  professional_tax   Decimal @default(200.00) @db.Decimal(10, 2)
+  labour_welfare_fund Decimal @default(6.00) @db.Decimal(10, 2)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("statutory_settings")
+}
+
+/// Disbursement preferences — one row per company
+model PaymentSettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  default_disbursement_method String  @default("NEFT") @db.VarChar
+  allow_bank_transfer         Boolean @default(true)
+  allow_upi                   Boolean @default(true)
+  allow_cash                  Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("payment_settings")
+}
+
+/// Normal working week + day-length rules — one row per company
+model CompanyWorkSchedule {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  monday_working    Boolean @default(true)
+  tuesday_working   Boolean @default(true)
+  wednesday_working Boolean @default(true)
+  thursday_working  Boolean @default(true)
+  friday_working    Boolean @default(true)
+  saturday_working  Boolean @default(true)
+  sunday_working    Boolean @default(false)
+
+  daily_work_hours  Decimal @default(8.00) @db.Decimal(4, 2)
+  weekly_work_hours Decimal @default(48.00) @db.Decimal(5, 2)
+
+  half_day_percentage   Decimal @default(50.00) @db.Decimal(5, 2)
+  absent_deduction_type String  @default("per_day_rate") @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("company_work_schedules")
+}
+
+/// OT calculation rules — one row per company
+model OvertimeSettings {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @unique @db.Uuid
+
+  enabled Boolean @default(true)
+
+  ot_after_hours_per_day  Decimal @default(8.00) @db.Decimal(4, 2)
+  ot_after_hours_per_week Decimal @default(48.00) @db.Decimal(5, 2)
+
+  rate_multiplier      Decimal @default(2.00) @db.Decimal(5, 2)
+  max_ot_hours_per_day Decimal @default(4.00) @db.Decimal(4, 2)
+
+  include_holiday_ot Boolean @default(true)
+  include_weekoff_ot Boolean @default(true)
+  approval_required  Boolean @default(true)
+  auto_calculate_ot  Boolean @default(true)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@map("overtime_settings")
+}

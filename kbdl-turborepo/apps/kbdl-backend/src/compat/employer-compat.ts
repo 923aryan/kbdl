@@ -100,7 +100,7 @@ const ownerMemberInclude = {
 
 export const getOwnerMember = async (
   companyId: string,
-): Promise<(CompanyMember & { user: User }) | null> => {
+): Promise<(CompanyMember & { user: User | null }) | null> => {
   return prisma.companyMember.findFirst({
     where: {
       company_id: companyId,

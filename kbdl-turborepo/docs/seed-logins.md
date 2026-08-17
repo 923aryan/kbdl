@@ -61,7 +61,19 @@ These are `CompanyMember`s with roles via `role_id` (not platform admin).
 
 ## Re-seed
 
+Ensure `kbdl-turborepo/.env` has **`DATABASE_URL`** (or `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`).
+
 ```powershell
 cd kbdl-turborepo
+
+# Apply migrations + generate client + seed (keeps schema, replaces demo data)
+pnpm --filter @repo/db run migrate:deploy
+pnpm --filter @repo/db run generate
+pnpm --filter @repo/db run seed
+
+# Or seed only (clears + re-inserts demo rows)
 pnpm db:seed
+
+# Dev only — wipes ALL tables then seeds
+pnpm --filter @repo/db run db:reset-seed
 ```

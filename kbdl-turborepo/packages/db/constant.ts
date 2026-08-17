@@ -26,11 +26,12 @@ export const ShiftApplicationType = {
 } as const;
 export type ShiftApplicationType = (typeof ShiftApplicationType)[keyof typeof ShiftApplicationType];
 
-export const EmploymentStatus = {
-  active: 'active',
-  inactive: 'inactive',
+/** Why an employment stint ended (only when is_active=false). */
+export const SeparationReason = {
   terminated: 'terminated',
   resigned: 'resigned',
+  absconded: 'absconded',
+  inactive: 'inactive',
 } as const;
 
-export type EmploymentStatus = (typeof EmploymentStatus)[keyof typeof EmploymentStatus];
+export type SeparationReason = (typeof SeparationReason)[keyof typeof SeparationReason];

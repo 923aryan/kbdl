@@ -1,0 +1,130 @@
+// =============================================================================
+// ATTENDANCE / HR SHIFTS — employer timekeeping (distinct from marketplace Shift)
+// =============================================================================
+// WorkShift       → reusable templates (General / Morning / Night)
+// EmployeeShift   → which template is assigned to a member (effective-dated)
+// Attendance      → one row per (member + date + work_shift); status + OT
+// CompanyHoliday  → company calendar; bulk holiday mark writes attendance too
+// =============================================================================
+/// HR shift templates (General / Morning / Night…). Distinct from marketplace `shifts`.
+model WorkShift {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  name          String @db.VarChar
+  /// Time-of-day only (HH:mm)
+  start_time    DateTime @db.Time
+  end_time      DateTime @db.Time
+  break_minutes Int      @default(60)
+  is_active     Boolean  @default(true)
+  sort_order    Int      @default(0)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company         Company         @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  employee_shifts EmployeeShift[]
+  attendances     Attendance[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@map("work_shifts")
+}
+
+/// Which template an employee is on (effective-dated)
+model EmployeeShift {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id        String @db.Uuid
+  company_member_id String @db.Uuid
+  work_shift_id     String @db.Uuid
+
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company        Company       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  company_member CompanyMember @relation(fields: [company_member_id], references: [id], onDelete: Cascade)
+  work_shift     WorkShift     @relation(fields: [work_shift_id], references: [id], onDelete: Restrict)
+
+  @@index([company_id])
+  @@index([company_member_id])
+  @@index([work_shift_id])
+  @@index([company_member_id, effective_from])
+  @@map("employee_shifts")
+}
+
+/// Daily attendance / OT — unique on (member + date + work_shift).
+/// Status values: present | absent | half_day | leave | holiday | week_off | on_duty
+model Attendance {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id        String @db.Uuid
+  company_member_id String @db.Uuid
+  /// Actual shift worked that day (may differ from assigned → shift_mismatch)
+  work_shift_id     String @db.Uuid
+
+  /// Calendar day (UTC date, no time)
+  date DateTime @db.Date
+
+  check_in  DateTime? @db.Timestamptz()
+  check_out DateTime? @db.Timestamptz()
+
+  /// Net worked minutes after breaks (0 for holiday / week_off / absent / leave)
+  worked_minutes Int @default(0)
+  ot_minutes     Int @default(0)
+
+  lunch_break_minutes Int @default(0)
+  tea_break_minutes   Int @default(0)
+
+  /// HR-approved OT flag (not auto from hours alone unless OT settings say so)
+  is_ot          Boolean @default(false)
+  ot_reason      String? @db.VarChar
+  /// True when work_shift_id ≠ currently assigned EmployeeShift template
+  shift_mismatch Boolean @default(false)
+
+  status AttendanceStatus @default(present)
+  source AttendanceSource @default(hr_manual)
+
+  marked_by_company_member_id String? @db.Uuid
+  /// Free-text notes; bulk holiday stores holiday name here
+  notes                       String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company        Company       @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  company_member CompanyMember @relation("MemberAttendance", fields: [company_member_id], references: [id], onDelete: Cascade)
+  work_shift     WorkShift     @relation(fields: [work_shift_id], references: [id], onDelete: Restrict)
+  marked_by      CompanyMember? @relation("AttendanceMarkedBy", fields: [marked_by_company_member_id], references: [id], onDelete: SetNull)
+
+  @@unique([company_member_id, date, work_shift_id])
+  @@index([company_id])
+  @@index([company_id, date])
+  @@index([company_member_id])
+  @@index([status])
+  @@map("attendances")
+}
+
+/// Company holiday calendar (for holiday OT + attendance status)
+model CompanyHoliday {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  date        DateTime @db.Date
+  name        String   @db.VarChar
+  is_optional Boolean  @default(false)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([company_id, date])
+  @@index([company_id])
+  @@map("company_holidays")
+}

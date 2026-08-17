@@ -1,0 +1,63 @@
+// =============================================================================
+// IDENTITY — app User (auth + marketplace profile)
+// =============================================================================
+// One login identity for workers/employers who use the mobile/web apps.
+// Field workers onboarded only in HR may exist only as WorkforcePerson until they
+// register and link via phone OTP (see models/09-hrms.prisma).
+// =============================================================================
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  name        String? @db.VarChar
+  karigari_id String? @db.VarChar
+
+  phone_no String  @unique @db.VarChar
+  email    String? @unique @db.VarChar
+
+  password_hash String? @db.VarChar
+
+  default_address String?  @db.VarChar
+  skills          String[]
+  experience      Int?
+  city            String?  @db.VarChar
+  area            String?  @db.VarChar
+  preferences     Json?    @default("{}")
+
+  // PostGIS geography type
+  location Unsupported("geography(Point, 4326)")?
+
+  rating_avg         Decimal? @db.Decimal(3, 2)
+  rating_count       Int?
+  verification_level Int?
+  extra_shift        Boolean  @default(true)
+
+  refresh_token String? @db.VarChar
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  // Relations
+  companyMemberships CompanyMember[]
+
+  original_shifts    Shift[] @relation("OriginalEmployeeShift")
+  replacement_shifts Shift[] @relation("ReplacementEmployeeShift")
+
+  jobApplications   JobApplication[]
+  shiftApplications ShiftApplication[]
+
+  workforce_person WorkforcePerson?
+
+  subscriptions Subscriptions[]
+  transactions  Transaction[]
+  orders        Order[]
+
+  ratings_given    Rating[] @relation("UserGivenRatings")
+  ratings_received Rating[] @relation("UserReceivedRatings")
+
+  pushTokens              PushToken[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference?
+
+  @@map("users")
+}

@@ -39,15 +39,14 @@ export const OTP_ROLES = {
   EMPLOYER_LOGIN: 'EMPLOYER_LOGIN',
 } as const;
 
-export const EmploymentStatus = {
-  pending: 'pending',
-  active: 'active',
-  inactive: 'inactive',
+export const SeparationReason = {
   terminated: 'terminated',
   resigned: 'resigned',
+  absconded: 'absconded',
+  inactive: 'inactive',
 } as const;
 
-export type EmploymentStatus = (typeof EmploymentStatus)[keyof typeof EmploymentStatus];
+export type SeparationReason = (typeof SeparationReason)[keyof typeof SeparationReason];
 
 export const NotificationTypes = {
   shiftSwapRequest: 'shift_swap_request',
