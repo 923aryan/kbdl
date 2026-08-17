@@ -41,6 +41,47 @@ function monthLabel(month: string) {
   });
 }
 
+function parseDate(date: string) {
+  return new Date(`${date}T00:00:00`);
+}
+
+function formatAxisDate(date: string) {
+  return parseDate(date).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+function formatTooltipDate(date: string, day?: string) {
+  const dateLabel = parseDate(date).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return day ? `${day}, ${dateLabel}` : dateLabel;
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value)}%`;
+}
+
+function titleCase(value: string) {
+  return value.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+type TrendChartPoint = {
+  date: string;
+  day: string;
+  present: number;
+  late: number;
+  absent: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  roster: number;
+};
+
 export function AttendanceAnalyticsScreen() {
   const [month, setMonth] = useState(currentUtcMonth);
   const range = useMemo(() => ({ month }), [month]);
@@ -49,15 +90,27 @@ export function AttendanceAnalyticsScreen() {
   const trendChart = useMemo(
     () =>
       (trend.data?.points ?? []).map((p) => ({
+        date: p.date,
         day: p.day,
         present: p.present_pct,
         late: p.late_pct,
         absent: p.absent_pct,
+        presentCount: p.present,
+        lateCount: p.late,
+        absentCount: p.absent,
+        roster: p.roster,
       })),
     [trend.data],
   );
 
-  const punchChart = useMemo(() => trend.data?.punch_summary ?? [], [trend.data]);
+  const punchChart = useMemo(
+    () =>
+      (trend.data?.punch_summary ?? []).map((p) => ({
+        ...p,
+        dateLabel: formatAxisDate(p.date),
+      })),
+    [trend.data],
+  );
 
   return (
     <div className="min-h-screen bg-[#F6F7F9] text-[#111827]">
@@ -140,16 +193,65 @@ export function AttendanceAnalyticsScreen() {
             state={trend}
             onRetry={refreshSection}
           >
-            <ResponsiveContainer width="100%" height={230}>
-              <LineChart data={trendChart} margin={{ top: 10, right: 16, left: -18, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={trendChart} margin={{ top: 12, right: 18, left: 0, bottom: 16 }}>
                 <CartesianGrid stroke="#E8ECF4" strokeDasharray="4 4" vertical={false} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9AA3B5', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9AA3B5', fontSize: 12 }} />
-                <Tooltip />
-                <Legend align="right" verticalAlign="top" iconType="circle" />
-                <Line type="monotone" dataKey="present" stroke="#2563EB" strokeWidth={3} dot={{ r: 3 }} name="Present %" />
-                <Line type="monotone" dataKey="late" stroke="#FFA000" strokeWidth={3} dot={{ r: 3 }} name="Late %" />
-                <Line type="monotone" dataKey="absent" stroke="#F54A4A" strokeWidth={3} dot={{ r: 3 }} name="Absent %" />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#6B7280', fontSize: 12, fontWeight: 600 }}
+                  tickFormatter={formatAxisDate}
+                  minTickGap={18}
+                  interval="preserveStartEnd"
+                  height={38}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#9AA3B5', fontSize: 12 }}
+                  tickFormatter={formatPercent}
+                  domain={[0, 100]}
+                  ticks={[0, 25, 50, 75, 100]}
+                  width={44}
+                />
+                <Tooltip
+                  content={<TrendTooltip />}
+                  cursor={{ stroke: '#CBD5E1', strokeDasharray: '4 4' }}
+                />
+                <Legend
+                  align="right"
+                  verticalAlign="top"
+                  iconType="circle"
+                  wrapperStyle={{ paddingBottom: 12 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="present"
+                  stroke="#2563EB"
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2 }}
+                  name="Present"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="late"
+                  stroke="#F59E0B"
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2 }}
+                  name="Late"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="absent"
+                  stroke="#EF4444"
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={{ r: 5, strokeWidth: 2 }}
+                  name="Absent"
+                />
               </LineChart>
             </ResponsiveContainer>
           </ChartPanel>
@@ -183,7 +285,10 @@ export function AttendanceAnalyticsScreen() {
                 {(breakdown.data?.items ?? []).map((item) => (
                   <div key={item.status} className="flex items-center justify-between gap-3">
                     <span className="flex items-center gap-2 text-[#4B5563]">
-                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
                       {item.name}
                     </span>
                     <span className="font-semibold">{item.value}</span>
@@ -275,7 +380,14 @@ export function AttendanceAnalyticsScreen() {
           >
             <ResponsiveContainer width="100%" height={245}>
               <BarChart data={punchChart} margin={{ top: 18, right: 10, left: -24, bottom: 0 }}>
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#8B95AA', fontSize: 12 }} />
+                <XAxis
+                  dataKey="dateLabel"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#8B95AA', fontSize: 12 }}
+                  minTickGap={12}
+                  interval="preserveStartEnd"
+                />
                 <YAxis hide />
                 <Tooltip />
                 <Legend iconType="circle" />
@@ -305,7 +417,9 @@ function SectionShell<T>({
 }) {
   if (state.loading && !state.data) {
     return (
-      <div className={`flex items-center justify-center gap-2 py-10 text-sm text-[#676767] ${className ?? ''}`}>
+      <div
+        className={`flex items-center justify-center gap-2 py-10 text-sm text-[#676767] ${className ?? ''}`}
+      >
         <Loader2 className="h-4 w-4 animate-spin" /> Loading…
       </div>
     );
@@ -313,7 +427,9 @@ function SectionShell<T>({
 
   if (state.error && !state.data) {
     return (
-      <div className={`rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C] ${className ?? ''}`}>
+      <div
+        className={`rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C] ${className ?? ''}`}
+      >
         <p>{state.error}</p>
         <button
           type="button"
@@ -379,6 +495,66 @@ function MetricCard({
   );
 }
 
+type TrendTooltipPayload = {
+  dataKey?: string;
+  color?: string;
+  value?: number;
+  payload?: TrendChartPoint;
+};
+
+function TrendTooltip({
+  active,
+  label,
+  payload,
+}: {
+  active?: boolean;
+  label?: string;
+  payload?: TrendTooltipPayload[];
+}) {
+  if (!active || !payload?.length) return null;
+
+  const point = payload[0]?.payload;
+  if (!point) return null;
+
+  const countByKey: Record<string, number> = {
+    present: point.presentCount,
+    late: point.lateCount,
+    absent: point.absentCount,
+  };
+
+  return (
+    <div className="min-w-[190px] rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 shadow-lg">
+      <p className="text-sm font-bold text-[#1F2937]">
+        {formatTooltipDate(label ?? point.date, point.day)}
+      </p>
+      <p className="mt-0.5 text-xs font-semibold text-[#9AA3B5]">
+        {point.roster} rostered employees
+      </p>
+      <div className="mt-2 space-y-1.5">
+        {payload.map((entry) => {
+          const key = entry.dataKey ?? '';
+          const count = countByKey[key] ?? 0;
+
+          return (
+            <div key={key} className="flex items-center justify-between gap-4 text-xs">
+              <span className="flex items-center gap-2 font-semibold text-[#4B5563]">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                {titleCase(key)}
+              </span>
+              <span className="font-bold text-[#111827]">
+                {formatPercent(Number(entry.value ?? 0))} · {count}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ChartPanel<T>({
   title,
   subtitle,
@@ -411,7 +587,11 @@ function ChartPanel<T>({
             className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E7EB] px-2.5 text-xs font-semibold text-[#4B5563] hover:bg-[#F8FAFC] disabled:opacity-50"
             title="Refresh this section"
           >
-            {state.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {state.loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
             Refresh
           </button>
         )}
