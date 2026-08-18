@@ -44,6 +44,7 @@ const menuItems = [
     label: 'Leave',
     icon: UserCheck,
     subItems: [
+      { path: '/leave/types', label: 'Leave Types', icon: Settings },
       { path: '/leave/apply', label: 'Apply Leave', icon: Users },
       { path: '/leave/requests', label: 'Leaves Request', icon: Users },
     ],

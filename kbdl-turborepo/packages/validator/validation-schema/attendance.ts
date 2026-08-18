@@ -96,9 +96,10 @@ export const getAttendanceAnalyticsRangeSchema = z.object({
       if (q.from && q.to) return { from: q.from, to: q.to };
 
       if (q.month) {
-        const [y, m] = q.month.split('-').map(Number);
+        const year = Number(q.month.slice(0, 4));
+        const monthIndex = Number(q.month.slice(5, 7));
         const from = `${q.month}-01`;
-        const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+        const last = new Date(Date.UTC(year, monthIndex, 0)).getUTCDate();
         const to = `${q.month}-${String(last).padStart(2, '0')}`;
         return { from, to };
       }
@@ -111,6 +112,13 @@ export const getAttendanceAnalyticsRangeSchema = z.object({
       const to = `${y}-${String(m + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
       return { from, to };
     }),
+});
+
+export const getEmployeeAttendanceMonthSchema = z.object({
+  params: z.object({
+    employmentId: z.string().uuid(),
+  }),
+  query: getAttendanceAnalyticsRangeSchema.shape.query,
 });
 
 export const updateAttendanceSchema = z.object({

@@ -89,7 +89,10 @@ export function buildEmployeeProfileSections(
   const upiId = typeof pay.upi_id === 'string' ? pay.upi_id : '';
   const upiName = typeof pay.name === 'string' ? pay.name : '';
 
-  const salaryAmount = hr?.basic_salary ? String(hr.basic_salary) : '';
+  const salaryAmount =
+    hr?.basic_salary != null && String(hr.basic_salary).trim() !== ''
+      ? String(hr.basic_salary)
+      : '';
   const salaryLabel = salaryAmount
     ? `${salaryAmount} / ${formatSalaryType(hr?.salary_type)}`
     : '-';

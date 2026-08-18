@@ -49,6 +49,9 @@ model Company {
   employee_shifts  EmployeeShift[]
   attendances      Attendance[]
   holidays         CompanyHoliday[]
+  leave_policy     CompanyLeavePolicy?
+  leave_types      CompanyLeaveType[]
+  leave_requests   LeaveRequest[]
 
   @@index([company_name])
   @@map("companies")
@@ -217,6 +220,8 @@ model CompanyMember {
   employee_shifts        EmployeeShift[]
   attendances            Attendance[]     @relation("MemberAttendance")
   attendances_marked     Attendance[]     @relation("AttendanceMarkedBy")
+  leave_requests_applied LeaveRequest[]   @relation("LeaveAppliedBy")
+  leave_requests_decided LeaveRequest[]   @relation("LeaveDecidedBy")
 
   @@index([company_id])
   @@index([company_id, user_id])

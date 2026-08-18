@@ -33,7 +33,8 @@ import {
 } from '../hooks/use-attendance-analytics';
 
 function monthLabel(month: string) {
-  const [y, m] = month.split('-').map(Number);
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', {
     month: 'long',
     year: 'numeric',

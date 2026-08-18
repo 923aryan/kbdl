@@ -17,7 +17,7 @@
 // 08-subscriptions.prisma       Plans + subscriptions
 // 09-hrms.prisma                WorkforcePerson, employment, HR profile/docs
 // 10-payments.prisma            Transactions + orders
-// 11-platform.prisma            Admin, OTP, leads, notifications
+// 12-leave.prisma              Leave policy, types, employee requests
 //
 // FIELD CONVENTIONS
 // -----------------------------------------------------------------------------

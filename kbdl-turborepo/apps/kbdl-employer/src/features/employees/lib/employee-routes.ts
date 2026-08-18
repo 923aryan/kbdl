@@ -24,11 +24,21 @@ export function detailTabToSearchParam(tab: DetailTab): string {
   return TAB_TO_SLUG[tab] ?? 'personal';
 }
 
-export function employeeDetailPath(employmentId: string, tab: DetailTab = 'Personal Info'): string {
+export function employeeDetailPath(
+  employmentId: string,
+  tab: DetailTab = 'Personal Info',
+  extra?: { month?: string },
+): string {
   const slug = detailTabToSearchParam(tab);
-  return slug === 'personal'
-    ? `/employees/${employmentId}`
-    : `/employees/${employmentId}?tab=${slug}`;
+  const query = new URLSearchParams();
+  if (slug !== 'personal') query.set('tab', slug);
+  if (extra?.month) query.set('month', extra.month);
+  const qs = query.toString();
+  return qs ? `/employees/${employmentId}?${qs}` : `/employees/${employmentId}`;
+}
+
+export function employeeAttendancePath(employmentId: string, month?: string): string {
+  return employeeDetailPath(employmentId, 'Attendance', { month });
 }
 
 export const EMPLOYEE_LIST_PATH = '/employees';
