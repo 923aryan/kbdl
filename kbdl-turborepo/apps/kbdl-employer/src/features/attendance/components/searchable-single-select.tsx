@@ -143,7 +143,7 @@ export function SearchableSingleSelect({
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="cursor-pointer normal-case text-[#0658C2]"
+                  className="cursor-pointer normal-case text-[#0658C2] hidden"
                 >
                   Clear All
                 </button>

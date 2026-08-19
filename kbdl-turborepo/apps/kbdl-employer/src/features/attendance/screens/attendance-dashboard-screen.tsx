@@ -35,6 +35,7 @@ import {
   type DailyAttendanceFacets,
 } from '../api';
 import { fetchWorkShiftsMeta, type MetaWorkShift } from '@/features/employees/api';
+import { SelectField } from '../components/async-single-select';
 
 const ROWS_PER_PAGE = 10;
 
@@ -874,20 +875,7 @@ function UpdateAttendanceModal({
         )}
 
         <div className="grid gap-4">
-          <Field label="Actual Shift">
-            <select
-              value={workShiftId}
-              onChange={(e) => setWorkShiftId(e.target.value)}
-              className="h-11 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm outline-none focus:border-[#0658C2]"
-            >
-              <option value="">— Select shift —</option>
-              {workShifts.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} ({s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)})
-                </option>
-              ))}
-            </select>
-          </Field>
+          <SelectField label="Actual Shift" placeholder="— Select shift —" options={workShifts.map((s) => ({ value: s.id, label: `${s.name} (${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)})` }))} value={workShiftId} onChange={(value) => setWorkShiftId(value)} />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Check-in">
@@ -907,13 +895,7 @@ function UpdateAttendanceModal({
             </Field>
           </div>
 
-          <Field label="Status">
-            <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-11 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm outline-none focus:border-[#0658C2]">
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </Field>
+          <SelectField label="Status" placeholder="Select Status" options={STATUS_OPTIONS} value={status} onChange={(value) => setStatus(value)} />
 
           <div className="rounded-lg border border-[#E5E7EB] p-4">
             <label className="flex items-center gap-2 text-sm font-semibold">
