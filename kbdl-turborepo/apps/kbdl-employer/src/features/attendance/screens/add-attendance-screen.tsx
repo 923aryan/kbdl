@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { todayIsoDate, upsertAttendance } from '../api';
+import { SelectField } from '../components/async-single-select';
+import { SearchableSingleSelect } from '../components/searchable-single-select';
+
+import { z } from 'zod';
 
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Present' },
@@ -14,6 +18,46 @@ const STATUS_OPTIONS = [
   { value: 'leave', label: 'Leave' },
   { value: 'on_duty', label: 'On Duty' },
 ];
+
+const attendanceSchema = z
+  .object({
+    employmentId: z.string().min(1, 'Employee is required'),
+    workShiftId: z.string().min(1, 'Shift is required'),
+    date: z.string().min(1, 'Attendance date is required'),
+    status: z.string().min(1, 'Status is required'),
+    checkIn: z.string().optional(),
+    checkOut: z.string().optional(),
+    lunchBreakMinutes: z.coerce.number().min(0, 'Lunch break cannot be negative'),
+    teaBreakMinutes: z.coerce.number().min(0, 'Tea break cannot be negative'),
+    overtimeMinutes: z.coerce.number().min(0, 'OT minutes cannot be negative'),
+    overtimeReason: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Future attendance is not allowed
+    if (data.date) {
+      const selectedDate = new Date(`${data.date}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (selectedDate > today) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['date'],
+          message: 'Attendance cannot be marked for a future date',
+        });
+      }
+    }
+    // Check-out cannot be before or equal to check-in
+    if (data.checkIn && data.checkOut) {
+      if (data.checkOut <= data.checkIn) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['checkOut'],
+          message: 'Check-out must be after check-in',
+        });
+      }
+    }
+  });
 
 export function AddAttendanceScreen() {
   const router = useRouter();
@@ -38,6 +82,7 @@ export function AddAttendanceScreen() {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     void Promise.all([
@@ -67,6 +112,35 @@ export function AddAttendanceScreen() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    const result = attendanceSchema.safeParse({
+      employmentId,
+      workShiftId,
+      date,
+      status,
+      checkIn,
+      checkOut,
+      lunchBreakMinutes: lunchBreak,
+      teaBreakMinutes: teaBreak,
+      overtimeMinutes: isOt ? otMinutes : '0',
+      overtimeReason: isOt ? otReason : '',
+      notes,
+    });
+
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+
+      result.error.issues.forEach((issue) => {
+        const field = issue.path[0];
+
+        if (typeof field === 'string') {
+          fieldErrors[field] = issue.message;
+        }
+      });
+
+      setErrors(fieldErrors);
+      return;
+    }
+    setErrors({});
     if (!employmentId) {
       setError('Please select an employee');
       return;
@@ -137,62 +211,23 @@ export function AddAttendanceScreen() {
             </h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <Field label="Employee" required>
-                <select
-                  value={employmentId}
-                  onChange={(e) => setEmploymentId(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
-                  required
-                  disabled={isSecondShift}
-                >
-                  <option value="">Select employee</option>
-                  {employees.map((e) => (
-                    <option key={e.employment_id} value={e.employment_id}>
-                      {e.name} ({e.phone_no})
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <SearchableSingleSelect label="Employee" required placeholder="Select Employee" options={employees.map((e) => ({ value: e.employment_id, label: `${e.name} (${e.phone_no})` }))} value={employmentId} onChange={(value) => setEmploymentId(value)} error={errors.employmentId} disabled={isSecondShift} />
 
               <Field label="Date" required>
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
-                  required
-                />
+                  className={`h-11 w-full rounded-lg border px-4 text-sm outline-none ${
+                    errors.date ? 'border-[#F54A4A]' : 'border-[#D3D3D3] focus:border-[#0658C2]'
+                  }`}
+                  required />
+                  {errors.date && <span className="mt-1 block text-xs font-medium text-[#F54A4A]">{errors.date}</span>}
               </Field>
 
-              <Field label="Shift" required>
-                <select
-                  value={workShiftId}
-                  onChange={(e) => setWorkShiftId(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
-                  required
-                >
-                  <option value="">Select shift</option>
-                  {workShifts.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} ({s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)})
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <SelectField label="Shift" required placeholder="Select Shift" options={workShifts.map((s) => ({ value: s.id, label: `${s.name} (${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)})` }))} value={workShiftId} onChange={(value) => setWorkShiftId(value)} error={errors.workShiftId} />
 
-              <Field label="Status" required>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
-                >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <SelectField label="Status" required placeholder="Select Status" options={STATUS_OPTIONS} value={status} onChange={(value) => setStatus(value)} error={!status ? "Status is required" : undefined} />
 
               <Field label="Check-in">
                 <input
@@ -207,8 +242,13 @@ export function AddAttendanceScreen() {
                   type="time"
                   value={checkOut}
                   onChange={(e) => setCheckOut(e.target.value)}
-                  className="h-11 w-full rounded-lg border border-[#D3D3D3] px-4 text-sm outline-none focus:border-[#0658C2]"
+                  className={`h-11 w-full rounded-lg border px-4 text-sm outline-none ${errors.checkOut ? 'border-[#F54A4A]' : 'border-[#D3D3D3] focus:border-[#0658C2]'}`}
                 />
+                {errors.checkOut && (
+                  <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
+                    {errors.checkOut}
+                  </span>
+                )}
               </Field>
 
               <Field label="Lunch break (min)">
@@ -231,7 +271,7 @@ export function AddAttendanceScreen() {
               </Field>
             </div>
 
-            <div className="mt-5 rounded-lg border border-[#E5E7EB] p-4">
+            <div className="my-5 rounded-lg border border-[#E5E7EB] p-4">
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" checked={isOt} onChange={(e) => setIsOt(e.target.checked)} />
                 Mark as overtime (HR decision — typical for 2nd shift)
@@ -264,18 +304,18 @@ export function AddAttendanceScreen() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="e.g. worked day shift and night shift"
-                className="mt-5 h-24 w-full resize-none rounded-lg border border-[#D3D3D3] px-4 py-3 text-sm outline-none focus:border-[#0658C2]"
+                className="h-24 w-full resize-none rounded-lg border border-[#D3D3D3] px-4 py-3 text-sm outline-none focus:border-[#0658C2]"
               />
             </Field>
 
             <div className="mt-6 flex justify-end gap-4">
-              <Link href={`/attendance?date=${date}`} className="flex h-12 items-center rounded-xl border border-[#0658C2] px-10 font-semibold">
+              <Link href={`/attendance?date=${date}`} className="flex h-12 items-center rounded-xl border border-[#0658C2] px-10 font-semibold transition-all duration-200 hover:bg-[#F0F6FF] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60">
                 Cancel
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#0658C2] px-10 font-semibold text-white disabled:opacity-60"
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#0658C2] px-10 font-semibold text-white disabled:opacity-60 cursor-pointer transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Attendance

@@ -1,8 +1,17 @@
 'use client';
 
 import {
-  Bar,
-  BarChart,
+  Calendar,
+  Check,
+  ChevronDown,
+  Download,
+  Info,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  CartesianGrid,
   Cell,
   Legend,
   Line,
@@ -13,18 +22,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
 } from 'recharts';
-import {
-  Calendar,
-  Loader2,
-  RefreshCw,
-  Search,
-  TrendingUp,
-  UserRoundCheck,
-  UserRoundPen,
-} from 'lucide-react';
-import { useMemo, useState } from 'react';
 import {
   currentUtcMonth,
   useAttendanceAnalytics,
@@ -32,421 +30,1764 @@ import {
   type SectionState,
 } from '../hooks/use-attendance-analytics';
 
-function monthLabel(month: string) {
-  const y = Number(month.slice(0, 4));
-  const m = Number(month.slice(5, 7));
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', {
+function parseDate(date: string) {
+  return new Date(`${date}T00:00:00`);
+}
+
+function formatDateRange(from: Date, to: Date) {
+  const start = from.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const end = to.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  return `${start} - ${end}`;
+}
+
+function formatYmd(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatMonthValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatMonthLabel(month: string) {
+  const { from } = getMonthBounds(month);
+
+  return from.toLocaleDateString('en-GB', {
     month: 'long',
     year: 'numeric',
-    timeZone: 'UTC',
   });
 }
 
+function getMonthOptions(count = 24) {
+  const current = new Date();
+
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(
+      current.getFullYear(),
+      current.getMonth() - index,
+      1,
+    );
+
+    return formatMonthValue(date);
+  });
+}
+
+function getMonthBounds(month: string) {
+  const [rawYear, rawMonth] = month.split('-').map(Number);
+
+  const today = new Date();
+
+  const year = Number.isFinite(rawYear)
+    ? rawYear
+    : today.getFullYear();
+
+  const monthNumber = Number.isFinite(rawMonth)
+    ? rawMonth
+    : today.getMonth() + 1;
+
+  return {
+    from: new Date(year, monthNumber - 1, 1),
+    to: new Date(year, monthNumber, 0),
+  };
+}
+
+function getAnalyticsBounds(month: string) {
+  const bounds = getMonthBounds(month);
+  const today = new Date();
+  const currentMonth = formatMonthValue(today);
+
+  return {
+    from: bounds.from,
+    to:
+      month === currentMonth && today < bounds.to
+        ? today
+        : bounds.to,
+  };
+}
+
+function getWeeksForRange(from: Date, to: Date) {
+  const weeks: Array<{
+    label: string;
+    from: Date;
+    to: Date;
+  }> = [];
+
+  let cursor = new Date(from);
+  let index = 1;
+
+  while (cursor <= to) {
+    const weekStart = new Date(cursor);
+
+    const weekEnd = new Date(cursor);
+    weekEnd.setDate(weekStart.getDate() + 6);
+
+    if (weekEnd > to) {
+      weekEnd.setTime(to.getTime());
+    }
+
+    weeks.push({
+      label: `Week ${index}`,
+      from: weekStart,
+      to: weekEnd,
+    });
+
+    cursor = new Date(weekEnd);
+    cursor.setDate(cursor.getDate() + 1);
+
+    index += 1;
+  }
+
+  return weeks;
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value)}%`;
+}
+
+function titleCase(value: string) {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+type TrendChartPoint = {
+  date: string;
+  day: string;
+  dayName: string;
+  dateLabel: string;
+  present: number;
+  late: number;
+  absent: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  roster: number;
+};
+
+type DistributionItem = {
+  status: string;
+  name: string;
+  value: number;
+  color: string;
+  percent: number;
+};
+
+type IssueRow = {
+  id: string;
+  employee: string;
+  department: string;
+  absent: number;
+  late: number;
+  earlyLeaves: number;
+  absencesLabel: string;
+  lateLabel: string;
+  earlyLeavesLabel: string;
+  issueType: 'Absent' | 'Late' | 'Early Leave' | 'Absent + Late';
+  issueLevel: 'High' | 'Medium' | 'Low';
+};
+
+type IssueFilter =
+  | 'all'
+  | 'absent'
+  | 'late'
+  | 'early_leave';
+
 export function AttendanceAnalyticsScreen() {
   const [month, setMonth] = useState(currentUtcMonth);
-  const range = useMemo(() => ({ month }), [month]);
-  const { summary, trend, breakdown, insights, refreshSection } = useAttendanceAnalytics(range);
+
+  const [selectedWeek, setSelectedWeek] = useState(0);
+
+  const [monthDropdownOpen, setMonthDropdownOpen] =
+    useState(false);
+
+  const [weekDropdownOpen, setWeekDropdownOpen] =
+    useState(false);
+
+  const [issueFilter, setIssueFilter] =
+    useState<IssueFilter>('all');
+
+  const [issueDropdownOpen, setIssueDropdownOpen] =
+    useState(false);
+
+  const analyticsBounds = useMemo(
+    () => getAnalyticsBounds(month),
+    [month],
+  );
+
+  const range = useMemo(
+    () => ({
+      from: formatYmd(analyticsBounds.from),
+      to: formatYmd(analyticsBounds.to),
+    }),
+    [analyticsBounds],
+  );
+
+  const {
+    trend,
+    breakdown,
+    insights,
+    refreshSection,
+  } = useAttendanceAnalytics(range);
+
+  const weeks = useMemo(
+    () =>
+      getWeeksForRange(
+        analyticsBounds.from,
+        analyticsBounds.to,
+      ),
+    [analyticsBounds],
+  );
+
+  const activeWeek =
+    weeks[Math.min(selectedWeek, weeks.length - 1)] ??
+    weeks[0];
+
+  const maxMonth = useMemo(
+    () => formatMonthValue(new Date()),
+    [],
+  );
+
+  const monthOptions = useMemo(
+    () => getMonthOptions(),
+    [],
+  );
 
   const trendChart = useMemo(
     () =>
-      (trend.data?.points ?? []).map((p) => ({
-        day: p.day,
-        present: p.present_pct,
-        late: p.late_pct,
-        absent: p.absent_pct,
-      })),
+      (trend.data?.points ?? []).map((p) => {
+        const date = parseDate(p.date);
+
+        return {
+          date: p.date,
+          day: p.day.slice(0, 3),
+          dayName: p.day,
+          dateLabel: date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+          }),
+          present: p.present_pct,
+          late: p.late_pct,
+          absent: p.absent_pct,
+          presentCount: p.present,
+          lateCount: p.late,
+          absentCount: p.absent,
+          roster: p.roster,
+        };
+      }),
     [trend.data],
   );
 
-  const punchChart = useMemo(() => trend.data?.punch_summary ?? [], [trend.data]);
+  const weeklyTrend = useMemo(() => {
+    if (!activeWeek) return trendChart;
+
+    return trendChart.filter((point) => {
+      const date = parseDate(point.date);
+
+      return (
+        date >= activeWeek.from &&
+        date <= activeWeek.to
+      );
+    });
+  }, [activeWeek, trendChart]);
+
+  const distribution = useMemo<DistributionItem[]>(() => {
+    const valueByStatus = new Map(
+      (breakdown.data?.items ?? []).map((item) => [
+        item.status,
+        item,
+      ]),
+    );
+
+    const lateCount = trendChart.reduce(
+      (sum, point) => sum + point.lateCount,
+      0,
+    );
+
+    const rows = [
+      {
+        status: 'present',
+        name: 'Present',
+        value:
+          (valueByStatus.get('present')?.value ?? 0) +
+          (valueByStatus.get('on_duty')?.value ?? 0),
+        color: '#22C55E',
+      },
+      {
+        status: 'absent',
+        name: 'Absent',
+        value:
+          valueByStatus.get('absent')?.value ?? 0,
+        color: '#F59E0B',
+      },
+      {
+        status: 'late',
+        name: 'Late',
+        value: lateCount,
+        color: '#8B5CF6',
+      },
+      {
+        status: 'early_leave',
+        name: 'Early Leave',
+        value: 0,
+        color: '#F43F5E',
+      },
+      {
+        status: 'leave',
+        name: 'Leave',
+        value:
+          valueByStatus.get('leave')?.value ?? 0,
+        color: '#06B6D4',
+      },
+    ];
+
+    const total = rows.reduce(
+      (sum, item) => sum + item.value,
+      0,
+    );
+
+    return rows.map((item) => ({
+      ...item,
+      percent:
+        total > 0
+          ? (item.value / total) * 100
+          : 0,
+    }));
+  }, [breakdown.data, trendChart]);
+
+  const presentRate =
+    distribution.find(
+      (item) => item.status === 'present',
+    )?.percent ?? 0;
+
+  const issueRows = useMemo<IssueRow[]>(
+    () =>
+      (insights.data?.top_absentees ?? []).map((item) => {
+        const absent = Number(item.absences) || 0;
+        const late = Number(item.late) || 0;
+
+        const earlyLeaves = 0;
+
+        const score = absent * 2 + late;
+
+        return {
+          id: item.company_member_id,
+          employee: item.employee,
+          department: item.team || 'General',
+          absent,
+          late,
+          earlyLeaves,
+          absencesLabel: item.absences_label,
+          lateLabel: item.late_label,
+          earlyLeavesLabel: `${earlyLeaves} time${
+            earlyLeaves === 1 ? '' : 's'
+          }`,
+          issueType:
+            absent > 0 && late > 0
+              ? 'Absent + Late'
+              : absent > 0
+                ? 'Absent'
+                : 'Late',
+          issueLevel:
+            score >= 6
+              ? 'High'
+              : score >= 3
+                ? 'Medium'
+                : 'Low',
+        };
+      }),
+    [insights.data],
+  );
+
+  const filteredIssueRows = useMemo(() => {
+    if (issueFilter === 'absent') {
+      return issueRows.filter(
+        (row) => row.absent > 0,
+      );
+    }
+
+    if (issueFilter === 'late') {
+      return issueRows.filter(
+        (row) => row.late > 0,
+      );
+    }
+
+    if (issueFilter === 'early_leave') {
+      return issueRows.filter(
+        (row) => row.earlyLeaves > 0,
+      );
+    }
+
+    return issueRows;
+  }, [issueFilter, issueRows]);
+
+  const handleMonthChange = (value: string) => {
+    setMonth(
+      value > maxMonth
+        ? maxMonth
+        : value,
+    );
+
+    setSelectedWeek(0);
+    setMonthDropdownOpen(false);
+  };
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] text-[#111827]">
-      <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#D3D3D3] bg-white px-4 sm:px-6 lg:px-8">
-        <div className="relative hidden w-full max-w-[310px] sm:block">
-          <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black" />
-          <input
-            placeholder="Search anything..."
-            className="h-12 w-full rounded-lg bg-[#FAFAFA] pl-12 pr-4 text-sm outline-none"
+    <div className="min-h-screen bg-[#F7F8FB] px-3 py-4 text-[#111827] sm:px-5 lg:px-7">
+      {/* =========================================================
+          PAGE HEADER
+      ========================================================= */}
+
+      <header className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-[22px] font-bold leading-7 tracking-normal text-[#101828]">
+            Attendance Analytics
+          </h1>
+
+          <p className="mt-1 text-sm font-medium text-[#667085]">
+            Deep insights into attendance patterns and trends.
+          </p>
+        </div>
+
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <MonthSelect
+            month={month}
+            months={monthOptions}
+            activeRange={formatDateRange(
+              analyticsBounds.from,
+              analyticsBounds.to,
+            )}
+            open={monthDropdownOpen}
+            onOpenChange={setMonthDropdownOpen}
+            onChange={handleMonthChange}
           />
+
+          <button className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0B5FFF] px-5 text-sm font-semibold text-white shadow-sm hover:bg-[#084FD4] sm:w-auto">
+            <Download className="h-4 w-4" />
+            Export
+          </button>
         </div>
       </header>
 
-      <main className="space-y-6 p-5 lg:p-6">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <h1 className="text-[28px] font-bold tracking-normal">Reports & Analytics</h1>
-            <p className="mt-1 text-sm text-[#8B95AA]">
-              Attendance trends, department breakdowns and employee insights
-            </p>
-          </div>
-          <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-3 rounded-lg border border-[#E5E7EB] bg-white px-4 font-semibold text-[#4B5563] shadow-sm">
-            <Calendar className="h-4 w-4" />
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="cursor-pointer border-none bg-transparent outline-none"
-            />
-          </label>
-        </div>
+      <main className="grid gap-5">
+        {/* =========================================================
+            TREND + DISTRIBUTION
+        ========================================================= */}
 
-        <SectionShell
-          sectionKey="summary"
-          state={summary}
-          onRetry={refreshSection}
-          className="contents"
-        >
-          <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-            <MetricCard
-              title="Avg Attendance Rate"
-              value={`${summary.data?.attendance_rate ?? 0}%`}
-              note={
-                summary.data?.attendance_rate_delta == null
-                  ? monthLabel(month)
-                  : `${summary.data.attendance_rate_delta >= 0 ? '+' : ''}${summary.data.attendance_rate_delta}% vs prior period`
-              }
-              icon={TrendingUp}
-              tone="blue"
-            />
-            <MetricCard
-              title="Total Working Days"
-              value={`${summary.data?.working_days ?? 0} Days`}
-              note={`${summary.data?.active_headcount ?? 0} active employees`}
-              icon={Calendar}
-              tone="green"
-            />
-            <MetricCard
-              title="Total Overtime Hours"
-              value={`${summary.data?.ot_hours ?? 0} hrs`}
-              note={`${summary.data?.ot_marked_count ?? 0} OT marks`}
-              icon={UserRoundCheck}
-              tone="amber"
-            />
-            <MetricCard
-              title="Pending Marks"
-              value={`${summary.data?.pending_days ?? 0}`}
-              note={`${summary.data?.absent_days ?? 0} absences · ${summary.data?.leave_days ?? 0} leave`}
-              icon={UserRoundPen}
-              tone="violet"
-            />
-          </section>
-        </SectionShell>
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.95fr)_minmax(320px,1fr)]">
+          {/* =====================================================
+              WEEKLY ATTENDANCE TREND
+          ===================================================== */}
 
-        <section className="grid gap-5 xl:grid-cols-[2fr_0.86fr]">
-          <ChartPanel
-            title="Daily Attendance Trend"
-            subtitle={`Present vs Late vs Absent (%) — ${monthLabel(month)}`}
+          <Panel
+            title="Weekly Attendance Trend"
+            subtitle="Present vs Late vs Absent (%)"
             sectionKey="trend"
             state={trend}
             onRetry={refreshSection}
-          >
-            <ResponsiveContainer width="100%" height={230}>
-              <LineChart data={trendChart} margin={{ top: 10, right: 16, left: -18, bottom: 0 }}>
-                <CartesianGrid stroke="#E8ECF4" strokeDasharray="4 4" vertical={false} />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#9AA3B5', fontSize: 12 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9AA3B5', fontSize: 12 }} />
-                <Tooltip />
-                <Legend align="right" verticalAlign="top" iconType="circle" />
-                <Line type="monotone" dataKey="present" stroke="#2563EB" strokeWidth={3} dot={{ r: 3 }} name="Present %" />
-                <Line type="monotone" dataKey="late" stroke="#FFA000" strokeWidth={3} dot={{ r: 3 }} name="Late %" />
-                <Line type="monotone" dataKey="absent" stroke="#F54A4A" strokeWidth={3} dot={{ r: 3 }} name="Absent %" />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartPanel>
+            headerAction={
+              <div className="flex shrink-0 items-center gap-2">
+                <WeekSelect
+                  weeks={weeks}
+                  selectedWeek={selectedWeek}
+                  open={weekDropdownOpen}
+                  onOpenChange={setWeekDropdownOpen}
+                  onChange={setSelectedWeek}
+                />
 
-          <ChartPanel
-            title="Attendance Breakdown"
-            subtitle={`Distribution for ${monthLabel(month)}`}
+                <button
+                  type="button"
+                  disabled={trend.loading}
+                  onClick={() =>
+                    refreshSection('trend')
+                  }
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#667085] transition hover:bg-[#F8FAFC] disabled:opacity-50"
+                  title="Refresh attendance trend"
+                >
+                  {trend.loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            }
+          >
+            <div className="overflow-x-auto">
+              <div className="h-[235px]">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <LineChart
+                    data={weeklyTrend}
+                    margin={{
+                      top: 6,
+                      right: 14,
+                      left: -8,
+                      bottom: 6,
+                    }}
+                  >
+                    <CartesianGrid
+                      stroke="#E7ECF3"
+                      strokeDasharray="3 5"
+                      vertical={false}
+                    />
+
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      minTickGap={8}
+                      height={50}
+                      tick={<TrendAxisTick />}
+                    />
+
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{
+                        fill: '#98A2B3',
+                        fontSize: 12,
+                      }}
+                      tickFormatter={formatPercent}
+                      domain={[0, 100]}
+                      ticks={[
+                        0,
+                        25,
+                        50,
+                        75,
+                        100,
+                      ]}
+                      width={42}
+                    />
+
+                    <Tooltip
+                      content={<TrendTooltip />}
+                      cursor={{
+                        stroke: '#CBD5E1',
+                        strokeDasharray: '4 4',
+                      }}
+                    />
+
+                    <Legend
+                      align="right"
+                      verticalAlign="top"
+                      iconType="circle"
+                      wrapperStyle={{
+                        paddingBottom: 4,
+                        fontSize: 12,
+                      }}
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="present"
+                      stroke="#0B5FFF"
+                      strokeWidth={3.5}
+                      dot={{
+                        r: 3.5,
+                        strokeWidth: 2,
+                        fill: '#FFFFFF',
+                        stroke: '#0B5FFF',
+                      }}
+                      activeDot={{
+                        r: 6,
+                        strokeWidth: 0,
+                        fill: '#0B5FFF',
+                      }}
+                      connectNulls
+                      name="Present"
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="late"
+                      stroke="#FF9F1C"
+                      strokeWidth={3}
+                      dot={{
+                        r: 3.5,
+                        strokeWidth: 2,
+                        fill: '#FFFFFF',
+                        stroke: '#FF9F1C',
+                      }}
+                      activeDot={{
+                        r: 5,
+                        strokeWidth: 0,
+                        fill: '#FF9F1C',
+                      }}
+                      connectNulls
+                      name="Late"
+                    />
+
+                    <Line
+                      type="monotone"
+                      dataKey="absent"
+                      stroke="#EF4444"
+                      strokeWidth={3}
+                      dot={{
+                        r: 3.5,
+                        strokeWidth: 2,
+                        fill: '#FFFFFF',
+                        stroke: '#EF4444',
+                      }}
+                      activeDot={{
+                        r: 5,
+                        strokeWidth: 0,
+                        fill: '#EF4444',
+                      }}
+                      connectNulls
+                      name="Absent"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </Panel>
+
+          {/* =====================================================
+              ATTENDANCE DISTRIBUTION
+          ===================================================== */}
+
+          <Panel
+            title="Attendance Distribution"
             sectionKey="breakdown"
             state={breakdown}
             onRetry={refreshSection}
+            showInfo
           >
-            <div className="grid items-center gap-4 sm:grid-cols-[170px_1fr] xl:grid-cols-1 2xl:grid-cols-[170px_1fr]">
-              <ResponsiveContainer width="100%" height={190}>
-                <PieChart>
-                  <Pie
-                    data={breakdown.data?.items ?? []}
-                    innerRadius={56}
-                    outerRadius={82}
-                    paddingAngle={1}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {(breakdown.data?.items ?? []).map((entry) => (
-                      <Cell key={entry.status} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-3 text-sm">
-                {(breakdown.data?.items ?? []).map((item) => (
-                  <div key={item.status} className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 text-[#4B5563]">
-                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      {item.name}
-                    </span>
-                    <span className="font-semibold">{item.value}</span>
-                  </div>
-                ))}
+            <div className="grid items-center gap-4 md:grid-cols-[minmax(190px,230px)_minmax(0,1fr)] xl:grid-cols-1 2xl:grid-cols-[minmax(190px,230px)_minmax(0,1fr)]">
+              <div className="h-[205px] min-w-0">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <PieChart>
+                    <Pie
+                      data={distribution}
+                      innerRadius="62%"
+                      outerRadius="88%"
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      stroke="none"
+                    >
+                      {distribution.map(
+                        (entry) => (
+                          <Cell
+                            key={entry.status}
+                            fill={entry.color}
+                          />
+                        ),
+                      )}
+                    </Pie>
+
+                    <text
+                      x="50%"
+                      y="48%"
+                      textAnchor="middle"
+                      className="fill-[#101828] text-2xl font-bold"
+                    >
+                      {presentRate.toFixed(2)}%
+                    </text>
+
+                    <text
+                      x="50%"
+                      y="60%"
+                      textAnchor="middle"
+                      className="fill-[#667085] text-xs font-bold"
+                    >
+                      Present
+                    </text>
+
+                    <Tooltip
+                      content={
+                        <DistributionTooltip />
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="min-w-0 space-y-3">
+                {distribution.map(
+                  (item) => (
+                    <div
+                      key={item.status}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm"
+                    >
+                      <span className="flex min-w-0 items-center gap-2 font-semibold text-[#344054]">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{
+                            backgroundColor:
+                              item.color,
+                          }}
+                        />
+
+                        <span className="truncate">
+                          {item.name}
+                        </span>
+                      </span>
+
+                      <span className="whitespace-nowrap font-bold text-[#344054]">
+                        {item.value} (
+                        {item.percent.toFixed(2)}
+                        %)
+                      </span>
+                    </div>
+                  ),
+                )}
               </div>
             </div>
-          </ChartPanel>
+          </Panel>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-3">
-          <ChartPanel
-            title="Department Attendance Rate"
-            subtitle="Average presence per department"
-            sectionKey="insights"
-            state={insights}
-            onRetry={refreshSection}
-          >
-            <div className="mt-2 space-y-4">
-              {(insights.data?.departments ?? []).length === 0 ? (
-                <p className="text-sm text-[#8B95AA]">No department data in this range.</p>
-              ) : (
-                insights.data!.departments.map((item) => (
-                  <div
-                    key={item.department}
-                    className="grid grid-cols-[96px_1fr_42px] items-center gap-4 text-sm"
-                  >
-                    <span className="truncate font-medium" title={item.department}>
-                      {item.department}
-                    </span>
-                    <span className="h-2 rounded-full bg-[#EEF2F7]">
-                      <span
-                        className="block h-2 rounded-full bg-[#2563EB]"
-                        style={{ width: `${Math.min(100, item.rate)}%` }}
-                      />
-                    </span>
-                    <span className="text-right font-semibold text-[#4B5563]">{item.rate}%</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </ChartPanel>
+        {/* =========================================================
+            EMPLOYEE ATTENDANCE ISSUES
+        ========================================================= */}
 
-          <ChartPanel
-            title="Top Absentees"
-            subtitle="Most absences / late marks in range"
+        <section className="grid gap-5">
+          <Panel
+            title="Employee Attendance Issues"
+            subtitle="Employees requiring attention based on attendance patterns"
             sectionKey="insights"
             state={insights}
             onRetry={refreshSection}
-            hideHeaderRetry
-          >
-            <div className="mt-2 overflow-hidden">
-              <div className="grid grid-cols-[1fr_80px_76px] gap-3 border-b border-[#E5E7EB] pb-3 text-xs font-semibold text-[#8B95AA]">
-                <span>Employee</span>
-                <span>Absences</span>
-                <span>Late</span>
+            headerAction={
+              <div className="flex shrink-0 items-center gap-2">
+                <IssueFilterSelect
+                  value={issueFilter}
+                  open={issueDropdownOpen}
+                  onOpenChange={
+                    setIssueDropdownOpen
+                  }
+                  onChange={setIssueFilter}
+                />
+
+                <button
+                  type="button"
+                  disabled={insights.loading}
+                  onClick={() =>
+                    refreshSection('insights')
+                  }
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#667085] transition hover:bg-[#F8FAFC] disabled:opacity-50"
+                  title="Refresh employee issues"
+                >
+                  {insights.loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </button>
               </div>
-              {(insights.data?.top_absentees ?? []).length === 0 ? (
-                <p className="py-4 text-sm text-[#8B95AA]">No absentees in this range.</p>
+            }
+          >
+            {/* =====================================================
+                DESKTOP TABLE
+            ===================================================== */}
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[780px] text-left text-sm">
+                <thead className="bg-[#F9FAFB] text-xs font-bold text-[#667085]">
+                  <tr>
+                    <th className="rounded-l-lg px-4 py-3">
+                      Employee
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Department
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Absences
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Late Marks
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Early Leaves
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Primary Issue
+                    </th>
+
+                    <th className="rounded-r-lg px-4 py-3">
+                      Priority
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-[#EAECF0]">
+                  {filteredIssueRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-10 text-center text-sm font-semibold text-[#98A2B3]"
+                      >
+                        No attendance issues
+                        found in this range.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredIssueRows.map(
+                      (row) => (
+                        <tr
+                          key={row.id}
+                          className="text-[#344054] transition hover:bg-[#FAFBFC]"
+                        >
+                          <td className="px-4 py-3">
+                            <span className="flex items-center gap-3">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E0F2FE] text-xs font-bold text-[#0369A1]">
+                                {row.employee
+                                  .split(' ')
+                                  .map(
+                                    (part) =>
+                                      part[0],
+                                  )
+                                  .join('')
+                                  .slice(
+                                    0,
+                                    2,
+                                  )}
+                              </span>
+
+                              <span className="font-bold text-[#344054]">
+                                {row.employee}
+                              </span>
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-3 font-semibold">
+                            {row.department}
+                          </td>
+
+                          <td className="px-4 py-3 font-bold text-[#EF4444]">
+                            {row.absencesLabel}
+                          </td>
+
+                          <td className="px-4 py-3 font-bold text-[#F79009]">
+                            {row.lateLabel}
+                          </td>
+
+                          <td className="px-4 py-3 font-bold text-[#F43F5E]">
+                            {row.earlyLeavesLabel}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <IssueTypeBadge
+                              type={
+                                row.issueType
+                              }
+                            />
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <IssueBadge
+                              level={
+                                row.issueLevel
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ),
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* =====================================================
+                MOBILE ISSUE CARDS
+            ===================================================== */}
+
+            <div className="grid gap-3 md:hidden">
+              {filteredIssueRows.length === 0 ? (
+                <div className="rounded-xl bg-[#F9FAFB] px-4 py-8 text-center text-sm font-semibold text-[#98A2B3]">
+                  No attendance issues
+                  found in this range.
+                </div>
               ) : (
-                insights.data!.top_absentees.map((item) => (
-                  <div
-                    key={item.company_member_id}
-                    className="grid grid-cols-[1fr_80px_76px] gap-3 border-b border-[#E5E7EB] py-3 text-sm last:border-b-0"
-                  >
-                    <span>
-                      <span className="block font-semibold">{item.employee}</span>
-                      <span className="text-xs text-[#8B95AA]">{item.team}</span>
-                    </span>
-                    <span className="self-center justify-self-start rounded bg-[#FEE9E5] px-2 py-1 text-xs font-semibold text-[#F54A4A]">
-                      {item.absences_label}
-                    </span>
-                    <span className="self-center justify-self-start rounded bg-[#FFF4E3] px-2 py-1 text-xs font-semibold text-[#D97706]">
-                      {item.late_label}
-                    </span>
-                  </div>
-                ))
+                filteredIssueRows.map(
+                  (row) => (
+                    <IssueCard
+                      key={row.id}
+                      row={row}
+                    />
+                  ),
+                )
               )}
             </div>
-          </ChartPanel>
 
-          <ChartPanel
-            title="Daily Punch Summary"
-            subtitle="Present vs absent headcount"
-            sectionKey="trend"
-            state={trend}
-            onRetry={refreshSection}
-            hideHeaderRetry
-          >
-            <ResponsiveContainer width="100%" height={245}>
-              <BarChart data={punchChart} margin={{ top: 18, right: 10, left: -24, bottom: 0 }}>
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#8B95AA', fontSize: 12 }} />
-                <YAxis hide />
-                <Tooltip />
-                <Legend iconType="circle" />
-                <Bar dataKey="present" fill="#2563EB" radius={[4, 4, 0, 0]} name="Present" />
-                <Bar dataKey="absent" fill="#FECACA" radius={[4, 4, 0, 0]} name="Absent" />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartPanel>
+            <p className="mt-4 text-xs font-semibold text-[#667085]">
+              Showing {filteredIssueRows.length}{' '}
+              of {issueRows.length} employees
+            </p>
+          </Panel>
         </section>
       </main>
     </div>
   );
 }
 
-function SectionShell<T>({
-  sectionKey,
-  state,
-  onRetry,
-  children,
-  className,
+/* ===============================================================
+   MONTH SELECT
+================================================================ */
+
+function MonthSelect({
+  month,
+  months,
+  activeRange,
+  open,
+  onOpenChange,
+  onChange,
 }: {
-  sectionKey: AnalyticsSectionKey;
-  state: SectionState<T>;
-  onRetry: (key: AnalyticsSectionKey) => void;
-  children: React.ReactNode;
-  className?: string;
+  month: string;
+  months: string[];
+  activeRange: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (month: string) => void;
 }) {
-  if (state.loading && !state.data) {
-    return (
-      <div className={`flex items-center justify-center gap-2 py-10 text-sm text-[#676767] ${className ?? ''}`}>
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-      </div>
-    );
-  }
-
-  if (state.error && !state.data) {
-    return (
-      <div className={`rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C] ${className ?? ''}`}>
-        <p>{state.error}</p>
-        <button
-          type="button"
-          onClick={() => onRetry(sectionKey)}
-          className="mt-2 inline-flex items-center gap-2 font-semibold text-[#0658C2]"
-        >
-          <RefreshCw className="h-4 w-4" /> Refresh this section
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className={className}>
-      {state.error && (
-        <div className="mb-3 flex items-center justify-between rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E]">
-          <span>Partial refresh failed: {state.error}</span>
-          <button
-            type="button"
-            onClick={() => onRetry(sectionKey)}
-            className="inline-flex items-center gap-1 font-semibold text-[#0658C2]"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
-          </button>
+    <div className="relative w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() =>
+          onOpenChange(!open)
+        }
+        className={`flex h-11 w-full min-w-0 items-center justify-between gap-3 rounded-xl border bg-white px-4 text-sm font-semibold shadow-sm cursor-pointer sm:min-w-[260px] ${
+          open
+            ? 'border-[#0658C2] text-blue-950'
+            : 'border-[#D3D3D3] text-[#061A3D]'
+        }`}
+      >
+        <Calendar className="h-4 w-4 shrink-0 text-[#344054]" />
+
+        <span className="min-w-0 flex-1 truncate text-left">
+          {activeRange}
+        </span>
+
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-[#667085] ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 z-30 mt-2 w-full rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl sm:left-auto sm:right-0 sm:w-[300px]">
+          <p className="px-1 py-2 text-xs font-semibold uppercase text-[#676767]">
+            Select Month
+          </p>
+
+          <div className="max-h-[260px] space-y-1 overflow-y-auto">
+            {months.map((option) => {
+              const selected =
+                option === month;
+
+              const bounds =
+                getAnalyticsBounds(
+                  option,
+                );
+
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() =>
+                    onChange(option)
+                  }
+                  className={`flex w-full items-center justify-between gap-3 rounded-md px-4 py-2 text-left text-sm ${
+                    selected
+                      ? 'bg-[#DBEAFF] text-[#0658C2]'
+                      : 'border border-[#D3D3D3] hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]'
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {formatMonthLabel(
+                        option,
+                      )}
+                    </span>
+
+                    <span className="mt-0.5 block truncate text-xs text-[#676767]">
+                      {formatDateRange(
+                        bounds.from,
+                        bounds.to,
+                      )}
+                    </span>
+                  </span>
+
+                  {selected && (
+                    <CheckIcon />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
-      {children}
     </div>
   );
 }
 
-function MetricCard({
-  title,
-  value,
-  note,
-  icon: Icon,
-  tone,
+/* ===============================================================
+   WEEK SELECT
+================================================================ */
+
+function WeekSelect({
+  weeks,
+  selectedWeek,
+  open,
+  onOpenChange,
+  onChange,
 }: {
-  title: string;
-  value: string;
-  note: string;
-  icon: typeof TrendingUp;
-  tone: 'blue' | 'green' | 'amber' | 'violet';
+  weeks: Array<{
+    label: string;
+    from: Date;
+    to: Date;
+  }>;
+  selectedWeek: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (week: number) => void;
 }) {
-  const toneMap = {
-    blue: 'bg-[#DBEAFF] text-[#2563EB]',
-    green: 'bg-[#E5FFEB] text-[#10B981]',
-    amber: 'bg-[#FFF4E3] text-[#EA580C]',
-    violet: 'bg-[#EDE9FE] text-[#7C3AED]',
+  const activeWeek = weeks[selectedWeek];
+
+  const selectedText = activeWeek
+    ? `${activeWeek.label} · ${formatShortDateRange(
+        activeWeek.from,
+        activeWeek.to,
+      )}`
+    : 'Select Week';
+
+  const selectWeek = (week: number) => {
+    onChange(week);
+    onOpenChange(false);
   };
 
   return (
-    <div className="min-h-[120px] rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm font-semibold text-[#9AA3B5]">{title}</p>
-        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${toneMap[tone]}`}>
-          <Icon className="h-5 w-5" />
+    <div className="relative w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() =>
+          onOpenChange(!open)
+        }
+        className={`flex h-11 w-full min-w-[190px] items-center justify-between gap-3 rounded-xl border bg-white px-4 text-sm font-semibold transition cursor-pointer sm:w-auto ${
+          open
+            ? 'border-[#0658C2] text-[#061A3D]'
+            : 'border-[#D3D3D3] text-[#061A3D] hover:border-[#98A2B3]'
+        }`}
+      >
+        <span className="truncate">
+          {selectedText}
         </span>
-      </div>
-      <p className="mt-4 text-2xl font-bold text-[#1F2937]">{value}</p>
-      <p className="mt-2 text-xs font-semibold text-[#9AA3B5]">{note}</p>
+
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 transition-transform ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-[280px] rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
+          <p className="px-1 py-2 text-xs font-semibold uppercase text-[#676767]">
+            Select Week
+          </p>
+
+          <div className="max-h-[240px] space-y-1 overflow-y-auto">
+            {weeks.map(
+              (week, index) => {
+                const selected =
+                  selectedWeek === index;
+
+                return (
+                  <button
+                    key={week.label}
+                    type="button"
+                    onClick={() =>
+                      selectWeek(index)
+                    }
+                    className={`flex w-full items-center justify-between rounded-md px-4 py-2 text-left text-sm ${
+                      selected
+                        ? 'bg-[#DBEAFF] text-[#0658C2]'
+                        : 'border border-[#D3D3D3] hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]'
+                    }`}
+                  >
+                    <span>
+                      <span className="block font-semibold">
+                        {week.label}
+                      </span>
+
+                      <span className="mt-0.5 block text-xs text-[#676767]">
+                        {formatDateRange(
+                          week.from,
+                          week.to,
+                        )}
+                      </span>
+                    </span>
+
+                    {selected && (
+                      <CheckIcon />
+                    )}
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ChartPanel<T>({
+function formatShortDateRange(
+  from: Date,
+  to: Date,
+) {
+  const start = from.toLocaleDateString(
+    'en-GB',
+    {
+      day: '2-digit',
+      month: 'short',
+    },
+  );
+
+  const end = to.toLocaleDateString(
+    'en-GB',
+    {
+      day: '2-digit',
+      month: 'short',
+    },
+  );
+
+  return `${start} - ${end}`;
+}
+
+function CheckIcon() {
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#0658C2] text-white">
+      <Check className="h-3.5 w-3.5" />
+    </span>
+  );
+}
+
+/* ===============================================================
+   ISSUE FILTER SELECT
+================================================================ */
+
+function IssueFilterSelect({
+  value,
+  open,
+  onOpenChange,
+  onChange,
+}: {
+  value: IssueFilter;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: IssueFilter) => void;
+}) {
+  const options: Array<{
+    label: string;
+    value: IssueFilter;
+  }> = [
+    {
+      label: 'All Issues',
+      value: 'all',
+    },
+    {
+      label: 'Most Absent',
+      value: 'absent',
+    },
+    {
+      label: 'Most Late',
+      value: 'late',
+    },
+    {
+      label: 'Early Leaves',
+      value: 'early_leave',
+    },
+  ];
+
+  const selectedLabel =
+    options.find(
+      (option) =>
+        option.value === value,
+    )?.label ?? 'All Issues';
+
+  const selectOption = (
+    option: IssueFilter,
+  ) => {
+    onChange(option);
+    onOpenChange(false);
+  };
+
+  return (
+    <div className="relative w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() =>
+          onOpenChange(!open)
+        }
+        className={`flex h-11 min-w-[180px] items-center justify-between gap-4 rounded-xl border bg-white px-5 text-sm font-semibold transition cursor-pointer ${
+          open
+            ? 'border-[#0658C2] text-[#061A3D]'
+            : 'border-[#D3D3D3] text-[#061A3D] hover:border-[#98A2B3]'
+        }`}
+      >
+        <span>{selectedLabel}</span>
+
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 transition-transform ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-[240px] rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
+          <p className="px-1 py-2 text-xs font-semibold uppercase text-[#676767]">
+            Filter Issues
+          </p>
+
+          <div className="space-y-1">
+            {options.map(
+              (option) => {
+                const selected =
+                  option.value ===
+                  value;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() =>
+                      selectOption(
+                        option.value,
+                      )
+                    }
+                    className={`flex w-full items-center justify-between rounded-md px-4 py-2 text-left text-sm ${
+                      selected
+                        ? 'bg-[#DBEAFF] text-[#0658C2]'
+                        : 'border border-[#D3D3D3] hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]'
+                    }`}
+                  >
+                    <span className="font-semibold">
+                      {option.label}
+                    </span>
+
+                    {selected && (
+                      <CheckIcon />
+                    )}
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===============================================================
+   ISSUE BADGES
+================================================================ */
+
+function IssueTypeBadge({
+  type,
+}: {
+  type: IssueRow['issueType'];
+}) {
+  const className =
+    type === 'Absent + Late'
+      ? 'bg-[#FEF3F2] text-[#D92D20]'
+      : type === 'Absent'
+        ? 'bg-[#FEE4E2] text-[#D92D20]'
+        : 'bg-[#FFFAEB] text-[#DC6803]';
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${className}`}
+    >
+      {type}
+    </span>
+  );
+}
+
+function IssueBadge({
+  level,
+}: {
+  level: IssueRow['issueLevel'];
+}) {
+  const className =
+    level === 'High'
+      ? 'bg-[#FEE4E2] text-[#D92D20]'
+      : level === 'Medium'
+        ? 'bg-[#FEF0C7] text-[#DC6803]'
+        : 'bg-[#D1FADF] text-[#039855]';
+
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${className}`}
+    >
+      {level}
+    </span>
+  );
+}
+
+/* ===============================================================
+   MOBILE ISSUE CARD
+================================================================ */
+
+function IssueCard({
+  row,
+}: {
+  row: IssueRow;
+}) {
+  return (
+    <article className="rounded-xl border border-[#EAECF0] bg-white p-4 shadow-sm">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E0F2FE] text-xs font-bold text-[#0369A1]">
+          {row.employee
+            .split(' ')
+            .map(
+              (part) => part[0],
+            )
+            .join('')
+            .slice(0, 2)}
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-[#344054]">
+            {row.employee}
+          </p>
+
+          <p className="mt-0.5 truncate text-xs font-semibold text-[#667085]">
+            {row.department}
+          </p>
+        </div>
+
+        <IssueBadge
+          level={row.issueLevel}
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+        <IssueMetric
+          label="Absences"
+          value={row.absencesLabel}
+          tone="red"
+        />
+
+        <IssueMetric
+          label="Late"
+          value={row.lateLabel}
+          tone="amber"
+        />
+
+        <IssueMetric
+          label="Early Leaves"
+          value={row.earlyLeavesLabel}
+          tone="rose"
+        />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-[#667085]">
+          Primary Issue
+        </span>
+
+        <IssueTypeBadge
+          type={row.issueType}
+        />
+      </div>
+    </article>
+  );
+}
+
+function IssueMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'red' | 'amber' | 'rose';
+}) {
+  const toneMap = {
+    red: 'text-[#EF4444]',
+    amber: 'text-[#F79009]',
+    rose: 'text-[#F43F5E]',
+  };
+
+  return (
+    <div className="rounded-lg bg-[#F9FAFB] px-2 py-3">
+      <p
+        className={`text-xs font-bold ${toneMap[tone]}`}
+      >
+        {value}
+      </p>
+
+      <p className="mt-1 text-[11px] font-semibold text-[#667085]">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+/* ===============================================================
+   TREND AXIS
+================================================================ */
+
+type TrendTooltipPayload = {
+  dataKey?: string;
+  color?: string;
+  value?: number;
+  payload?: TrendChartPoint;
+};
+
+type TrendAxisTickProps = {
+  x?: number;
+  y?: number;
+  payload?: {
+    value?: string;
+  };
+};
+
+function TrendAxisTick({
+  x = 0,
+  y = 0,
+  payload,
+}: TrendAxisTickProps) {
+  const dateValue =
+    payload?.value;
+
+  const date = dateValue
+    ? parseDate(dateValue)
+    : null;
+
+  const dayLabel =
+    date &&
+    !Number.isNaN(
+      date.getTime(),
+    )
+      ? date.toLocaleDateString(
+          'en-GB',
+          {
+            weekday: 'short',
+          },
+        )
+      : '-';
+
+  const dateLabel =
+    date &&
+    !Number.isNaN(
+      date.getTime(),
+    )
+      ? date.toLocaleDateString(
+          'en-GB',
+          {
+            day: '2-digit',
+            month: 'short',
+          },
+        )
+      : '-';
+
+  return (
+    <g
+      transform={`translate(${x},${y})`}
+    >
+      <text
+        textAnchor="middle"
+        className="fill-[#475467] text-[12px] font-bold"
+      >
+        <tspan
+          x="0"
+          dy="12"
+        >
+          {dayLabel}
+        </tspan>
+
+        <tspan
+          x="0"
+          dy="16"
+          className="fill-[#98A2B3] text-[11px] font-semibold"
+        >
+          {dateLabel}
+        </tspan>
+      </text>
+    </g>
+  );
+}
+
+/* ===============================================================
+   TREND TOOLTIP
+================================================================ */
+
+function TrendTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: TrendTooltipPayload[];
+}) {
+  if (
+    !active ||
+    !payload?.length
+  ) {
+    return null;
+  }
+
+  const point =
+    payload[0]?.payload;
+
+  if (!point) return null;
+
+  const countByKey: Record<
+    string,
+    number
+  > = {
+    present:
+      point.presentCount,
+    late: point.lateCount,
+    absent:
+      point.absentCount,
+  };
+
+  return (
+    <div className="min-w-[190px] rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 shadow-lg">
+      <p className="text-sm font-bold text-[#1F2937]">
+        {point.dayName},{' '}
+        {parseDate(
+          point.date,
+        ).toLocaleDateString(
+          'en-GB',
+          {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+          },
+        )}
+      </p>
+
+      <p className="mt-0.5 text-xs font-semibold text-[#9AA3B5]">
+        {point.roster} rostered
+        employees
+      </p>
+
+      <div className="mt-2 space-y-1.5">
+        {payload.map(
+          (entry) => {
+            const key =
+              entry.dataKey ?? '';
+
+            const count =
+              countByKey[key] ??
+              0;
+
+            return (
+              <div
+                key={key}
+                className="flex items-center justify-between gap-4 text-xs"
+              >
+                <span className="flex items-center gap-2 font-semibold text-[#4B5563]">
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{
+                      backgroundColor:
+                        entry.color,
+                    }}
+                  />
+
+                  {titleCase(key)}
+                </span>
+
+                <span className="font-bold text-[#111827]">
+                  {formatPercent(
+                    Number(
+                      entry.value ??
+                        0,
+                    ),
+                  )}{' '}
+                  / {count}
+                </span>
+              </div>
+            );
+          },
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ===============================================================
+   DISTRIBUTION TOOLTIP
+================================================================ */
+
+type DistributionTooltipPayload = {
+  payload?: DistributionItem;
+};
+
+function DistributionTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: DistributionTooltipPayload[];
+}) {
+  const item =
+    payload?.[0]?.payload;
+
+  if (!active || !item) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs font-semibold shadow-lg">
+      <p className="text-[#344054]">
+        {item.name}
+      </p>
+
+      <p className="mt-1 text-[#667085]">
+        {item.value} employees /{' '}
+        {item.percent.toFixed(2)}%
+      </p>
+    </div>
+  );
+}
+
+/* ===============================================================
+   PANEL
+================================================================ */
+
+function Panel<T>({
   title,
   subtitle,
   children,
   sectionKey,
   state,
   onRetry,
-  hideHeaderRetry,
+  showInfo,
+  headerAction,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: React.ReactNode;
   sectionKey: AnalyticsSectionKey;
   state: SectionState<T>;
-  onRetry: (key: AnalyticsSectionKey) => void;
-  hideHeaderRetry?: boolean;
+  onRetry: (
+    key: AnalyticsSectionKey,
+  ) => void;
+  showInfo?: boolean;
+  headerAction?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-bold text-[#1F2937]">{title}</h2>
-          <p className="text-sm font-semibold text-[#9AA3B5]">{subtitle}</p>
+    <section className="rounded-xl border border-[#EAECF0] bg-white p-5 shadow-[0_8px_24px_rgba(16,24,40,0.05)]">
+      {/* =======================================================
+          UNIFIED SECTION HEADER
+
+          LEFT:
+          title
+          subtitle
+
+          RIGHT:
+          custom dropdown + refresh
+      ======================================================= */}
+
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-[#101828]">
+              {title}
+            </h2>
+
+            {showInfo && (
+              <Info className="h-3.5 w-3.5 text-[#98A2B3]" />
+            )}
+          </div>
+
+          {subtitle && (
+            <p className="mt-1 text-xs font-semibold text-[#667085]">
+              {subtitle}
+            </p>
+          )}
         </div>
-        {!hideHeaderRetry && (
+
+        {headerAction ?? (
           <button
             type="button"
             disabled={state.loading}
-            onClick={() => onRetry(sectionKey)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#E5E7EB] px-2.5 text-xs font-semibold text-[#4B5563] hover:bg-[#F8FAFC] disabled:opacity-50"
+            onClick={() =>
+              onRetry(sectionKey)
+            }
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#667085] transition hover:bg-[#F8FAFC] disabled:opacity-50"
             title="Refresh this section"
           >
-            {state.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-            Refresh
+            {state.loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
           </button>
         )}
       </div>
 
-      {state.loading && !state.data ? (
-        <div className="flex h-[200px] items-center justify-center gap-2 text-sm text-[#676767]">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+      {/* =======================================================
+          LOADING
+      ======================================================= */}
+
+      {state.loading &&
+      !state.data ? (
+        <div className="flex h-[220px] items-center justify-center gap-2 text-sm font-semibold text-[#667085]">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading...
         </div>
-      ) : state.error && !state.data ? (
+      ) : state.error &&
+        !state.data ? (
         <div className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
-          <p>{state.error}</p>
+          <p>
+            {state.error}
+          </p>
+
           <button
             type="button"
-            onClick={() => onRetry(sectionKey)}
+            onClick={() =>
+              onRetry(sectionKey)
+            }
             className="mt-2 inline-flex items-center gap-2 font-semibold text-[#0658C2]"
           >
-            <RefreshCw className="h-4 w-4" /> Refresh this section
+            <RefreshCw className="h-4 w-4" />
+            Refresh this section
           </button>
         </div>
       ) : (
         <>
           {state.error && (
-            <div className="mb-3 flex items-center justify-between rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E]">
-              <span>Couldn’t refresh: {state.error}</span>
-              <button
-                type="button"
-                onClick={() => onRetry(sectionKey)}
-                className="font-semibold text-[#0658C2]"
-              >
-                Retry
-              </button>
+            <div className="mb-3 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E]">
+              Could not refresh:{' '}
+              {state.error}
             </div>
           )}
+
           {children}
         </>
       )}
