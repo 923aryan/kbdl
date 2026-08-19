@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type Status = 'Active' | 'Inactive' | 'On Boarding' | 'Onboard' | 'On Leave' | 'Probation' | 'Absent';
 export type DetailTab =
@@ -228,6 +229,159 @@ export const dropdownOptions = {
   frequency: ['Monthly', 'Weekly', 'Bi-weekly'],
 };
 
+type OnboardFormState = {
+  id?: string;
+  fullName: string;
+  mobileNumber: string;
+  email: string;
+  employeeNumber: string;
+  karigariId: string;
+  dateOfBirth: string;
+  gender: string;
+  address: string;
+  presentAddressLine1: string;
+  presentCity: string;
+  presentState: string;
+  presentPincode: string;
+  permanentAddressLine1: string;
+  permanentCity: string;
+  permanentState: string;
+  permanentPincode: string;
+  sameAsPresentAddress: string;
+  bloodGroup: string;
+  alternatePhone: string;
+  maritalStatus: string;
+  fatherName: string;
+  motherName: string;
+  nationality: string;
+  religion: string;
+  languagesKnown: string;
+  probationPeriodMonths: string;
+  noticePeriodDays: string;
+  weeklyOff: string;
+  workingHours: string;
+  confirmationDate: string;
+  emergencyContactName: string;
+  emergencyContactRelation: string;
+  emergencyContactNumber: string;
+  designationId: string;
+  designationLabel: string;
+  departmentId: string;
+  departmentLabel: string;
+  branchLocation: string;
+  reportingSupervisorId: string;
+  reportingSupervisorLabel: string;
+  employeeType: string;
+  joiningDate: string;
+  workShiftId: string;
+  workShiftLabel: string;
+  workLocation: string;
+  skillTrade: string;
+  experienceYears: string;
+  certificationLicenses: string;
+  safetyTrainingCompleted: string;
+  upiId: string;
+  upiName: string;
+  wageAmount: string;
+  upiPaymentFrequency: string;
+  accountHolderName: string;
+  accountNumber: string;
+  bankName: string;
+  bankNameManual: string;
+  ifscCode: string;
+  aadhaarNumber: string;
+  panNumber: string;
+  drivingLicenseNumber: string;
+  voterId: string;
+  uanNumber: string;
+  esiNumber: string;
+  pfNumber: string;
+  documents: OnboardDocument[];
+  basicSalary: string;
+  salaryType: string;
+  salaryPaymentFrequency: string;
+  overtimeEligible: string;
+  pfApplicable: string;
+  esiApplicable: string;
+  notes: string;
+};
+
+const emptyOnboardForm: OnboardFormState = {
+  fullName: '',
+  mobileNumber: '',
+  email: '',
+  employeeNumber: '',
+  karigariId: '',
+  dateOfBirth: '',
+  gender: '',
+  address: '',
+  presentAddressLine1: '',
+  presentCity: '',
+  presentState: '',
+  presentPincode: '',
+  permanentAddressLine1: '',
+  permanentCity: '',
+  permanentState: '',
+  permanentPincode: '',
+  sameAsPresentAddress: 'Yes',
+  bloodGroup: '',
+  alternatePhone: '',
+  maritalStatus: '',
+  fatherName: '',
+  motherName: '',
+  nationality: 'Indian',
+  religion: '',
+  languagesKnown: '',
+  probationPeriodMonths: '',
+  noticePeriodDays: '',
+  weeklyOff: 'Sunday',
+  workingHours: '',
+  confirmationDate: '',
+  emergencyContactName: '',
+  emergencyContactRelation: '',
+  emergencyContactNumber: '',
+  designationId: '',
+  designationLabel: '',
+  departmentId: '',
+  departmentLabel: '',
+  branchLocation: '',
+  reportingSupervisorId: '',
+  reportingSupervisorLabel: '',
+  employeeType: '',
+  joiningDate: '',
+  workShiftId: '',
+  workShiftLabel: '',
+  workLocation: '',
+  skillTrade: '',
+  experienceYears: '',
+  certificationLicenses: '',
+  safetyTrainingCompleted: 'Yes',
+  upiId: '',
+  upiName: '',
+  wageAmount: '',
+  upiPaymentFrequency: '',
+  accountHolderName: '',
+  accountNumber: '',
+  bankName: '',
+  bankNameManual: '',
+  ifscCode: '',
+  aadhaarNumber: '',
+  panNumber: '',
+  drivingLicenseNumber: '',
+  voterId: '',
+  uanNumber: '',
+  esiNumber: '',
+  pfNumber: '',
+  documents: [],
+  basicSalary: '',
+  salaryType: '',
+  salaryPaymentFrequency: '',
+  overtimeEligible: 'Yes',
+  pfApplicable: 'Yes',
+  esiApplicable: 'Yes',
+  notes: '',
+};
+
 interface EmployeeState {
   search: string;
   selectedDesignations: string[];
@@ -236,6 +390,13 @@ interface EmployeeState {
   paymentMethod: PaymentMethod;
   uploadOpen: boolean;
   openDropdown: string | null;
+  form: OnboardFormState;
+  setValue: <K extends keyof OnboardFormState>(
+    key: K,
+    value: OnboardFormState[K],
+  ) => void;
+  resetForm: () => void;
+
   setSearch: (search: string) => void;
   setSelectedDesignations: (designations: string[]) => void;
   setSelectedStatuses: (statuses: Status[]) => void;
@@ -245,21 +406,91 @@ interface EmployeeState {
   bumpEmployeeListVersion: () => void;
 }
 
-export const useEmployeeStore = create<EmployeeState>((set) => ({
-  search: '',
-  selectedDesignations: [],
-  selectedStatuses: [],
-  employeeVersion: 0,
-  paymentMethod: 'cash',
-  uploadOpen: false,
-  openDropdown: null,
-  setSearch: (search) => set({ search }),
-  setSelectedDesignations: (selectedDesignations) => set({ selectedDesignations }),
-  setSelectedStatuses: (selectedStatuses) => set({ selectedStatuses }),
-  setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
-  setUploadOpen: (uploadOpen) => set({ uploadOpen }),
-  setOpenDropdown: (openDropdown) => set({ openDropdown }),
-  bumpEmployeeListVersion: () => {
-    set((state) => ({ employeeVersion: state.employeeVersion + 1 }));
-  },
-}));
+interface OnboardingForm {
+  basicSalary: string;
+  salaryType: string;
+  salaryPaymentFrequency: string;
+  overtimeEligible: string;
+  pfApplicable: string;
+  esiApplicable: string;
+  dateOfBirth: string;
+  gender: string;
+  religion: string;
+  upiId: string;
+  upiName: string;
+  wageAmount: string;
+  upiPaymentFrequency: string;
+}
+
+const initialForm: OnboardingForm = {
+  basicSalary: '',
+  salaryType: '',
+  salaryPaymentFrequency: '',
+  overtimeEligible: '',
+  pfApplicable: '',
+  esiApplicable: '',
+  dateOfBirth: '',
+  gender: '',
+  religion: '',
+  upiId: '',
+  upiName: '',
+  wageAmount: '',
+  upiPaymentFrequency: '',
+};
+
+
+
+export const useEmployeeStore = create<EmployeeState>()(
+  persist(
+    (set) => ({
+      search: '',
+      selectedDesignations: [],
+      selectedStatuses: [],
+      employeeVersion: 0,
+      paymentMethod: 'cash',
+      uploadOpen: false,
+      openDropdown: null,
+
+      form: emptyOnboardForm,
+
+      setSearch: (search) => set({ search }),
+
+      setSelectedDesignations: (selectedDesignations) =>
+        set({ selectedDesignations }),
+
+      setSelectedStatuses: (selectedStatuses) =>
+        set({ selectedStatuses }),
+
+      setPaymentMethod: (paymentMethod) =>
+        set({ paymentMethod }),
+
+      setUploadOpen: (uploadOpen) =>
+        set({ uploadOpen }),
+
+      setOpenDropdown: (openDropdown) =>
+        set({ openDropdown }),
+
+      setValue: (key, value) =>
+        set((state) => ({
+          form: {
+            ...state.form,
+            [key]: value,
+          },
+        })),
+
+      resetForm: () =>
+        set({
+          form: emptyOnboardForm,
+        }),
+
+      bumpEmployeeListVersion: () => {
+        set((state) => ({
+          employeeVersion: state.employeeVersion + 1,
+        }));
+      },
+    }),
+    {
+      name: 'employee-onboarding-form',
+    },
+  ),
+);

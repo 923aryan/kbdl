@@ -137,7 +137,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isSending}
-                className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white transition-all duration-300 hover:bg-[#0047B3]"
+                className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white cursor-pointer transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSending ? 'Sending OTP...' : 'Send OTP'}
               </Button>
@@ -151,6 +151,12 @@ export default function LoginPage() {
                   placeholder="Enter 6-digit OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isVerifying) {
+                      e.preventDefault();
+                      handleVerifyOtp();
+                    }
+                  }}
                 />
               </div>
 
@@ -158,7 +164,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleVerifyOtp}
                 disabled={isVerifying}
-                className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white transition-all duration-300 hover:bg-[#0047B3]"
+                className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white cursor-pointer transition-all duration-300 hover:bg-[#0047B3] transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isVerifying ? 'Verifying...' : 'Verify & Login'}
               </Button>

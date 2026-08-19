@@ -368,7 +368,7 @@ export const CreateShiftModal = () => {
                         setPhoneErrors((prev) => ({ ...prev, replacement_employee_phone: undefined }));
                       }
                     }}
-                    label="Replacement Mobile (Optional)"
+                    label="Replacement Mobile"
                     placeholder="+919876543210"
                     error={phoneErrors.replacement_employee_phone}
                   />
