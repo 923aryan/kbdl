@@ -4,13 +4,15 @@ import { GetCurrentEmployerProfileResponse } from '@repo/types';
 import { create } from 'zustand';
 import { api } from '../../../lib/api-client';
 import { clearAuthTokens, setAuthTokens } from '../../../lib/auth-tokens';
-import { EmployerDTO } from '../types/employer';
 
 type AuthState = {
-  employer: EmployerDTO | null;
+  employer: GetCurrentEmployerProfileResponse | null;
   isHydrated: boolean;
 
-  setAuth: (employer: EmployerDTO, tokens?: { accessToken: string; refreshToken: string }) => void;
+  setAuth: (
+    employer: GetCurrentEmployerProfileResponse,
+    tokens?: { accessToken: string; refreshToken: string },
+  ) => void;
   logout: () => void;
   hydrateAuth: () => Promise<void>;
 };

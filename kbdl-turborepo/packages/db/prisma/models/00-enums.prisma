@@ -161,6 +161,21 @@ enum AttendanceStatus {
   @@map("attendance_status")
 }
 
+enum LeaveAppliedByKind {
+  hr
+  manager
+
+  @@map("leave_applied_by_kind")
+}
+
+enum LeaveRequestStatus {
+  pending
+  approved
+  rejected
+
+  @@map("leave_request_status")
+}
+
 enum AttendanceSource {
   hr_manual
   device

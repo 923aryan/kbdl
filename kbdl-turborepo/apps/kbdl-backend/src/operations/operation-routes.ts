@@ -31,9 +31,20 @@ import {
   getAttendanceAnalyticsSummary,
   getAttendanceAnalyticsTrend,
   getDailyAttendance,
+  getEmployeeAttendanceMonth,
   updateAttendance,
   upsertAttendance,
 } from './attendance-controllers';
+import {
+  createCompanyLeaveType,
+  createEmployeeLeave,
+  getCompanyLeaveCatalog,
+  getCompanyLeaveRequests,
+  getEmployeeLeave,
+  updateCompanyLeavePolicy,
+  updateCompanyLeaveType,
+  updateLeaveRequest,
+} from './leave-controllers';
 
 const operationsRouter: Router = Router();
 
@@ -73,10 +84,33 @@ operationsRouter.get(
   employerAuth,
   getAttendanceAnalyticsInsights,
 );
+operationsRouter.get(
+  '/employer/attendance/employee/:employmentId',
+  employerAuth,
+  getEmployeeAttendanceMonth,
+);
 operationsRouter.post('/employer/attendance/bulk-mark-present', employerAuth, bulkMarkPresent);
 operationsRouter.post('/employer/attendance/bulk-mark-holiday', employerAuth, bulkMarkHoliday);
 operationsRouter.post('/employer/attendance', employerAuth, upsertAttendance);
 operationsRouter.patch('/employer/attendance/:attendanceId', employerAuth, updateAttendance);
+
+operationsRouter.get('/employer/leave/types', employerAuth, getCompanyLeaveCatalog);
+operationsRouter.post('/employer/leave/types', employerAuth, createCompanyLeaveType);
+operationsRouter.patch('/employer/leave/types/:typeId', employerAuth, updateCompanyLeaveType);
+operationsRouter.get('/employer/leave/policy', employerAuth, getCompanyLeaveCatalog);
+operationsRouter.put('/employer/leave/policy', employerAuth, updateCompanyLeavePolicy);
+operationsRouter.get('/employer/leave/requests', employerAuth, getCompanyLeaveRequests);
+operationsRouter.get(
+  '/employer/leave/employee/:employmentId',
+  employerAuth,
+  getEmployeeLeave,
+);
+operationsRouter.post(
+  '/employer/leave/employee/:employmentId',
+  employerAuth,
+  createEmployeeLeave,
+);
+operationsRouter.patch('/employer/leave/:requestId', employerAuth, updateLeaveRequest);
 
 operationsRouter.post('/employer/:id/documents', employerAuth, addEmployeeDocument);
 

@@ -3,6 +3,7 @@ import {
   bulkMarkPresentSchema,
   getAttendanceAnalyticsRangeSchema,
   getDailyAttendanceSchema,
+  getEmployeeAttendanceMonthSchema,
   updateAttendanceSchema,
   upsertAttendanceSchema,
 } from '@repo/validator/shared';
@@ -111,6 +112,71 @@ export type UpsertAttendanceBody = UpsertAttendanceRequest['body'] & {
 
 export type GetAttendanceAnalyticsRequest = z.infer<typeof getAttendanceAnalyticsRangeSchema>;
 export type GetAttendanceAnalyticsQuery = GetAttendanceAnalyticsRequest['query'];
+
+export type GetEmployeeAttendanceMonthRequest = z.infer<typeof getEmployeeAttendanceMonthSchema>;
+
+export type EmployeeAttendanceDay = {
+  date: string;
+  status: string;
+  status_label: string;
+  code: string;
+  holiday_name: string | null;
+  is_working_day: boolean;
+  shift_count: number;
+  ot_minutes: number;
+  worked_minutes: number;
+};
+
+export type EmployeeAttendanceEntry = {
+  id: string;
+  date: string;
+  shift_name: string;
+  check_in: string | null;
+  check_out: string | null;
+  time_log: string;
+  worked_hours_label: string;
+  lunch_break_minutes: number;
+  tea_break_minutes: number;
+  ot_minutes: number;
+  overtime_label: string;
+  is_ot: boolean;
+  ot_reason: string | null;
+  status: string;
+  status_label: string;
+  source: string;
+  notes: string | null;
+  shift_mismatch: boolean;
+};
+
+export type EmployeeAttendanceMonth = {
+  employee: {
+    employment_id: string;
+    company_member_id: string;
+    employee_no: string | null;
+    name: string;
+    designation: string | null;
+    department: string | null;
+    assigned_shift: { id: string; name: string; start_time: string; end_time: string } | null;
+  };
+  from: string;
+  to: string;
+  attendance_rate: number;
+  summary: {
+    present: number;
+    absent: number;
+    half_day: number;
+    leave: number;
+    holiday: number;
+    week_off: number;
+    pending: number;
+    ot_minutes: number;
+    ot_hours: number;
+    worked_minutes: number;
+    worked_hours: number;
+  };
+  days: EmployeeAttendanceDay[];
+  entries: EmployeeAttendanceEntry[];
+};
 
 export type AttendanceAnalyticsSummary = {
   from: string;

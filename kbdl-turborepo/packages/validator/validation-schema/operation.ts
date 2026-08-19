@@ -348,10 +348,10 @@ const employmentTermsDraftSchema = z.object({
 
 const personalDraftSchema = z.object({
   full_name: z.string().trim().max(120).optional(),
-  email: z
-    .union([z.string().trim().email('Invalid email').max(255), z.literal('')])
-    .optional()
-    .transform((v) => (v ? v : undefined)),
+  email: z.preprocess(
+    (val) => (typeof val === 'string' && val.trim() === '' ? undefined : val),
+    z.string().trim().email('Invalid email').max(255).optional(),
+  ),
   date_of_birth: isoDateString('date_of_birth')
     .superRefine((val, ctx) => {
       const dob = parseIsoDate(val);

@@ -3,6 +3,7 @@ import {
   BulkMarkPresentRequest,
   GetAttendanceAnalyticsRequest,
   GetDailyAttendanceRequest,
+  GetEmployeeAttendanceMonthRequest,
   UpdateAttendanceRequest,
   UpsertAttendanceRequest,
 } from '@repo/types';
@@ -11,12 +12,14 @@ import {
   bulkMarkPresentSchema,
   getAttendanceAnalyticsRangeSchema,
   getDailyAttendanceSchema,
+  getEmployeeAttendanceMonthSchema,
   updateAttendanceSchema,
   upsertAttendanceSchema,
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
 import { sendSuccess } from '../utils/send-success';
 import { validate } from '../utils/validate';
+import { getEmployeeAttendanceMonthService } from './attendance-employee-detail-service';
 import {
   getAttendanceAnalyticsBreakdownService,
   getAttendanceAnalyticsInsightsService,
@@ -64,6 +67,17 @@ export const getAttendanceAnalyticsInsights = async (req: Request, res: Response
   const companyId = req.payload.employer.id;
   const data = await getAttendanceAnalyticsInsightsService(companyId, input.query);
   sendSuccess(res, 'Attendance analytics insights retrieved', data);
+};
+
+export const getEmployeeAttendanceMonth = async (req: Request, res: Response) => {
+  const input: GetEmployeeAttendanceMonthRequest = validate(getEmployeeAttendanceMonthSchema, req);
+  const companyId = req.payload.employer.id;
+  const data = await getEmployeeAttendanceMonthService(
+    companyId,
+    input.params.employmentId,
+    input.query,
+  );
+  sendSuccess(res, 'Employee attendance retrieved', data);
 };
 
 export const bulkMarkPresent = async (req: Request, res: Response) => {

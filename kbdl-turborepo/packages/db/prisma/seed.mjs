@@ -323,6 +323,87 @@ async function seedCompanyHolidays(companyId) {
   }
 }
 
+async function seedLeaveForCompany(companyId) {
+  await prisma.companyLeavePolicy.create({
+    data: {
+      company_id: companyId,
+      accrue_per_month: 1,
+      annual_quota: 12,
+      max_carry_forward: 12,
+      carry_forward_at_year_end: true,
+      encash_excess: true,
+      policy_lines: [
+        'Earn 1 leave every month',
+        'Leave balance updates monthly',
+        'Max 12 leaves carry forward from previous year',
+        'Carry forward applies only at year-end',
+        'Excess leaves may be encashed as per policy',
+      ],
+    },
+  });
+
+  const casual = await prisma.companyLeaveType.create({
+    data: { company_id: companyId, name: 'Casual Leave', days_per_year: 12, sort_order: 10 },
+  });
+  const sick = await prisma.companyLeaveType.create({
+    data: { company_id: companyId, name: 'Sick Leave', days_per_year: 6, sort_order: 20 },
+  });
+  await prisma.companyLeaveType.create({
+    data: { company_id: companyId, name: 'Earned Leave', days_per_year: 12, sort_order: 30 },
+  });
+
+  const employments = await prisma.employeeEmployment.findMany({
+    where: { company_id: companyId, is_active: true },
+    select: { id: true },
+    take: 4,
+  });
+  if (!employments[0]) return;
+
+  const rows = [
+    {
+      company_id: companyId,
+      employment_id: employments[0].id,
+      leave_type_id: casual.id,
+      from_date: daysFromNow(-20),
+      to_date: daysFromNow(-18),
+      days: 3,
+      reason: 'Personal work',
+      status: 'approved',
+      applied_by_kind: 'hr',
+      applied_at: daysFromNow(-25),
+      decided_at: daysFromNow(-24),
+    },
+    {
+      company_id: companyId,
+      employment_id: employments[0].id,
+      leave_type_id: sick.id,
+      from_date: daysFromNow(4),
+      to_date: daysFromNow(5),
+      days: 2,
+      reason: 'Fever',
+      status: 'pending',
+      applied_by_kind: 'manager',
+      applied_at: daysFromNow(-1),
+    },
+  ];
+  if (employments[1]) {
+    rows.push({
+      company_id: companyId,
+      employment_id: employments[1].id,
+      leave_type_id: casual.id,
+      from_date: daysFromNow(-8),
+      to_date: daysFromNow(-8),
+      days: 1,
+      reason: 'Family function',
+      status: 'rejected',
+      applied_by_kind: 'manager',
+      applied_at: daysFromNow(-10),
+      decided_at: daysFromNow(-9),
+    });
+  }
+  await prisma.leaveRequest.createMany({ data: rows });
+}
+
 /**
  * HR onboard: workforce_person + employment + company_member (user_id null until app link).
  */
@@ -377,6 +458,12 @@ async function createEmploymentStint({
           department_id: departmentId,
           designation_id: designationId,
           onboarding_stage: 'onboard',
+          employee_type: 'full_time',
+          work_location: city,
+          branch_location: city,
+          basic_salary: 18000,
+          salary_type: 'monthly',
+          salary_payment_frequency: 'monthly',
           ...(seedAddresses && city
             ? {
                 addresses: {
@@ -992,6 +1079,8 @@ async function main() {
     members: [managerMember, ...employeeMembers],
     markedByMemberId: primary.ownerMember.id,
   });
+
+  await seedLeaveForCompany(primary.company.id);
 
   // Office staff on primary — every system role used via role_id (not strings)
   const officeStaff = [
