@@ -491,6 +491,38 @@ async function createEmploymentStint({
     },
   });
 
+  if (city) {
+    let branch = await prisma.companyBranch.findFirst({
+      where: { company_id: companyId, name: city },
+    });
+    if (!branch) {
+      branch = await prisma.companyBranch.create({
+        data: { company_id: companyId, name: city },
+      });
+    }
+    await prisma.employeeHrProfile.update({
+      where: { employment_id: employment.id },
+      data: { branch_id: branch.id },
+    });
+    try {
+      await prisma.$executeRawUnsafe(
+        `
+        UPDATE company_branches cb
+        SET location = c.company_location
+        FROM companies c
+        WHERE cb.id = $1::uuid
+          AND c.id = $2::uuid
+          AND cb.location IS NULL
+          AND c.company_location IS NOT NULL
+        `,
+        branch.id,
+        companyId,
+      );
+    } catch {
+      /* optional until PostGIS copy is available */
+    }
+  }
+
   const member = await prisma.companyMember.create({
     data: {
       user_id: workforcePerson.linked_user_id ?? null,

@@ -32,6 +32,8 @@ import {
   getAttendanceAnalyticsTrend,
   getDailyAttendance,
   getEmployeeAttendanceMonth,
+  getEmployeeAttendanceContext,
+  employeePunchAttendance,
   updateAttendance,
   upsertAttendance,
 } from './attendance-controllers';
@@ -125,6 +127,17 @@ operationsRouter.get(
   '/employee/pending',
   authenticate([ROLES.USER]),
   getEmployeePendingEmployments,
+);
+
+operationsRouter.get(
+  '/employee/attendance/context',
+  authenticate([ROLES.USER]),
+  getEmployeeAttendanceContext,
+);
+operationsRouter.post(
+  '/employee/attendance/punch',
+  authenticate([ROLES.USER]),
+  employeePunchAttendance,
 );
 
 operationsRouter.get('/employee', authenticate([ROLES.USER]), getAllEmployeeEmployment);

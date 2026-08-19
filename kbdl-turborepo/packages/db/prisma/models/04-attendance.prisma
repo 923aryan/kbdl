@@ -73,6 +73,13 @@ model Attendance {
   check_in  DateTime? @db.Timestamptz()
   check_out DateTime? @db.Timestamptz()
 
+  punch_in_lat       Float?
+  punch_in_lng       Float?
+  punch_in_accuracy  Float?
+  punch_out_lat      Float?
+  punch_out_lng      Float?
+  punch_out_accuracy Float?
+
   /// Net worked minutes after breaks (0 for holiday / week_off / absent / leave)
   worked_minutes Int @default(0)
   ot_minutes     Int @default(0)

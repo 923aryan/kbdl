@@ -143,6 +143,25 @@ export const updateAttendanceSchema = z.object({
     }),
 });
 
+export const getEmployeeAttendanceContextSchema = z.object({
+  query: z.object({
+    employment_id: z.preprocess(
+      (val) => (val === '' || val === undefined || val === null ? undefined : val),
+      z.string().uuid().optional(),
+    ),
+  }),
+});
+
+export const employeePunchAttendanceSchema = z.object({
+  body: z.object({
+    employment_id: z.string().uuid(),
+    action: z.enum(['in', 'out']),
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180),
+    accuracy: z.number().min(0).max(5000).optional(),
+  }),
+});
+
 export const upsertAttendanceSchema = z.object({
   body: z
     .object({

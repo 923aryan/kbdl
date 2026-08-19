@@ -37,6 +37,7 @@ import { GEOAPIFY_CONFIG } from '../config/geoapify';
 import { createNotificationService } from '../notifications/notification-service';
 import { AppError } from '../utils/api-error';
 import { NotificationTypes } from '../utils/constants';
+import { upsertCompanyBranchByName } from './company-branch-helpers';
 import {
   ACTIVE_EMPLOYMENT_FILTER,
   mapEmploymentStatusToUi,
@@ -450,6 +451,15 @@ export const updateEmployeeProfileService = async (
         ...(job?.department_id !== undefined ? { department_id: job.department_id } : {}),
         ...(job?.branch_location !== undefined
           ? { branch_location: job.branch_location || null }
+          : {}),
+        ...(job?.branch_location !== undefined
+          ? {
+              branch_id: await upsertCompanyBranchByName(
+                tx,
+                employerId,
+                job.branch_location,
+              ),
+            }
           : {}),
         ...(job?.employee_type !== undefined ? { employee_type: job.employee_type } : {}),
         ...(job?.work_location !== undefined ? { work_location: job.work_location || null } : {}),
@@ -1011,6 +1021,8 @@ export const onboardEmployeeService = async (
       }
     }
 
+    const branchId = await upsertCompanyBranchByName(tx, employerId, job?.branch_location);
+
     const created = await tx.employeeEmployment.create({
       data: {
         company_id: employerId,
@@ -1047,6 +1059,7 @@ export const onboardEmployeeService = async (
             emergency_contact_phone: personal?.emergency_contact?.phone_no || null,
             designation_id: job?.designation_id || null,
             department_id: job?.department_id || null,
+            branch_id: branchId,
             branch_location: job?.branch_location || null,
             employee_type: job?.employee_type || null,
             work_location: job?.work_location || null,

@@ -52,9 +52,29 @@ model Company {
   leave_policy     CompanyLeavePolicy?
   leave_types      CompanyLeaveType[]
   leave_requests   LeaveRequest[]
+  branches         CompanyBranch[]
 
   @@index([company_name])
   @@map("companies")
+}
+
+/// Company work site used for geo attendance (onboard branch + 50m punch).
+model CompanyBranch {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+  name       String @db.VarChar
+  location   Unsupported("geography(Point, 4326)")?
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company     Company            @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  hr_profiles EmployeeHrProfile[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@map("company_branches")
 }
 
 /// Per-company role catalog (like Department).
