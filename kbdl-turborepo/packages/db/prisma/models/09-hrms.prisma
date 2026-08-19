@@ -49,6 +49,7 @@ model EmployeeEmployment {
   workforce_person WorkforcePerson @relation(fields: [workforce_person_id], references: [id])
   hr_profile       EmployeeHrProfile?
   company_member   CompanyMember?
+  leave_requests   LeaveRequest[]
 
   @@index([company_id, workforce_person_id])
   @@index([company_id])

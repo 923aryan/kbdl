@@ -1,23 +1,22 @@
 'use client';
 
 import { DataPagination } from '@/components/ui/pagination';
-import { useMemo, useState } from 'react';
-import { type LeaveRequest, useLeaveStore } from '../stores/use-leave-store';
 import {
-  AttachmentRow,
-  ChangeRequestModal,
-  DateRangeButton,
-  LeaveBalanceCards,
+  fetchEmployeeLeave,
+  updateLeaveRequest,
+  type EmployeeLeaveOverview,
+} from '@/features/employees/api-leave';
+import { useEffect, useState } from 'react';
+import {
+  fetchCompanyLeaveRequests,
+  type CompanyLeaveRequestView,
+} from '../api';
+import {
   PageShell,
   PrimaryButton,
   RequestSearch,
-  RequestSummaryCard,
-  ReviewActions,
-  RowAction,
   StatusBadge,
   StatusSelect,
-  formatDate,
-  formatDateRange,
 } from './leave-ui';
 
 const ROWS_PER_PAGE = 10;
@@ -25,38 +24,70 @@ const ROWS_PER_PAGE = 10;
 const LeaveReview = ({
   request,
   onBack,
+  onUpdated,
 }: {
-  request: LeaveRequest;
+  request: CompanyLeaveRequestView;
   onBack: () => void;
+  onUpdated: () => void;
 }) => {
-  const [isChanging, setIsChanging] = useState(false);
+  const [overview, setOverview] = useState<EmployeeLeaveOverview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetchEmployeeLeave(request.employment_id)
+      .then(setOverview)
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : 'Failed to load employee leave'),
+      );
+  }, [request.employment_id]);
+
+  const decide = async (status: 'approved' | 'rejected') => {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateLeaveRequest(request.id, status);
+      onUpdated();
+      onBack();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update leave');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <PageShell title="Review Leave Requests" crumb="Leaves Request > Review Leaves Request">
-      <RequestSummaryCard request={request} />
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-bold text-black">{request.employee_name}</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          {request.employee_no ?? '—'} · {request.leave_type} · {request.from} to {request.to} (
+          {request.days} days)
+        </p>
+        <p className="mt-1 text-sm text-gray-500">
+          Supervisor: {request.supervisor_name ?? '—'} · Applied: {request.applied_on} ·{' '}
+          {request.applied_by_label}
+        </p>
+        <p className="mt-4 text-base text-gray-700">{request.reason}</p>
+      </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <div className="space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-black">Reason</h2>
-            <p className="mt-4 text-base text-gray-600">{request.reason}</p>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-bold text-black">Attachments</h2>
-            <div className="mt-5">
-              <AttachmentRow request={request} />
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h2 className="text-lg font-bold text-black">Company leave balances for this employee</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(overview?.type_balances ?? []).map((item) => (
+            <div key={item.leave_type} className="rounded-lg bg-[#F8FAFF] p-4">
+              <p className="text-sm font-semibold text-[#26324F]">{item.leave_type}</p>
+              <p className="mt-2 text-sm text-gray-500">
+                Used {item.used} / {item.earned}
+              </p>
+              <p className="text-lg font-bold text-green-700">{item.total_balance} remaining</p>
             </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-lg font-bold text-black">Leave Balance -</h2>
-            <span className="text-base text-gray-500">Abhinav Barwal</span>
-          </div>
-          <div className="mt-5">
-            <LeaveBalanceCards />
-          </div>
+          ))}
         </div>
       </div>
 
@@ -68,52 +99,73 @@ const LeaveReview = ({
         >
           Back to requests
         </button>
-        <ReviewActions request={request} onChange={() => setIsChanging(true)} />
+        {request.status === 'pending' && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void decide('rejected')}
+              className="h-11 rounded-lg border border-red-200 px-6 text-sm font-semibold text-red-600"
+            >
+              Reject
+            </button>
+            <PrimaryButton onClick={() => void decide('approved')} className="h-11 px-6 text-sm">
+              Approve
+            </PrimaryButton>
+          </div>
+        )}
       </div>
-
-      {isChanging && <ChangeRequestModal request={request} onClose={() => setIsChanging(false)} />}
     </PageShell>
   );
 };
 
 export const LeaveRequestsScreen = () => {
-  const { filters, requests, setFilters } = useLeaveStore();
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<CompanyLeaveRequestView | null>(null);
+  const [rows, setRows] = useState<CompanyLeaveRequestView[]>([]);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const filteredRequests = useMemo(() => {
-    return requests.filter((request) => {
-      const searchText = [
-        request.employee.name,
-        request.employee.employeeId,
-        request.supervisor.name,
-        request.leaveType,
-        request.status,
-      ]
-        .join(' ')
-        .toLowerCase();
+  const load = (page = currentPage) => {
+    setLoading(true);
+    setError(null);
+    fetchCompanyLeaveRequests({
+      search,
+      status,
+      from: from || undefined,
+      to: to || undefined,
+      page,
+      limit: ROWS_PER_PAGE,
+    })
+      .then((result) => {
+        setRows(result.data);
+        setTotal(result.meta.total);
+        setCurrentPage(result.meta.page);
+      })
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : 'Failed to load leave requests'),
+      )
+      .finally(() => setLoading(false));
+  };
 
-      if (filters.status !== 'all' && request.status !== filters.status) {
-        return false;
-      }
+  useEffect(() => {
+    load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
-      if (filters.search && !searchText.includes(filters.search.toLowerCase())) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [filters.search, filters.status, requests]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredRequests.length / ROWS_PER_PAGE));
-  const visibleRequests = filteredRequests.slice(
-    (currentPage - 1) * ROWS_PER_PAGE,
-    currentPage * ROWS_PER_PAGE,
-  );
-  const selectedRequest = requests.find((request) => request.id === selectedId) || null;
-
-  if (selectedRequest) {
-    return <LeaveReview request={selectedRequest} onBack={() => setSelectedId(null)} />;
+  if (selected) {
+    return (
+      <LeaveReview
+        request={selected}
+        onBack={() => setSelected(null)}
+        onUpdated={() => load(currentPage)}
+      />
+    );
   }
 
   return (
@@ -126,23 +178,42 @@ export const LeaveRequestsScreen = () => {
         </PrimaryButton>
       }
     >
+      {error && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <RequestSearch
-          value={filters.search}
-          onChange={(search) => {
+          value={search}
+          onChange={(value) => {
+            setSearch(value);
             setCurrentPage(1);
-            setFilters({ search });
           }}
         />
         <div className="flex flex-col gap-4 sm:flex-row">
-          <DateRangeButton label={filters.dateRange} />
+          <input
+            type="date"
+            value={from}
+            onChange={(event) => setFrom(event.target.value)}
+            className="h-11 rounded-lg border border-gray-200 px-3 text-sm"
+          />
+          <input
+            type="date"
+            value={to}
+            onChange={(event) => setTo(event.target.value)}
+            className="h-11 rounded-lg border border-gray-200 px-3 text-sm"
+          />
           <StatusSelect
-            value={filters.status}
-            onChange={(status) => {
+            value={status}
+            onChange={(value) => {
+              setStatus(value);
               setCurrentPage(1);
-              setFilters({ status });
             }}
           />
+          <PrimaryButton onClick={() => load(1)} className="h-11 px-5 text-sm">
+            Search
+          </PrimaryButton>
         </div>
       </div>
 
@@ -161,21 +232,31 @@ export const LeaveRequestsScreen = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-sm">
-              {visibleRequests.map((request) => (
+              {rows.map((request) => (
                 <tr key={request.id} className="transition hover:bg-gray-50">
                   <td className="px-5 py-3">
-                    <p className="font-medium text-black">{request.employee.name}</p>
-                    <p className="text-xs text-gray-500">ID: {request.employee.employeeId}</p>
+                    <p className="font-medium text-black">{request.employee_name}</p>
+                    <p className="text-xs text-gray-500">ID: {request.employee_no ?? '—'}</p>
                   </td>
-                  <td className="px-5 py-3 font-medium text-black">{request.supervisor.name}</td>
-                  <td className="px-5 py-3 font-medium text-black">{request.leaveType}</td>
-                  <td className="px-5 py-3 font-medium text-black">{formatDateRange(request)}</td>
-                  <td className="px-5 py-3 font-medium text-black">{formatDate(request.appliedOn)}</td>
-                  <td className="px-5 py-3">
-                    <StatusBadge status={request.status} />
+                  <td className="px-5 py-3 font-medium text-black">
+                    {request.supervisor_name ?? '—'}
                   </td>
+                  <td className="px-5 py-3 font-medium text-black">{request.leave_type}</td>
+                  <td className="px-5 py-3 font-medium text-black">
+                    {request.from} - {request.to}
+                  </td>
+                  <td className="px-5 py-3 font-medium text-black">{request.applied_on}</td>
                   <td className="px-5 py-3">
-                    <RowAction onClick={() => setSelectedId(request.id)} />
+                    <StatusBadge status={request.status as 'pending' | 'approved' | 'rejected'} />
+                  </td>
+                  <td className="px-5 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setSelected(request)}
+                      className="text-sm font-semibold text-[#0658C2]"
+                    >
+                      Review
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -183,7 +264,7 @@ export const LeaveRequestsScreen = () => {
           </table>
         </div>
 
-        {filteredRequests.length === 0 && (
+        {!loading && rows.length === 0 && (
           <div className="border-t border-gray-200 py-14 text-center">
             <p className="text-sm font-semibold text-gray-900">No leave requests found</p>
             <p className="mt-1 text-sm text-gray-500">Try another keyword or status.</p>
@@ -191,10 +272,10 @@ export const LeaveRequestsScreen = () => {
         )}
 
         <DataPagination
-          currentPage={Math.min(currentPage, totalPages)}
+          currentPage={currentPage}
           pageSize={ROWS_PER_PAGE}
-          totalItems={filteredRequests.length}
-          onPageChange={setCurrentPage}
+          totalItems={total}
+          onPageChange={(page) => load(page)}
           showSummary={false}
         />
       </div>

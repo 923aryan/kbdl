@@ -24,6 +24,7 @@ export type Employee = {
   location: string;
   department: string;
   salary: string;
+  jobType?: string;
   /** Backend employment UUID — used for detail API */
   employmentId?: string;
   onboardDetails?: {

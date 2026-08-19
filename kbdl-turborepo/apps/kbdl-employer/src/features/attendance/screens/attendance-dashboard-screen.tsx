@@ -33,9 +33,11 @@ import {
   type AttendanceRecordDto,
   type CompanyHolidayRef,
   type DailyAttendanceFacets,
+  type DailyAttendanceSummary,
 } from '../api';
 import { fetchWorkShiftsMeta, type MetaWorkShift } from '@/features/employees/api';
 import { SelectField } from '../components/async-single-select';
+import { employeeAttendancePath } from '@/features/employees/lib/employee-routes';
 
 const ROWS_PER_PAGE = 10;
 
@@ -76,14 +78,16 @@ export function AttendanceDashboardScreen() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [records, setRecords] = useState<AttendanceRecordDto[]>([]);
-  const [summary, setSummary] = useState({
+  const [summary, setSummary] = useState<DailyAttendanceSummary>({
     present: 0,
     absent: 0,
     half_day: 0,
     leave: 0,
+    week_off: 0,
+    holiday: 0,
     pending: 0,
     ot_count: 0,
-    holiday: 0,
+    shift_mismatch_count: 0,
   });
   const [totalItems, setTotalItems] = useState(0);
   const [facets, setFacets] = useState<DailyAttendanceFacets>({ status: {}, shift: {} });
@@ -441,7 +445,16 @@ export function AttendanceDashboardScreen() {
                           )}
                         </td>
                         <td className="px-5 py-3">
-                          <p className="font-semibold text-[#111827]">{record.employee_name}</p>
+                          {record.employment_id ? (
+                            <Link
+                              href={employeeAttendancePath(record.employment_id, selectedDate.slice(0, 7))}
+                              className="font-semibold text-[#0658C2] hover:underline"
+                            >
+                              {record.employee_name}
+                            </Link>
+                          ) : (
+                            <p className="font-semibold text-[#111827]">{record.employee_name}</p>
+                          )}
                           <p className="text-xs text-[#676767]">
                             {record.employee_no ? `ID: ${record.employee_no}` : record.company_member_id.slice(0, 8)}
                           </p>

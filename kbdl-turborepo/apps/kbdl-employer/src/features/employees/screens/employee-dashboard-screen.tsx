@@ -22,6 +22,7 @@ import {
   IdCard,
   Info,
   Landmark,
+  Loader2,
   Mail,
   MapPin,
   Phone,
@@ -62,6 +63,7 @@ import {
   fetchOnboardMetaInitial,
   fetchSupervisorsMeta,
   fetchWorkShiftsMeta,
+  updateEmployeeProfile,
   uploadEmployeeDocument,
   addEmployeeDocument,
   type MetaDepartment,
@@ -71,11 +73,17 @@ import {
 } from '../api';
 import { mapEmploymentDtoToEmployee } from '../lib/employee-detail-mapper';
 import {
+  buildProfileUpdateFromCard,
+  type ProfileCardKind,
+} from '../lib/profile-card-save';
+import {
   detailTabFromSearchParam,
   EMPLOYEE_LIST_PATH,
   EMPLOYEE_ONBOARD_PATH,
   employeeDetailPath,
 } from '../lib/employee-routes';
+import { EmployeeAttendanceTab } from '../components/employee-attendance-tab';
+import { EmployeeLeaveTab } from '../components/employee-leave-tab';
 import {
   displayNameFromFileKey,
   formatDocumentStoredValue,
@@ -684,7 +692,10 @@ export function EmployeeDetailScreen({ employmentId }: { employmentId: string })
   }, [employmentId]);
 
   const handleTabChange = (tab: DetailTab) => {
-    router.replace(employeeDetailPath(employmentId, tab));
+    const month = searchParams.get('month') ?? undefined;
+    router.replace(
+      employeeDetailPath(employmentId, tab, tab === 'Attendance' ? { month } : undefined),
+    );
   };
 
   const handleDocumentUploadRequest = (ctx: Omit<DocumentUploadContext, 'employmentId'>) => {
@@ -730,6 +741,7 @@ export function EmployeeDetailScreen({ employmentId }: { employmentId: string })
         onTab={handleTabChange}
         onBack={() => router.push(EMPLOYEE_LIST_PATH)}
         onUpload={handleDocumentUploadRequest}
+        onProfileSaved={refreshEmployee}
       />
 
       {uploadOpen && uploadContext && (
@@ -1166,6 +1178,7 @@ function EmployeeDetails({
   onTab,
   onBack,
   onUpload,
+  onProfileSaved,
 }: {
   employee: Employee;
   activeTab: DetailTab;
@@ -1174,6 +1187,7 @@ function EmployeeDetails({
   onTab: (tab: DetailTab) => void;
   onBack: () => void;
   onUpload: (ctx: Omit<DocumentUploadContext, 'employmentId'>) => void;
+  onProfileSaved: (fallback?: Employee) => Promise<Employee | void>;
 }) {
   return (
     <section className="rounded-[24px] border border-[#D3D3D3] bg-white p-[20px] shadow-sm">
@@ -1202,12 +1216,28 @@ function EmployeeDetails({
           <p className="py-12 text-center text-sm text-[#676767]">Loading employee profile…</p>
         ) : (
           <>
-            {activeTab === 'Personal Info' && <PersonalInfo employee={employee} />}
-            {activeTab === 'Job & Work Info' && <JobWorkInfo employee={employee} />}
+            {activeTab === 'Personal Info' && (
+              <PersonalInfo employee={employee} onProfileSaved={onProfileSaved} />
+            )}
+            {activeTab === 'Job & Work Info' && (
+              <JobWorkInfo employee={employee} onProfileSaved={onProfileSaved} />
+            )}
             {activeTab === 'Documents' && <DocumentsTab employee={employee} onUpload={onUpload} />}
-            {activeTab === 'Bank & Payments' && <BankPayments employee={employee} />}
-            {activeTab === 'Attendance' && <Attendance />}
-            {activeTab === 'Leave' && <LeaveTab />}
+            {activeTab === 'Bank & Payments' && (
+              <BankPayments employee={employee} onProfileSaved={onProfileSaved} />
+            )}
+            {activeTab === 'Attendance' &&
+              (employee.employmentId ? (
+                <EmployeeAttendanceTab employmentId={employee.employmentId} />
+              ) : (
+                <p className="py-8 text-sm text-[#676767]">Attendance is not available for this record.</p>
+              ))}
+            {activeTab === 'Leave' &&
+              (employee.employmentId ? (
+                <EmployeeLeaveTab employmentId={employee.employmentId} />
+              ) : (
+                <p className="py-8 text-sm text-[#676767]">Leave is not available for this record.</p>
+              ))}
           </>
         )}
       </div>
@@ -1291,11 +1321,35 @@ function EmployeeHero({ employee }: { employee: Employee }) {
         </div>
         <div className="grid gap-5 border-[#D3D3D3] grid-cols-2 xl:border-l xl:pl-8">
           <HeroMetric icon={Calendar} label="Date of Joining" value={displayOrDash(employee.joined)} />
-          <HeroMetric icon={MapPin} label="Work Location" value={displayOrDash(draft.location)} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, location: value }))} />
-          <HeroMetric icon={Users} label="Reporting Manager" value={displayOrDash(employee.onboardDetails?.payroll.find(([label]) => label === 'Reporting Manager')?.[1])} />
-          <HeroMetric icon={Briefcase} label="Job Type" value={displayOrDash(employee.onboardDetails?.job.find(([label]) => label === 'Job Type')?.[1])} />
-          <HeroMetric icon={Building2} label="Department" value={draft.department} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, department: value }))} />
-          <HeroMetric icon={CreditCard} label="Salary" value={displayOrDash(draft.salary)} editable={editing} onChange={(value) => setDraft((item) => ({ ...item, salary: value }))} />
+          <HeroMetric
+            icon={MapPin}
+            label="Work Location"
+            value={displayOrDash(draft.location)}
+            editable={editing}
+            onChange={(value) => setDraft((item) => ({ ...item, location: value }))}
+          />
+          <HeroMetric
+            icon={Users}
+            label="Reporting Manager"
+            value={displayOrDash(
+              employee.onboardDetails?.payroll.find(([label]) => label === 'Reporting Manager')?.[1],
+            )}
+          />
+          <HeroMetric icon={Briefcase} label="Job Type" value={displayOrDash(employee.jobType)} />
+          <HeroMetric
+            icon={Building2}
+            label="Department"
+            value={displayOrDash(draft.department)}
+            editable={editing}
+            onChange={(value) => setDraft((item) => ({ ...item, department: value }))}
+          />
+          <HeroMetric
+            icon={CreditCard}
+            label="Salary"
+            value={displayOrDash(draft.salary)}
+            editable={editing}
+            onChange={(value) => setDraft((item) => ({ ...item, salary: value }))}
+          />
         </div>
       </div>
       {/* <button
@@ -1308,43 +1362,58 @@ function EmployeeHero({ employee }: { employee: Employee }) {
   );
 }
 
-function PersonalInfo({ employee }: { employee: Employee }) {
+function PersonalInfo({
+  employee,
+  onProfileSaved,
+}: {
+  employee: Employee;
+  onProfileSaved: (fallback?: Employee) => Promise<Employee | void>;
+}) {
   const details = employee.onboardDetails;
   const emptyRow: string[][] = [['—', 'No data available']];
+  const save = (kind: ProfileCardKind) => (rows: string[][]) =>
+    saveEmployeeCard(employee, kind, rows, onProfileSaved);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-      <InfoCard title="Personal Information" icon={IdCard} rows={details?.personal ?? emptyRow} />
+      <InfoCard title="Personal Information" icon={IdCard} rows={details?.personal ?? emptyRow} onSave={save('personal')} />
       <div className="space-y-4">
-        <InfoCard title="Contact Information" icon={Phone} rows={details?.contact ?? emptyRow} />
-                </div>
-        <div className="space-y-4">
-        <InfoCard title="Emergency Contact" icon={Phone} rows={details?.emergency ?? emptyRow} />
-
+        <InfoCard title="Contact Information" icon={Phone} rows={details?.contact ?? emptyRow} onSave={save('contact')} />
       </div>
       <div className="space-y-4">
-        <InfoCard title="Identity Details" icon={IdCard} rows={details?.identity ?? emptyRow} />
+        <InfoCard title="Emergency Contact" icon={Phone} rows={details?.emergency ?? emptyRow} onSave={save('emergency')} />
       </div>
       <div className="space-y-4">
-        <InfoCard title="Other Information" icon={Briefcase} rows={details?.other ?? emptyRow} />
+        <InfoCard title="Identity Details" icon={IdCard} rows={details?.identity ?? emptyRow} onSave={save('identity')} />
+      </div>
+      <div className="space-y-4">
+        <InfoCard title="Other Information" icon={Briefcase} rows={details?.other ?? emptyRow} onSave={save('other')} />
       </div>
     </div>
   );
 }
 
-function JobWorkInfo({ employee }: { employee: Employee }) {
+function JobWorkInfo({
+  employee,
+  onProfileSaved,
+}: {
+  employee: Employee;
+  onProfileSaved: (fallback?: Employee) => Promise<Employee | void>;
+}) {
   const details = employee.onboardDetails;
   const emptyRow: string[][] = [['—', 'No data available']];
   const jobRows = details?.job.map(([label, value]): string[] => [
     label || '',
     label === 'Employee Status' ? employee.status : value || '',
   ]);
+  const save = (kind: ProfileCardKind) => (rows: string[][]) =>
+    saveEmployeeCard(employee, kind, rows, onProfileSaved);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-      <InfoCard title="Job Information" icon={Briefcase} rows={jobRows ?? emptyRow} />
-      <InfoCard title="Work Details" icon={Wrench} rows={details?.work ?? emptyRow} />
-      <InfoCard title="Reporting & Payroll" icon={Users} rows={details?.payroll ?? emptyRow} />
+      <InfoCard title="Job Information" icon={Briefcase} rows={jobRows ?? emptyRow} onSave={save('job')} />
+      <InfoCard title="Work Details" icon={Wrench} rows={details?.work ?? emptyRow} onSave={save('work')} />
+      <InfoCard title="Reporting & Payroll" icon={Users} rows={details?.payroll ?? emptyRow} onSave={save('payroll')} />
     </div>
   );
 }
@@ -1517,301 +1586,33 @@ function DocumentsTab({
   );
 }
 
-function BankPayments({ employee }: { employee: Employee }) {
+function BankPayments({
+  employee,
+  onProfileSaved,
+}: {
+  employee: Employee;
+  onProfileSaved: (fallback?: Employee) => Promise<Employee | void>;
+}) {
   const details = employee.onboardDetails;
-  const history = Array.from({ length: 10 }, (_, index) => ({
-    id: index,
-    month: 'May 2026',
-    payDate: '31 May 2026',
-    paidDays: 26,
-    gross: '₹ 100,000',
-    deductions: '₹ 35,000',
-    net: '₹ 65,000',
-  }));
+  const emptyRow: string[][] = [['—', 'No data available']];
+  const save = (kind: ProfileCardKind) => (rows: string[][]) =>
+    saveEmployeeCard(employee, kind, rows, onProfileSaved);
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-2">
-        <InfoCard title="Bank Details" icon={Landmark} rows={details?.bank ?? [
-          ['Bank Name', 'State Bank of India'],
-          ['Account Number', '100085678394'],
-          ['IFSC Code', 'ADHF000678'],
-          ['Branch', 'Chauntra'],
-          ['Account Holder Name', 'Abhinav Barwal'],
-          ['Account Type', 'Savings'],
-        ]} />
-        <InfoCard title="Salary & Payment Details" icon={WalletCards} rows={details?.payment ?? [
-          ['Payroll Group', 'Monthly Paid Worker'],
-          ['Payroll Schedule', 'Monthly'],
-          ['Payment Mode', 'Bank Transfer'],
-          ['Salary Structure', 'Electrician - Grade 2'],
-          ['Basic Salary', '₹ 65,000'],
-          ['Allowances', '₹ 35,000'],
-          ['Total Salary (CTC)', '₹ 100,000 / Month'],
-          ['Effective Form', '02 June 2026'],
-        ]} />
+        <InfoCard title="Bank Details" icon={Landmark} rows={details?.bank ?? emptyRow} onSave={save('bank')} />
+        <InfoCard
+          title="Salary & Payment Details"
+          icon={WalletCards}
+          rows={details?.payment ?? emptyRow}
+          onSave={save('payment')}
+        />
       </div>
       <div className="rounded-xl border border-[#D3D3D3] p-5 shadow-sm">
         <SectionHeading icon={Clock} title="Payment History" />
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[850px] text-left text-sm">
-            <thead>
-              <tr className="bg-[#FAFAFA] text-[#676767]">
-                {['Month', 'Pay Date', 'Paid Days', 'Gross Salary', 'Deductions', 'Net Pay', 'Payslip'].map((head) => (
-                  <th key={head} className="px-5 py-4">
-                    {head}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((item) => (
-                <tr key={item.id} className="border-b border-[#D3D3D3]">
-                  <td className="px-5 py-4">{item.month}</td>
-                  <td className="px-5 py-4">{item.payDate}</td>
-                  <td className="px-5 py-4">{item.paidDays}</td>
-                  <td className="px-5 py-4">{item.gross}</td>
-                  <td className="px-5 py-4">{item.deductions}</td>
-                  <td className="px-5 py-4">{item.net}</td>
-                  <td className="px-5 py-4 text-[#0658C2]">
-                    <Download className="h-5 w-5" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <Pagination currentPage={1} totalPages={1} onPageChange={() => undefined} />
-      </div>
-    </div>
-  );
-}
-
-function Attendance() {
-  const [calendarDate, setCalendarDate] = useState(new Date(2026, 5, 1));
-  const [legendsOpen, setLegendsOpen] = useState(true);
-  const [logOpen, setLogOpen] = useState(true);
-  const calendarDays = useMemo(() => buildCalendarDays(calendarDate), [calendarDate]);
-  const monthLabel = calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const changeMonth = (offset: number) => {
-    setCalendarDate((date) => new Date(date.getFullYear(), date.getMonth() + offset, 1));
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-[#D3D3D3] shadow-sm overflow-x-auto">
-        <div className="calendar min-w-[900px]">
-          <div className="flex items-center justify-between px-5 py-4">
-            <button type="button" onClick={() => changeMonth(-1)} className="inline-flex items-center gap-2 text-[#676767]">
-              <ChevronLeft className="h-4 w-4" /> Prev
-            </button>
-            <h3 className="text-2xl font-semibold">{monthLabel}</h3>
-            <button type="button" onClick={() => changeMonth(1)} className="inline-flex items-center gap-2 text-[#676767]">
-              Next <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-7 border-t border-[#D3D3D3] bg-[#FAFAFA] text-sm font-semibold text-[#676767]">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="px-4 py-3">
-                {day}
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7">
-            {calendarDays.map(({ day, code, muted }, index) => (
-              <div
-                key={`${day}-${index}`}
-                className={`min-h-[92px] border-r border-t border-[#D3D3D3] p-3 text-sm hover:bg-[#e7effb] ${muted ? 'text-gray-300' : 'text-[#676767]'} ${
-                  code === 'P'
-                    ? 'bg-[#E5FFEB]'
-                    : code === 'A'
-                      ? 'bg-[#FEE9E5]'
-                      : code === 'L'
-                        ? 'bg-[#EDE9FE]'
-                        : code === 'H'
-                          ? 'bg-[#DBEAFF]'
-                          : code === 'OF'
-                            ? 'bg-[#F4F4F4]'
-                            : 'bg-white'
-                }`}
-              >
-                <span>{day.toString().padStart(2, '0')}</span>
-                {code && (
-                  <div className={`mt-2 text-center font-semibold ${legendColor(code)}`}>{code}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <CollapsibleTitle title="Legends" open={legendsOpen} onToggle={() => setLegendsOpen((value) => !value)} />
-      {legendsOpen && (
-        <div className="grid gap-3 rounded-xl border border-[#D3D3D3] p-4 text-sm text-[#676767] shadow-sm sm:grid-cols-3 xl:grid-cols-6">
-          {([
-            ['P', 'Present'],
-            ['A', 'Absent'],
-            ['OF', 'Off Day'],
-            ['L', 'Leave'],
-            ['P', 'Alert for Deduction'],
-            ['H', 'Holiday'],
-          ] as [string, string][]).map(([code, label]) => (
-            <span key={label} className="inline-flex items-center gap-3">
-              <span className={`px-1.5 text-xs font-semibold ${legendChip(code)}`}>{code}</span>
-              {label}
-            </span>
-          ))}
-        </div>
-      )}
-      <CollapsibleTitle title="Attendance Log" open={logOpen} onToggle={() => setLogOpen((value) => !value)} />
-      {logOpen && (
-        <DataTable
-          headers={['Date', 'Time', 'Location']}
-          rows={[
-            ['03 June 2026', '06:06:43 am', 'Chandigarh'],
-            ['03 June 2026', '12:02:23 pm', 'Chandigarh'],
-            ['03 June 2026', '02:25:50 pm', 'Chandigarh'],
-            ['03 June 2026', '05:45:34 pm', 'Chandigarh'],
-          ]}
-        />
-      )}
-    </div>
-  );
-}
-
-function LeaveTab() {
-  const [rangeOpen, setRangeOpen] = useState(false);
-  const [dateRange, setDateRange] = useState({ from: '', to: '' });
-  const requests = Array.from({ length: 8 }, (_, index) => [
-    'Casual Leave',
-    `${15 + index} Jun 2026`,
-    `${17 + index} Jun 2026`,
-    '3',
-    'Personal work',
-    index === 3 || index === 6 ? 'Rejected' : 'Approved',
-    '03 Jun 2026',
-  ]);
-  const filteredRequests = requests.filter((row) => {
-    const from = parseDisplayDate(row[1] ?? '');
-    const to = parseDisplayDate(row[2] ?? '');
-    const rangeFrom = dateRange.from ? new Date(dateRange.from) : null;
-    const rangeTo = dateRange.to ? new Date(dateRange.to) : null;
-
-    return (!rangeFrom || to >= rangeFrom) && (!rangeTo || from <= rangeTo);
-  });
-
-  return (
-    <div className="space-y-5">
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-xl border border-[#D3D3D3] p-5 shadow-sm">
-          <h3 className="text-2xl font-semibold">Leave Balance</h3>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <LeaveBalanceCard title="Available Leave Balance" value="8.0" note="As on 6 June 2024" color="green" />
-            <LeaveBalanceCard title="Unused Leaves (This Year)" value="6.0" note="01 Jan 2025 - 31 Dec 2025" color="violet" />
-            <LeaveBalanceCard title="Pending Leaves" value="1.0" note="Approval Pending" color="orange" />
-          </div>
-        </div>
-        <div className="rounded-xl border border-[#D3D3D3] p-5 shadow-sm">
-          <h3 className="text-2xl font-semibold">Leave Policy</h3>
-          <ul className="mt-4 space-y-3 text-sm text-[#676767]">
-            {[
-              'Earn 1 leave every month',
-              'Leave balance updates monthly',
-              'Max 12 leaves carry forward from previous year',
-              'Carry forward applies only at year-end',
-              'Excess leaves may be encashed as per policy',
-            ].map((item) => (
-              <li key={item} className="flex gap-2">
-                <span className="text-[#0658C2]">▸</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h3 className="text-2xl font-semibold">Leave Request</h3>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setRangeOpen((value) => !value)}
-            className="inline-flex h-12 items-center justify-center gap-6 rounded-lg border border-gray-300 px-6 font-semibold"
-          >
-            Date Range {rangeOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-          </button>
-          {rangeOpen && (
-            <div className="absolute right-0 z-30 mt-2 grid w-[320px] gap-3 rounded-xl border border-[#D3D3D3] bg-white p-4 shadow-xl">
-              <label className="grid gap-1 text-sm font-semibold">
-                From
-                <input
-                  type="date"
-                  value={dateRange.from}
-                  onChange={(event) => setDateRange((value) => ({ ...value, from: event.target.value }))}
-                  className="h-11 rounded-lg border border-[#D3D3D3] px-3 outline-none focus:border-[#0658C2]"
-                />
-              </label>
-              <label className="grid gap-1 text-sm font-semibold">
-                To
-                <input
-                  type="date"
-                  value={dateRange.to}
-                  onChange={(event) => setDateRange((value) => ({ ...value, to: event.target.value }))}
-                  className="h-11 rounded-lg border border-[#D3D3D3] px-3 outline-none focus:border-[#0658C2]"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => setDateRange({ from: '', to: '' })}
-                className="justify-self-end text-sm font-semibold text-[#0658C2]"
-              >
-                Clear
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="overflow-x-auto rounded-xl border border-[#D3D3D3] shadow-sm">
-        <table className="w-full min-w-[900px] text-left text-sm">
-          <thead>
-            <tr className="bg-[#FAFAFA] text-[#676767]">
-              {['Leave Type', 'From', 'To', 'Days', 'Reason', 'Status', 'Applied On'].map((head) => (
-                <th key={head} className="px-5 py-4">
-                  {head}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRequests.map((row, index) => (
-              <tr key={index} className="border-b border-[#D3D3D3] text-[#676767]">
-                {row.map((cell, cellIndex) => (
-                  <td key={`${cell}-${cellIndex}`} className="px-5 py-4">
-                    {cellIndex === 5 ? (
-                      <span className={`rounded-md border px-4 py-1.5 text-xs font-semibold ${
-                        cell === 'Approved'
-                          ? 'border-[#4CAF50] bg-[#E5FFEB] text-[#4CAF50]'
-                          : 'border-red-500 bg-[#FEE9E5] text-red-600'
-                      }`}>
-                        {cell}
-                      </span>
-                    ) : (
-                      cell
-                    )}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <h3 className="text-2xl font-semibold">Leave Type Balance</h3>
-      <DataTable
-        headers={['Leave Type', 'Earned This year', 'Used', 'Pending', 'Current Year Balance', 'Carry Forward (2025)', 'Total Balance']}
-        rows={[['Casual Leave', '5 Days', '2 Days', '1 Day', '2 Days', '6 Days', '8 Days']]}
-      />
-      <div className="flex items-start gap-3 rounded-xl bg-[#DBEAFF] p-4 text-blue-950">
-        <Info className="mt-0.5 h-5 w-5 shrink-0 text-[#0658C2]" />
-        <p className="text-sm">
-          <strong>Note:</strong> Up to 12 unused leaves can be carried forward. Excess leave balance will be encashed and credited to the employee&apos;s bank account or paid through an approved payment method, as per company policy.
+        <p className="mt-4 text-sm text-[#676767]">
+          Payroll runs and payslips are not wired yet. Bank/salary fields above come from the employee profile.
         </p>
       </div>
     </div>
@@ -2479,9 +2280,47 @@ function PageTitle({ title, crumb, onBack }: { title: string; crumb: string; onB
   );
 }
 
-function InfoCard({ title, icon: Icon, rows }: { title: string; icon: typeof User; rows: string[][] }) {
+function InfoCard({
+  title,
+  icon: Icon,
+  rows,
+  onSave,
+}: {
+  title: string;
+  icon: typeof User;
+  rows: string[][];
+  onSave?: (rows: string[][]) => Promise<void>;
+}) {
   const [editing, setEditing] = useState(false);
   const [draftRows, setDraftRows] = useState(rows);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDraftRows(rows);
+  }, [rows]);
+
+  const handleToggle = async () => {
+    if (!editing) {
+      setError(null);
+      setEditing(true);
+      return;
+    }
+    if (!onSave) {
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(draftRows);
+      setEditing(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="h-full rounded-xl border border-[#D3D3D3] p-5 shadow-sm">
@@ -2489,12 +2328,15 @@ function InfoCard({ title, icon: Icon, rows }: { title: string; icon: typeof Use
         <SectionHeading icon={Icon} title={title} />
         <button
           type="button"
-          onClick={() => setEditing((value) => !value)}
-          className="inline-flex items-center gap-1 text-sm text-[#0658C2] cursor-pointer"
+          disabled={saving}
+          onClick={() => void handleToggle()}
+          className="inline-flex items-center gap-1 text-sm text-[#0658C2] cursor-pointer disabled:opacity-50"
         >
-          <Edit3 className="h-4 w-4" /> {editing ? 'Save' : 'Edit'}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Edit3 className="h-4 w-4" />}
+          {editing ? (saving ? 'Saving' : 'Save') : 'Edit'}
         </button>
       </div>
+      {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
       <div className="space-y-0">
         {draftRows.map(([label, value], index) => (
           <div key={label} className="grid grid-cols-[45%_1fr] gap-4 border-b border-[#D3D3D3] py-3 text-sm">
@@ -2519,6 +2361,20 @@ function InfoCard({ title, icon: Icon, rows }: { title: string; icon: typeof Use
       </div>
     </div>
   );
+}
+
+async function saveEmployeeCard(
+  employee: Employee,
+  kind: ProfileCardKind,
+  rows: string[][],
+  onProfileSaved: (fallback?: Employee) => Promise<Employee | void>,
+) {
+  if (!employee.employmentId) {
+    throw new Error('Employee record is missing');
+  }
+  const payload = await buildProfileUpdateFromCard(kind, rows);
+  const dto = await updateEmployeeProfile(employee.employmentId, payload);
+  await onProfileSaved(mapEmploymentDtoToEmployee(dto, employee));
 }
 
 function OnboardDocumentsSection({
@@ -3277,95 +3133,3 @@ function Pagination({
   );
 }
 
-function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
-  return (
-    <div className="overflow-x-auto rounded-xl border border-[#D3D3D3] shadow-sm">
-      <table className="w-full min-w-[800px] text-left text-sm">
-        <thead>
-          <tr className="bg-[#FAFAFA] text-[#676767]">
-            {headers.map((head) => (
-              <th key={head} className="px-5 py-[10px]">
-                {head}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index} className="border-b border-[#D3D3D3] text-[#676767]">
-              {row.map((cell, cellIndex) => (
-                <td key={`${cell}-${cellIndex}`} className="px-5 py-4">
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function CollapsibleTitle({
-  title,
-  open,
-  onToggle,
-}: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex w-full items-center justify-between rounded-xl border border-[#D3D3D3] px-5 py-[9px] text-left shadow-sm mb-2"
-    >
-      <h3 className="text-[20px] font-semibold text-[#676767]">{title}</h3>
-      {open ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-    </button>
-  );
-}
-
-function LeaveBalanceCard({
-  title,
-  value,
-  note,
-  color,
-}: {
-  title: string;
-  value: string;
-  note: string;
-  color: 'green' | 'violet' | 'orange';
-}) {
-  const colorMap = {
-    green: 'bg-[#E5FFEB] text-[#4CAF50]',
-    violet: 'bg-[#EDE9FE] text-[#8B5CF6]',
-    orange: 'bg-[#FFF4E3] text-[#FFA000]',
-  };
-
-  return (
-    <div className={`rounded-2xl p-5 text-center ${colorMap[color]}`}>
-      <p className="min-h-10 text-sm text-[#676767]">{title}</p>
-      <p className="mt-2 text-3xl font-medium">{value}</p>
-      <p className="text-xs text-[#676767]">Days</p>
-      <p className="mt-4 text-xs text-[#676767]">{note}</p>
-    </div>
-  );
-}
-
-function legendColor(code: string) {
-  if (code === 'P') return 'text-[#4CAF50]';
-  if (code === 'A') return 'text-[#F54A4A]';
-  if (code === 'L') return 'text-[#8B5CF6]';
-  if (code === 'H') return 'text-[#0658C2]';
-  return 'text-[#676767]';
-}
-
-function legendChip(code: string) {
-  if (code === 'P') return 'bg-[#E5FFEB] text-[#4CAF50]';
-  if (code === 'A') return 'bg-[#FEE9E5] text-[#F54A4A]';
-  if (code === 'L') return 'bg-[#EDE9FE] text-[#8B5CF6]';
-  if (code === 'H') return 'bg-[#DBEAFF] text-[#0658C2]';
-  return 'bg-[#F4F4F4] text-[#676767]';
-}

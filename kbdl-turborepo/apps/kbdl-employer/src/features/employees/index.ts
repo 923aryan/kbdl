@@ -18,5 +18,6 @@ export {
 export {
   EMPLOYEE_LIST_PATH,
   EMPLOYEE_ONBOARD_PATH,
+  employeeAttendancePath,
   employeeDetailPath,
 } from './lib/employee-routes';

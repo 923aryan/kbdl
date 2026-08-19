@@ -1796,6 +1796,43 @@ paths:
                               facets:
                                 $ref: '#/components/schemas/EmployerEmployeeFacets'
 
+  /api/v1/operations/employer/attendance/employee/{employmentId}:
+    get:
+      tags: [Operations]
+      summary: Employee monthly attendance (calendar + log)
+      description: |
+        Employer view of one employment for a month: day codes, per-shift rows,
+        OT/breaks, and summary counts. Defaults to the current UTC month.
+      parameters:
+        - name: employmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: month
+          in: query
+          schema:
+            type: string
+            example: '2026-08'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Monthly attendance for the employee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSuccess'
+
   /api/v1/operations/employer/{id}:
     get:
       tags: [Operations]

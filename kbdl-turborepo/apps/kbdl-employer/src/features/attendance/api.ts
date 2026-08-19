@@ -10,6 +10,8 @@ import type {
   CompanyHolidayRef,
   DailyAttendanceFacets,
   DailyAttendanceResponse,
+  DailyAttendanceSummary,
+  EmployeeAttendanceMonth,
 } from '@repo/types';
 
 export type {
@@ -23,6 +25,8 @@ export type {
   BulkMarkPresentResult,
   DailyAttendanceFacets,
   CompanyHolidayRef,
+  EmployeeAttendanceMonth,
+  DailyAttendanceSummary,
 };
 
 export type DailyAttendanceParams = {
@@ -147,6 +151,14 @@ export async function fetchAttendanceAnalyticsInsights(
 ) {
   const response = await api.get<AttendanceAnalyticsInsights>(
     `/operations/employer/attendance/analytics/insights${analyticsQuery(params)}`,
+  );
+  return response.data;
+}
+
+export async function fetchEmployeeAttendanceMonth(employmentId: string, month?: string) {
+  const query = month ? `?month=${encodeURIComponent(month)}` : '';
+  const response = await api.get<EmployeeAttendanceMonth>(
+    `/operations/employer/attendance/employee/${employmentId}${query}`,
   );
   return response.data;
 }
