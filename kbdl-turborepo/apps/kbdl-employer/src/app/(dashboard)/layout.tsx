@@ -169,19 +169,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
 
-  const { employer, isHydrated, hydrateAuth } = useAuthStore();
+  const employer = useAuthStore((state) => state.employer);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
 
-  // Mark when component is mounted on client
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // Hydrate auth on mount (only once)
-  useEffect(() => {
-    if (!isHydrated) {
-      hydrateAuth();
-    }
-  }, [isHydrated, hydrateAuth]);
 
   // Handle redirect - ONLY redirect if we're sure there's no employer
   useEffect(() => {
