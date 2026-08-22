@@ -280,14 +280,14 @@ export function AttendanceDashboardScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] text-[#111827]">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#111827]">
       <AttendanceTopBar />
       <main className="space-y-7 p-5 lg:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-[28px] font-bold tracking-normal">Attendance</h1>
             <p className="mt-1 text-sm text-[#676767]">
-              One row per shift — day + night on the same date are separate records
+              Track employee attendance, working hours, shifts, and daily status
             </p>
           </div>
 
@@ -771,7 +771,7 @@ function MetricCard({
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <p className="mt-6 text-xl font-bold">{value}</p>
+      <p className="mt-2 text-xl font-bold">{value}</p>
       <p className="mt-2 text-xs text-[#676767]">{note}</p>
     </div>
   );

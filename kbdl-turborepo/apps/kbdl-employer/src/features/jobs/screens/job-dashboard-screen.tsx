@@ -545,7 +545,7 @@ export function JobsDashboardScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-5 lg:p-6">
+    <div className="min-h-screen bg-[#FAFAFA] p-5 lg:p-6">
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         {/* ── Page header ── */}
         <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">

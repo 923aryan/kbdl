@@ -3,9 +3,16 @@
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 import {
   Briefcase,
+  CalendarDays,
+  CalendarCheck,
+  CalendarPlus,
+  ChartColumn,
+  ClipboardList,
+  ClipboardPlus,
   ChevronDown,
   ChevronUp,
   Clock,
+  FileCheck2,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -13,7 +20,6 @@ import {
   Settings,
   ShieldCheck,
   UserCheck,
-  UserRoundCheck,
   Users,
   WalletCards,
   X,
@@ -21,7 +27,6 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-
 const menuItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
   { path: '/employees', label: 'Employees', icon: Users },
@@ -32,32 +37,77 @@ const menuItems = [
     label: 'Payroll',
     icon: WalletCards,
     subItems: [
-      { path: '/payroll/run', label: 'Run Payroll', icon: Clock },
-      { path: '/payroll/worker-wages', label: 'Worker Wages', icon: Users },
-      { path: '/payroll/payslips', label: 'Payslips', icon: FileText },
-      { path: '/payroll/statutory-filing', label: 'Statutory Filing', icon: ShieldCheck },
-      { path: '/payroll/settings', label: 'Payroll Setting', icon: Settings },
+      {
+        path: '/payroll/run',
+        label: 'Run Payroll',
+        icon: CalendarCheck,
+      },
+      {
+        path: '/payroll/worker-wages',
+        label: 'Worker Wages',
+        icon: WalletCards,
+      },
+      {
+        path: '/payroll/payslips',
+        label: 'Payslips',
+        icon: FileText,
+      },
+      {
+        path: '/payroll/statutory-filing',
+        label: 'Statutory Filing',
+        icon: ShieldCheck,
+      },
+      {
+        path: '/payroll/settings',
+        label: 'Payroll Setting',
+        icon: Settings,
+      },
     ],
   },
   {
     path: '/leave',
     label: 'Leave',
-    icon: UserCheck,
+    icon: CalendarDays,
     subItems: [
-      { path: '/leave/types', label: 'Leave Types', icon: Settings },
-      { path: '/leave/apply', label: 'Apply Leave', icon: Users },
-      { path: '/leave/requests', label: 'Leaves Request', icon: Users },
+      {
+        path: '/leave/requests',
+        label: 'Leaves Request',
+        icon: FileCheck2,
+      },
+      {
+        path: '/leave/apply',
+        label: 'Apply Leave',
+        icon: CalendarPlus,
+      },
+      {
+        path: '/leave/types',
+        label: 'Leave Types',
+        icon: Settings,
+      },
     ],
   },
-  {
-    path: '/attendance',
-    label: 'Attendance',
-    icon: UserRoundCheck,
-    subItems: [
-      { path: '/attendance/add', label: 'Add Attendance', icon: Users },
-      { path: '/attendance/analytics', label: 'Analytics', icon: FileText },
-    ],
-  },
+ {
+  path: '/attendance',
+  label: 'Attendance',
+  icon: UserCheck,
+  subItems: [
+    {
+      path: '/attendance/records',
+      label: 'Attendance Log',
+      icon: ClipboardList,
+    },
+    {
+      path: '/attendance/add',
+      label: 'Add Attendance',
+      icon: ClipboardPlus,
+    },
+    {
+      path: '/attendance/analytics',
+      label: 'Analytics',
+      icon: ChartColumn,
+    },
+  ],
+},
 ];
 
 function NavItem({

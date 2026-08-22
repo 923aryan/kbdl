@@ -763,7 +763,7 @@ export function AttendanceAnalyticsScreen() {
             onRetry={refreshSection}
             showInfo
           >
-            <div className="grid items-center gap-4 md:grid-cols-[minmax(190px,230px)_minmax(0,1fr)] xl:grid-cols-1 2xl:grid-cols-[minmax(190px,230px)_minmax(0,1fr)]">
+            <div className="grid items-center gap-4 md:grid-cols-[minmax(190px,230px)_minmax(0,1fr)] xl:grid-cols-1 2xl:grid-cols-[minmax(150px,170px)_minmax(0,1fr)]">
               <div className="h-[205px] min-w-0">
                 <ResponsiveContainer
                   width="100%"
@@ -895,7 +895,7 @@ export function AttendanceAnalyticsScreen() {
             ===================================================== */}
 
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[780px] text-left text-sm">
+              <table className="w-full text-left text-sm">
                 <thead className="bg-[#F9FAFB] text-xs font-bold text-[#667085]">
                   <tr>
                     <SortableTh

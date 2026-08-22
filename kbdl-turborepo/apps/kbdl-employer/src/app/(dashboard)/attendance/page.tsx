@@ -1,10 +1,5 @@
-import { Suspense } from 'react';
-import { AttendanceDashboardScreen } from '@/features/attendance';
+import { redirect } from 'next/navigation';
 
-export default function AttendancePage() {
-  return (
-    <Suspense fallback={null}>
-      <AttendanceDashboardScreen />
-    </Suspense>
-  );
+export default function PayrollPage() {
+  redirect('/attendance/records');
 }

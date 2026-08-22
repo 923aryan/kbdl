@@ -239,7 +239,7 @@ export function AddAttendanceScreen() {
   const isSecondShift = Boolean(prefillEmploymentId);
 
   return (
-    <div className="min-h-screen bg-[#F6F7F9] text-[#111827]">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#111827]">
       <main className="p-5 lg:p-6">
         <div className="mb-6 flex items-center gap-4">
           <Link
