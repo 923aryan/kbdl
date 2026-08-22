@@ -1,9 +1,11 @@
 'use client';
 
 import {
+  ArrowUpDown,
   Calendar,
   Check,
   ChevronDown,
+  ChevronUp,
   Download,
   Info,
   Loader2,
@@ -205,6 +207,16 @@ type IssueFilter =
   | 'late'
   | 'early_leave';
 
+type IssueSortBy =
+  | 'employee'
+  | 'department'
+  | 'absences'
+  | 'late'
+  | 'early_leaves'
+  | 'priority';
+
+type TrendPeriod = 'weekly' | 'monthly';
+
 export function AttendanceAnalyticsScreen() {
   const [month, setMonth] = useState(currentUtcMonth);
 
@@ -219,7 +231,19 @@ export function AttendanceAnalyticsScreen() {
   const [issueFilter, setIssueFilter] =
     useState<IssueFilter>('all');
 
+  const [issueSortBy, setIssueSortBy] =
+    useState<IssueSortBy>('absences');
+
+  const [issueSortDir, setIssueSortDir] =
+    useState<'asc' | 'desc'>('desc');
+
+  const [trendPeriod, setTrendPeriod] =
+    useState<TrendPeriod>('weekly');
+
   const [issueDropdownOpen, setIssueDropdownOpen] =
+    useState(false);
+
+  const [periodDropdownOpen, setPeriodDropdownOpen] =
     useState(false);
 
   const analyticsBounds = useMemo(
@@ -235,12 +259,21 @@ export function AttendanceAnalyticsScreen() {
     [analyticsBounds],
   );
 
+  const insightsQuery = useMemo(
+    () => ({
+      sort_by: issueSortBy,
+      sort_dir: issueSortDir,
+      issue_filter: issueFilter,
+    }),
+    [issueSortBy, issueSortDir, issueFilter],
+  );
+
   const {
     trend,
     breakdown,
     insights,
     refreshSection,
-  } = useAttendanceAnalytics(range);
+  } = useAttendanceAnalytics(range, insightsQuery);
 
   const weeks = useMemo(
     () =>
@@ -291,7 +324,7 @@ export function AttendanceAnalyticsScreen() {
   );
 
   const weeklyTrend = useMemo(() => {
-    if (!activeWeek) return trendChart;
+    if (trendPeriod === 'monthly' || !activeWeek) return trendChart;
 
     return trendChart.filter((point) => {
       const date = parseDate(point.date);
@@ -301,7 +334,7 @@ export function AttendanceAnalyticsScreen() {
         date <= activeWeek.to
       );
     });
-  }, [activeWeek, trendChart]);
+  }, [activeWeek, trendChart, trendPeriod]);
 
   const distribution = useMemo<DistributionItem[]>(() => {
     const valueByStatus = new Map(
@@ -311,61 +344,81 @@ export function AttendanceAnalyticsScreen() {
       ]),
     );
 
-    const lateCount = trendChart.reduce(
-      (sum, point) => sum + point.lateCount,
-      0,
-    );
+    const headcount =
+      breakdown.data?.headcount ??
+      breakdown.data?.total ??
+      0;
+
+    const present =
+      valueByStatus.get('present')?.value ?? 0;
+    const late =
+      valueByStatus.get('late')?.value ?? 0;
+    const earlyLeave =
+      valueByStatus.get('early_leave')?.value ?? 0;
+    const absent =
+      valueByStatus.get('absent')?.value ?? 0;
+    const leave =
+      valueByStatus.get('leave')?.value ?? 0;
 
     const rows = [
       {
         status: 'present',
         name: 'Present',
-        value:
-          (valueByStatus.get('present')?.value ?? 0) +
-          (valueByStatus.get('on_duty')?.value ?? 0),
+        value: present,
         color: '#22C55E',
+        pie: true,
       },
       {
         status: 'absent',
         name: 'Absent',
-        value:
-          valueByStatus.get('absent')?.value ?? 0,
+        value: absent,
         color: '#F59E0B',
+        pie: true,
       },
       {
         status: 'late',
         name: 'Late',
-        value: lateCount,
+        value: late,
         color: '#8B5CF6',
+        pie: false,
       },
       {
         status: 'early_leave',
         name: 'Early Leave',
-        value: 0,
+        value: earlyLeave,
         color: '#F43F5E',
+        pie: false,
       },
       {
         status: 'leave',
         name: 'Leave',
-        value:
-          valueByStatus.get('leave')?.value ?? 0,
+        value: leave,
         color: '#06B6D4',
+        pie: true,
       },
     ];
 
-    const total = rows.reduce(
-      (sum, item) => sum + item.value,
-      0,
-    );
+    const denominator = headcount || present;
 
     return rows.map((item) => ({
-      ...item,
+      status: item.status,
+      name: item.name,
+      value: item.value,
+      color: item.color,
       percent:
-        total > 0
-          ? (item.value / total) * 100
+        denominator > 0
+          ? (item.value / denominator) * 100
           : 0,
     }));
-  }, [breakdown.data, trendChart]);
+  }, [breakdown.data]);
+
+  const pieDistribution = useMemo(
+    () =>
+      distribution.filter((item) =>
+        ['present', 'absent', 'leave'].includes(item.status),
+      ),
+    [distribution],
+  );
 
   const presentRate =
     distribution.find(
@@ -378,7 +431,7 @@ export function AttendanceAnalyticsScreen() {
         const absent = Number(item.absences) || 0;
         const late = Number(item.late) || 0;
 
-        const earlyLeaves = 0;
+        const earlyLeaves = Number(item.early_leaves) || 0;
 
         const score = absent * 2 + late;
 
@@ -391,15 +444,19 @@ export function AttendanceAnalyticsScreen() {
           earlyLeaves,
           absencesLabel: item.absences_label,
           lateLabel: item.late_label,
-          earlyLeavesLabel: `${earlyLeaves} time${
-            earlyLeaves === 1 ? '' : 's'
-          }`,
+          earlyLeavesLabel:
+            item.early_leaves_label ??
+            `${earlyLeaves} time${
+              earlyLeaves === 1 ? '' : 's'
+            }`,
           issueType:
             absent > 0 && late > 0
               ? 'Absent + Late'
               : absent > 0
                 ? 'Absent'
-                : 'Late',
+                : late > 0
+                  ? 'Late'
+                  : 'Early Leave',
           issueLevel:
             score >= 6
               ? 'High'
@@ -412,26 +469,45 @@ export function AttendanceAnalyticsScreen() {
   );
 
   const filteredIssueRows = useMemo(() => {
-    if (issueFilter === 'absent') {
-      return issueRows.filter(
-        (row) => row.absent > 0,
+    const rows = issueRows.filter((row) => {
+      if (issueFilter === 'absent') return row.absent > 0;
+      if (issueFilter === 'late') return row.late > 0;
+      if (issueFilter === 'early_leave') return row.earlyLeaves > 0;
+      return true;
+    });
+
+    const dir = issueSortDir === 'asc' ? 1 : -1;
+    const compareText = (a: string, b: string) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' }) * dir;
+    const compareNum = (a: number, b: number) => (a - b) * dir;
+
+    return [...rows].sort((a, b) => {
+      if (issueSortBy === 'employee') return compareText(a.employee, b.employee);
+      if (issueSortBy === 'department') return compareText(a.department, b.department);
+      if (issueSortBy === 'absences') return compareNum(a.absent, b.absent);
+      if (issueSortBy === 'late') return compareNum(a.late, b.late);
+      if (issueSortBy === 'early_leaves') return compareNum(a.earlyLeaves, b.earlyLeaves);
+
+      const score = (row: IssueRow) => row.absent * 2 + row.late + row.earlyLeaves;
+      return compareNum(score(a), score(b));
+    });
+  }, [issueFilter, issueRows, issueSortBy, issueSortDir]);
+
+  const toggleIssueSort = (column: IssueSortBy) => {
+    if (issueSortBy === column) {
+      setIssueSortDir((dir) =>
+        dir === 'asc' ? 'desc' : 'asc',
       );
+      return;
     }
 
-    if (issueFilter === 'late') {
-      return issueRows.filter(
-        (row) => row.late > 0,
-      );
-    }
-
-    if (issueFilter === 'early_leave') {
-      return issueRows.filter(
-        (row) => row.earlyLeaves > 0,
-      );
-    }
-
-    return issueRows;
-  }, [issueFilter, issueRows]);
+    setIssueSortBy(column);
+    setIssueSortDir(
+      column === 'employee' || column === 'department'
+        ? 'asc'
+        : 'desc',
+    );
+  };
 
   const handleMonthChange = (value: string) => {
     setMonth(
@@ -492,20 +568,33 @@ export function AttendanceAnalyticsScreen() {
           ===================================================== */}
 
           <Panel
-            title="Weekly Attendance Trend"
+            title={
+              trendPeriod === 'monthly'
+                ? 'Monthly Attendance Trend'
+                : 'Weekly Attendance Trend'
+            }
             subtitle="Present vs Late vs Absent (%)"
             sectionKey="trend"
             state={trend}
             onRetry={refreshSection}
             headerAction={
               <div className="flex shrink-0 items-center gap-2">
-                <WeekSelect
-                  weeks={weeks}
-                  selectedWeek={selectedWeek}
-                  open={weekDropdownOpen}
-                  onOpenChange={setWeekDropdownOpen}
-                  onChange={setSelectedWeek}
+                <TrendPeriodSelect
+                  value={trendPeriod}
+                  open={periodDropdownOpen}
+                  onOpenChange={setPeriodDropdownOpen}
+                  onChange={setTrendPeriod}
                 />
+
+                {trendPeriod === 'weekly' ? (
+                  <WeekSelect
+                    weeks={weeks}
+                    selectedWeek={selectedWeek}
+                    open={weekDropdownOpen}
+                    onOpenChange={setWeekDropdownOpen}
+                    onChange={setSelectedWeek}
+                  />
+                ) : null}
 
                 <button
                   type="button"
@@ -550,7 +639,11 @@ export function AttendanceAnalyticsScreen() {
                       dataKey="date"
                       axisLine={false}
                       tickLine={false}
-                      interval={0}
+                      interval={
+                        trendPeriod === 'monthly'
+                          ? 2
+                          : 0
+                      }
                       minTickGap={8}
                       height={50}
                       tick={<TrendAxisTick />}
@@ -664,6 +757,7 @@ export function AttendanceAnalyticsScreen() {
 
           <Panel
             title="Attendance Distribution"
+            subtitle="Unique employees. Late is included in Present."
             sectionKey="breakdown"
             state={breakdown}
             onRetry={refreshSection}
@@ -677,7 +771,7 @@ export function AttendanceAnalyticsScreen() {
                 >
                   <PieChart>
                     <Pie
-                      data={distribution}
+                      data={pieDistribution}
                       innerRadius="62%"
                       outerRadius="88%"
                       paddingAngle={2}
@@ -685,7 +779,7 @@ export function AttendanceAnalyticsScreen() {
                       nameKey="name"
                       stroke="none"
                     >
-                      {distribution.map(
+                      {pieDistribution.map(
                         (entry) => (
                           <Cell
                             key={entry.status}
@@ -804,33 +898,53 @@ export function AttendanceAnalyticsScreen() {
               <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="bg-[#F9FAFB] text-xs font-bold text-[#667085]">
                   <tr>
-                    <th className="rounded-l-lg px-4 py-3">
-                      Employee
-                    </th>
-
-                    <th className="px-4 py-3">
-                      Department
-                    </th>
-
-                    <th className="px-4 py-3">
-                      Absences
-                    </th>
-
-                    <th className="px-4 py-3">
-                      Late Marks
-                    </th>
-
-                    <th className="px-4 py-3">
-                      Early Leaves
-                    </th>
-
+                    <SortableTh
+                      label="Employee"
+                      column="employee"
+                      active={issueSortBy}
+                      direction={issueSortDir}
+                      onSort={toggleIssueSort}
+                      className="rounded-l-lg"
+                    />
+                    <SortableTh
+                      label="Department"
+                      column="department"
+                      active={issueSortBy}
+                      direction={issueSortDir}
+                      onSort={toggleIssueSort}
+                    />
+                    <SortableTh
+                      label="Absences"
+                      column="absences"
+                      active={issueSortBy}
+                      direction={issueSortDir}
+                      onSort={toggleIssueSort}
+                    />
+                    <SortableTh
+                      label="Late Marks"
+                      column="late"
+                      active={issueSortBy}
+                      direction={issueSortDir}
+                      onSort={toggleIssueSort}
+                    />
+                    <SortableTh
+                      label="Early Leaves"
+                      column="early_leaves"
+                      active={issueSortBy}
+                      direction={issueSortDir}
+                      onSort={toggleIssueSort}
+                    />
                     <th className="px-4 py-3">
                       Primary Issue
                     </th>
-
-                    <th className="rounded-r-lg px-4 py-3">
-                      Priority
-                    </th>
+                    <SortableTh
+                      label="Priority"
+                      column="priority"
+                      active={issueSortBy}
+                      direction={issueSortDir}
+                      onSort={toggleIssueSort}
+                      className="rounded-r-lg"
+                    />
                   </tr>
                 </thead>
 
@@ -1045,6 +1159,118 @@ function MonthSelect({
         </div>
       )}
     </div>
+  );
+}
+
+/* ===============================================================
+   TREND PERIOD SELECT
+================================================================ */
+
+function TrendPeriodSelect({
+  value,
+  open,
+  onOpenChange,
+  onChange,
+}: {
+  value: TrendPeriod;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: TrendPeriod) => void;
+}) {
+  const options: Array<{ label: string; value: TrendPeriod }> = [
+    { label: 'Weekly', value: 'weekly' },
+    { label: 'Monthly', value: 'monthly' },
+  ];
+
+  return (
+    <div className="relative w-full sm:w-auto">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className={`flex h-11 w-full min-w-[130px] items-center justify-between gap-3 rounded-xl border bg-white px-4 text-sm font-semibold transition cursor-pointer sm:w-auto ${
+          open
+            ? 'border-[#0658C2] text-[#061A3D]'
+            : 'border-[#D3D3D3] text-[#061A3D] hover:border-[#98A2B3]'
+        }`}
+      >
+        <span>{value === 'monthly' ? 'Monthly' : 'Weekly'}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 transition-transform ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-2 w-[180px] rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
+          <p className="px-1 py-2 text-xs font-semibold uppercase text-[#676767]">
+            Trend
+          </p>
+          <div className="space-y-1">
+            {options.map((option) => {
+              const selected = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value);
+                    onOpenChange(false);
+                  }}
+                  className={`flex w-full items-center justify-between rounded-md px-4 py-2 text-left text-sm ${
+                    selected
+                      ? 'bg-[#DBEAFF] text-[#0658C2]'
+                      : 'border border-[#D3D3D3] hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]'
+                  }`}
+                >
+                  <span className="font-semibold">{option.label}</span>
+                  {selected && <CheckIcon />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SortableTh({
+  label,
+  column,
+  active,
+  direction,
+  onSort,
+  className = '',
+}: {
+  label: string;
+  column: IssueSortBy;
+  active: IssueSortBy;
+  direction: 'asc' | 'desc';
+  onSort: (column: IssueSortBy) => void;
+  className?: string;
+}) {
+  const isActive = active === column;
+
+  return (
+    <th className={`px-4 py-3 ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className="inline-flex items-center gap-1 font-bold text-[#667085] hover:text-[#101828]"
+      >
+        {label}
+        {isActive ? (
+          direction === 'asc' ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3.5 w-3.5 opacity-50" />
+        )}
+      </button>
+    </th>
   );
 }
 
@@ -1322,7 +1548,9 @@ function IssueTypeBadge({
       ? 'bg-[#FEF3F2] text-[#D92D20]'
       : type === 'Absent'
         ? 'bg-[#FEE4E2] text-[#D92D20]'
-        : 'bg-[#FFFAEB] text-[#DC6803]';
+        : type === 'Early Leave'
+          ? 'bg-[#FFE4E6] text-[#E11D48]'
+          : 'bg-[#FFFAEB] text-[#DC6803]';
 
   return (
     <span

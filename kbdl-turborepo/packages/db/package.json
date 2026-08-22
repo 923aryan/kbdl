@@ -26,6 +26,7 @@
     "build": "node ./scripts/prisma-cli.mjs generate",
     "clone-db": "node ./scripts/clone-database.mjs",
     "seed": "node ./prisma/seed.mjs",
+    "seed:july-payroll": "node ./prisma/seed-july-payroll.mjs",
     "db:reset-seed": "node ./scripts/prisma-cli.mjs db push --force-reset --accept-data-loss && node ./prisma/seed.mjs"
   },
   "prisma": {

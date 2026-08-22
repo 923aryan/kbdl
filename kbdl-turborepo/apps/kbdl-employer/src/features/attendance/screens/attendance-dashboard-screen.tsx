@@ -12,6 +12,7 @@ import {
   Edit3,
   Loader2,
   Plus,
+  RefreshCw,
   Search,
   UserRoundCheck,
   UserRoundX,
@@ -95,6 +96,9 @@ export function AttendanceDashboardScreen() {
   const [selectedPending, setSelectedPending] = useState<Set<string>>(new Set());
   const [editingRecord, setEditingRecord] = useState<AttendanceRecordDto | null>(null);
   const [workShifts, setWorkShifts] = useState<MetaWorkShift[]>([]);
+  const [attendanceReady, setAttendanceReady] = useState(false);
+  const [shiftsLoading, setShiftsLoading] = useState(true);
+  const [shiftsError, setShiftsError] = useState<string | null>(null);
 
   const loadAttendance = useCallback(async () => {
     setLoading(true);
@@ -113,12 +117,26 @@ export function AttendanceDashboardScreen() {
       setTotalItems(result.meta.total);
       setFacets(result.meta.facets);
       setCompanyHoliday(result.data.company_holiday ?? null);
+      setAttendanceReady(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load attendance');
     } finally {
       setLoading(false);
     }
   }, [selectedDate, debouncedQuery, selectedStatuses, selectedShifts, page]);
+
+  const loadShifts = useCallback(async () => {
+    setShiftsLoading(true);
+    setShiftsError(null);
+    try {
+      const res = await fetchWorkShiftsMeta({ limit: 50 });
+      setWorkShifts(res.data);
+    } catch (err) {
+      setShiftsError(err instanceof Error ? err.message : 'Failed to load shifts');
+    } finally {
+      setShiftsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadAttendance();
@@ -129,8 +147,8 @@ export function AttendanceDashboardScreen() {
   }, [debouncedQuery, selectedStatuses, selectedShifts, selectedDate]);
 
   useEffect(() => {
-    void fetchWorkShiftsMeta({ limit: 50 }).then((res) => setWorkShifts(res.data));
-  }, []);
+    void loadShifts();
+  }, [loadShifts]);
 
   const statusOptions = useMemo(() => {
     const fromFacets = Object.keys(facets.status);
@@ -305,9 +323,31 @@ export function AttendanceDashboardScreen() {
 
         {(error || notice) && (
           <div
-            className={`rounded-xl border px-4 py-3 text-sm ${error ? 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]' : 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'}`}
+            className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${error ? 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]' : 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'}`}
           >
-            {error ?? notice}
+            <span>{error ?? notice}</span>
+            {error && (
+              <button
+                type="button"
+                onClick={() => void loadAttendance()}
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1 font-semibold text-[#0658C2]"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Reload
+              </button>
+            )}
+          </div>
+        )}
+
+        {shiftsError && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-sm text-[#92400E]">
+            <span>{workShifts.length > 0 ? `Could not refresh shifts: ${shiftsError}` : `Could not load shifts: ${shiftsError}`}</span>
+            <button
+              type="button"
+              onClick={() => void loadShifts()}
+              className="inline-flex shrink-0 cursor-pointer items-center gap-1 font-semibold text-[#0658C2]"
+            >
+              {shiftsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Reload
+            </button>
           </div>
         )}
 
@@ -400,13 +440,29 @@ export function AttendanceDashboardScreen() {
             </div>
           </div>
 
-          {loading ? (
+          {loading && !attendanceReady ? (
             <div className="flex items-center justify-center gap-2 py-16 text-[#676767]">
               <Loader2 className="h-5 w-5 animate-spin" />
               Loading attendance...
             </div>
+          ) : error && !attendanceReady ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16 text-sm text-[#B91C1C]">
+              <p>Attendance could not be loaded.</p>
+              <button
+                type="button"
+                onClick={() => void loadAttendance()}
+                className="inline-flex cursor-pointer items-center gap-2 font-semibold text-[#0658C2]"
+              >
+                <RefreshCw className="h-4 w-4" /> Reload
+              </button>
+            </div>
           ) : (
             <>
+              {loading && (
+                <div className="mb-3 inline-flex items-center gap-2 text-sm text-[#676767]">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Updating…
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1050px] text-left text-sm">
                   <thead>

@@ -86,6 +86,13 @@ export const getAttendanceAnalyticsRangeSchema = z.object({
         .trim()
         .regex(/^\d{4}-\d{2}$/, 'month must be YYYY-MM')
         .optional(),
+      grain: z.enum(['day', 'week', 'month']).optional().default('day'),
+      sort_by: z
+        .enum(['employee', 'department', 'absences', 'late', 'early_leaves', 'priority'])
+        .optional()
+        .default('absences'),
+      sort_dir: z.enum(['asc', 'desc']).optional().default('desc'),
+      issue_filter: z.enum(['all', 'absent', 'late', 'early_leave']).optional().default('all'),
     })
     .superRefine((q, ctx) => {
       if (q.from && q.to && q.from > q.to) {
@@ -93,7 +100,14 @@ export const getAttendanceAnalyticsRangeSchema = z.object({
       }
     })
     .transform((q) => {
-      if (q.from && q.to) return { from: q.from, to: q.to };
+      const extras = {
+        grain: q.grain ?? 'day',
+        sort_by: q.sort_by ?? 'absences',
+        sort_dir: q.sort_dir ?? 'desc',
+        issue_filter: q.issue_filter ?? 'all',
+      } as const;
+
+      if (q.from && q.to) return { from: q.from, to: q.to, ...extras };
 
       if (q.month) {
         const year = Number(q.month.slice(0, 4));
@@ -101,7 +115,7 @@ export const getAttendanceAnalyticsRangeSchema = z.object({
         const from = `${q.month}-01`;
         const last = new Date(Date.UTC(year, monthIndex, 0)).getUTCDate();
         const to = `${q.month}-${String(last).padStart(2, '0')}`;
-        return { from, to };
+        return { from, to, ...extras };
       }
 
       const now = new Date();
@@ -110,7 +124,7 @@ export const getAttendanceAnalyticsRangeSchema = z.object({
       const from = `${y}-${String(m + 1).padStart(2, '0')}-01`;
       const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
       const to = `${y}-${String(m + 1).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
-      return { from, to };
+      return { from, to, ...extras };
     }),
 });
 

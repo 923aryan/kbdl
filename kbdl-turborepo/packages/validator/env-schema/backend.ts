@@ -24,6 +24,13 @@ const envSchema = z.object({
   EMPLOYER_URL: z.string().min(1),
   GEOAPIFY_API_KEY: z.string().min(1),
 
+  /** Set to true to skip the 50m geo-fence when punching attendance (local testing only). */
+  DISABLE_PUNCH_RADIUS_CHECK: z
+    .string()
+    .optional()
+    .default('false')
+    .transform((value) => value === 'true' || value === '1'),
+
   /** Private S3 uploads */
   AWS_REGION: z.string().min(1),
   S3_BUCKET: z.string().min(1),

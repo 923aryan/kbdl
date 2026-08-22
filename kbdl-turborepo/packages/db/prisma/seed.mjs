@@ -24,6 +24,7 @@
 import { loadDbEnv } from '../scripts/resolve-database-url.mjs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/index.js';
+import { seedJulyPayrollMonth } from './seed-july-payroll.mjs';
 
 const connectionString = loadDbEnv();
 
@@ -464,6 +465,19 @@ async function createEmploymentStint({
           basic_salary: 18000,
           salary_type: 'monthly',
           salary_payment_frequency: 'monthly',
+          overtime_eligible: true,
+          pf_applicable: true,
+          esi_applicable: true,
+          payment_method: 'bank',
+          pan_number: 'ABCDE1234F',
+          payment_details: {
+            bank_name: 'SBI',
+            account_number: '882345681234',
+            ifsc_code: 'SBIN0001234',
+            account_holder_name: fullName,
+            ot_rate_per_hour: 130,
+            allowance: 200,
+          },
           ...(seedAddresses && city
             ? {
                 addresses: {
@@ -730,6 +744,12 @@ async function seedAttendanceForCompany({
 }
 
 async function clearAll() {
+  await prisma.payrollStatutoryFiling.deleteMany().catch(() => {});
+  await prisma.payrollRunEmployee.deleteMany().catch(() => {});
+  await prisma.payrollRun.deleteMany().catch(() => {});
+  await prisma.leaveRequest.deleteMany().catch(() => {});
+  await prisma.companyLeaveType.deleteMany().catch(() => {});
+  await prisma.companyLeavePolicy.deleteMany().catch(() => {});
   await prisma.rating.deleteMany();
   await prisma.shiftApplication.deleteMany();
   await prisma.jobApplication.deleteMany();
@@ -1113,6 +1133,7 @@ async function main() {
   });
 
   await seedLeaveForCompany(primary.company.id);
+  await seedJulyPayrollMonth(prisma);
 
   // Office staff on primary — every system role used via role_id (not strings)
   const officeStaff = [

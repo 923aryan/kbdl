@@ -47,6 +47,27 @@ import {
   updateCompanyLeaveType,
   updateLeaveRequest,
 } from './leave-controllers';
+import {
+  confirmAttendance,
+  confirmDeductions,
+  confirmWages,
+  createPayrollRun,
+  disbursePayrollRun,
+  fileAllStatutory,
+  fileStatutory,
+  getOrCreatePayrollRun,
+  getPayrollRun,
+  getPayrollSettings,
+  getPayslipPreview,
+  getPayslips,
+  getStatutoryHistory,
+  getStatutoryMonth,
+  getWorkerWages,
+  patchPayrollRunEmployee,
+  patchWorkerWage,
+  putPayrollSettings,
+  sendPayslip,
+} from './payroll-controllers';
 
 const operationsRouter: Router = Router();
 
@@ -113,6 +134,30 @@ operationsRouter.post(
   createEmployeeLeave,
 );
 operationsRouter.patch('/employer/leave/:requestId', employerAuth, updateLeaveRequest);
+
+operationsRouter.get('/employer/payroll/runs', employerAuth, getOrCreatePayrollRun);
+operationsRouter.post('/employer/payroll/runs', employerAuth, createPayrollRun);
+operationsRouter.get('/employer/payroll/runs/:runId', employerAuth, getPayrollRun);
+operationsRouter.patch(
+  '/employer/payroll/runs/:runId/employees/:lineId',
+  employerAuth,
+  patchPayrollRunEmployee,
+);
+operationsRouter.post('/employer/payroll/runs/:runId/confirm-attendance', employerAuth, confirmAttendance);
+operationsRouter.post('/employer/payroll/runs/:runId/confirm-wages', employerAuth, confirmWages);
+operationsRouter.post('/employer/payroll/runs/:runId/confirm-deductions', employerAuth, confirmDeductions);
+operationsRouter.post('/employer/payroll/runs/:runId/disburse', employerAuth, disbursePayrollRun);
+operationsRouter.get('/employer/payroll/worker-wages', employerAuth, getWorkerWages);
+operationsRouter.patch('/employer/payroll/worker-wages/:employmentId', employerAuth, patchWorkerWage);
+operationsRouter.get('/employer/payroll/payslips', employerAuth, getPayslips);
+operationsRouter.get('/employer/payroll/payslips/:lineId', employerAuth, getPayslipPreview);
+operationsRouter.post('/employer/payroll/payslips/:lineId/send', employerAuth, sendPayslip);
+operationsRouter.get('/employer/payroll/settings', employerAuth, getPayrollSettings);
+operationsRouter.put('/employer/payroll/settings', employerAuth, putPayrollSettings);
+operationsRouter.get('/employer/payroll/statutory/history', employerAuth, getStatutoryHistory);
+operationsRouter.get('/employer/payroll/statutory', employerAuth, getStatutoryMonth);
+operationsRouter.post('/employer/payroll/statutory/file-all', employerAuth, fileAllStatutory);
+operationsRouter.post('/employer/payroll/statutory/:filingId/file', employerAuth, fileStatutory);
 
 operationsRouter.post('/employer/:id/documents', employerAuth, addEmployeeDocument);
 

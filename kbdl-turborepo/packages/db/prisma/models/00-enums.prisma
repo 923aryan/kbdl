@@ -176,6 +176,41 @@ enum LeaveRequestStatus {
   @@map("leave_request_status")
 }
 
+enum PayrollRunStatus {
+  draft
+  attendance_confirmed
+  wages_confirmed
+  deductions_confirmed
+  disbursed
+
+  @@map("payroll_run_status")
+}
+
+enum PayrollPayslipStatus {
+  pending
+  generated
+  sent
+
+  @@map("payroll_payslip_status")
+}
+
+enum PayrollStatutoryKind {
+  epf
+  esic
+  lwf
+  pt
+  tds
+
+  @@map("payroll_statutory_kind")
+}
+
+enum PayrollFilingStatus {
+  pending
+  filed
+
+  @@map("payroll_filing_status")
+}
+
 enum AttendanceSource {
   hr_manual
   device

@@ -9,14 +9,101 @@ import {
   ChevronRight,
   ChevronUp,
   HelpCircle,
+  Loader2,
+  RefreshCw,
   Search,
   type LucideIcon,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { payrollMonths } from '../data/payroll-data';
+import { payrollMonthOptions } from '../data/payroll-data';
 import { usePayrollStore } from '../stores/use-payroll-store';
 
 export const money = (value: number) => `Rs ${value.toLocaleString('en-IN')}`;
+
+export function errMessage(err: unknown, fallback = 'Failed to load') {
+  return err instanceof Error ? err.message : fallback;
+}
+
+export function RefreshIconButton({
+  loading,
+  onClick,
+  title = 'Refresh',
+}: {
+  loading?: boolean;
+  onClick: () => void;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={loading}
+      onClick={onClick}
+      title={title}
+      className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-[#676767] transition hover:bg-[#F8FAFC] disabled:opacity-50"
+    >
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+    </button>
+  );
+}
+
+export function LoadState({
+  loading,
+  error,
+  hasData,
+  onRetry,
+  children,
+  label = 'Loading...',
+}: {
+  loading: boolean;
+  error: string | null;
+  hasData: boolean;
+  onRetry: () => void;
+  children: React.ReactNode;
+  label?: string;
+}) {
+  if (loading && !hasData) {
+    return (
+      <div className="flex min-h-[220px] items-center justify-center gap-2 text-sm font-semibold text-[#676767]">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        {label}
+      </div>
+    );
+  }
+
+  if (error && !hasData) {
+    return (
+      <div className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#B91C1C]">
+        <p>{error}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-2 inline-flex cursor-pointer items-center gap-2 font-semibold text-[#0658C2]"
+        >
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {error && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E]">
+          <span>Could not refresh: {error}</span>
+          <button type="button" onClick={onRetry} className="inline-flex cursor-pointer items-center gap-1 font-semibold text-[#0658C2]">
+            <RefreshCw className="h-4 w-4" /> Retry
+          </button>
+        </div>
+      )}
+      {loading && (
+        <div className="mb-3 inline-flex items-center gap-2 text-sm text-[#676767]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Updating…
+        </div>
+      )}
+      {children}
+    </>
+  );
+}
 
 export function PayrollTopBar() {
   const { search, setSearch } = usePayrollStore();
@@ -88,9 +175,10 @@ export function PageTitle({
 }
 
 export function MonthSelect() {
-  const { selectedMonth, setSelectedMonth, openDropdown, setOpenDropdown } = usePayrollStore();
+  const { selectedPeriod, setSelectedPeriod, openDropdown, setOpenDropdown } = usePayrollStore();
   const dropdownId = 'payroll-month';
   const open = openDropdown === dropdownId;
+  const months = payrollMonthOptions();
 
   return (
     <div className="relative">
@@ -99,22 +187,22 @@ export function MonthSelect() {
         onClick={() => setOpenDropdown(open ? null : dropdownId)}
         className={`inline-flex h-12 min-w-[210px] cursor-pointer items-center justify-between gap-3 rounded-xl border bg-white px-4 text-base font-semibold ${open ? 'border-[#0658C2] text-blue-950' : 'border-[#D3D3D3]'}`}
       >
-        <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {selectedMonth}</span>
+        <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {selectedPeriod.label}</span>
         {open ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
       </button>
       {open && (
         <div className="absolute right-0 z-30 mt-2 w-[230px] rounded-xl border border-[#DBEAFF] bg-white p-2 shadow-xl">
-          {payrollMonths.map((month) => (
+          {months.map((month) => (
             <button
-              key={month}
+              key={month.label}
               type="button"
               onClick={() => {
-                setSelectedMonth(month);
+                setSelectedPeriod(month);
                 setOpenDropdown(null);
               }}
-              className={`w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-[#DBEAFF] hover:text-[#0658C2] ${month === selectedMonth ? 'bg-[#DBEAFF] font-semibold text-[#0658C2]' : 'text-gray-900'}`}
+              className={`w-full cursor-pointer rounded-md px-3 py-2 text-left text-sm hover:bg-[#DBEAFF] hover:text-[#0658C2] ${month.label === selectedPeriod.label ? 'bg-[#DBEAFF] font-semibold text-[#0658C2]' : 'text-gray-900'}`}
             >
-              {month}
+              {month.label}
             </button>
           ))}
         </div>
@@ -123,9 +211,24 @@ export function MonthSelect() {
   );
 }
 
-export function PrimaryButton({ children, onClick, type = 'button' }: { children: React.ReactNode; onClick?: () => void; type?: 'button' | 'submit' }) {
+export function PrimaryButton({
+  children,
+  onClick,
+  type = 'button',
+  disabled,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  type?: 'button' | 'submit';
+  disabled?: boolean;
+}) {
   return (
-    <button type={type} onClick={onClick} className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0658C2] px-7 text-base font-semibold text-white hover:bg-blue-700">
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#0658C2] px-7 text-base font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+    >
       {children}
     </button>
   );

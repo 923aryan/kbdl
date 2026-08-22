@@ -1,10 +1,10 @@
 'use client';
 
 import { fetchEmployeesList, fetchWorkShiftsMeta, type MetaWorkShift } from '@/features/employees/api';
-import { ArrowLeft, Loader2, Save, UserRound } from 'lucide-react';
+import { ArrowLeft, Loader2, RefreshCw, Save, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { todayIsoDate, upsertAttendance } from '../api';
 import { SelectField } from '../components/async-single-select';
 import { SearchableSingleSelect } from '../components/searchable-single-select';
@@ -83,22 +83,84 @@ export function AddAttendanceScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [shiftsLoading, setShiftsLoading] = useState(true);
+  const [employeesError, setEmployeesError] = useState<string | null>(null);
+  const [shiftsError, setShiftsError] = useState<string | null>(null);
+  const [employeesReady, setEmployeesReady] = useState(false);
+  const [shiftsReady, setShiftsReady] = useState(false);
 
-  useEffect(() => {
-    void Promise.all([
+  const applyEmployees = (empRes: Awaited<ReturnType<typeof fetchEmployeesList>>) => {
+    setEmployees(
+      empRes.data.map((e) => ({
+        employment_id: e.employment_id,
+        name: e.name,
+        phone_no: e.phone_no,
+      })),
+    );
+    setEmployeesError(null);
+    setEmployeesReady(true);
+  };
+
+  const loadEmployees = useCallback(async () => {
+    setEmployeesLoading(true);
+    setEmployeesError(null);
+    try {
+      applyEmployees(await fetchEmployeesList({ roster: 'active', limit: 200 }));
+    } catch (err) {
+      setEmployeesError(err instanceof Error ? err.message : 'Failed to load employees');
+    } finally {
+      setEmployeesLoading(false);
+    }
+  }, []);
+
+  const loadShifts = useCallback(async () => {
+    setShiftsLoading(true);
+    setShiftsError(null);
+    try {
+      const shiftRes = await fetchWorkShiftsMeta({ limit: 50 });
+      setWorkShifts(shiftRes.data);
+      setShiftsError(null);
+      setShiftsReady(true);
+    } catch (err) {
+      setShiftsError(err instanceof Error ? err.message : 'Failed to load shifts');
+    } finally {
+      setShiftsLoading(false);
+    }
+  }, []);
+
+  const loadMeta = useCallback(async () => {
+    setEmployeesLoading(true);
+    setShiftsLoading(true);
+    setEmployeesError(null);
+    setShiftsError(null);
+    const settled = await Promise.allSettled([
       fetchEmployeesList({ roster: 'active', limit: 200 }),
       fetchWorkShiftsMeta({ limit: 50 }),
-    ]).then(([empRes, shiftRes]) => {
-      setEmployees(
-        empRes.data.map((e) => ({
-          employment_id: e.employment_id,
-          name: e.name,
-          phone_no: e.phone_no,
-        })),
+    ]);
+    if (settled[0].status === 'fulfilled') {
+      applyEmployees(settled[0].value);
+    } else {
+      setEmployeesError(
+        settled[0].reason instanceof Error ? settled[0].reason.message : 'Failed to load employees',
       );
-      setWorkShifts(shiftRes.data);
-    });
+    }
+    if (settled[1].status === 'fulfilled') {
+      setWorkShifts(settled[1].value.data);
+      setShiftsError(null);
+      setShiftsReady(true);
+    } else {
+      setShiftsError(
+        settled[1].reason instanceof Error ? settled[1].reason.message : 'Failed to load shifts',
+      );
+    }
+    setEmployeesLoading(false);
+    setShiftsLoading(false);
   }, []);
+
+  useEffect(() => {
+    void loadMeta();
+  }, [loadMeta]);
 
   useEffect(() => {
     if (!workShiftId || workShifts.length === 0) return;
@@ -211,7 +273,10 @@ export function AddAttendanceScreen() {
             </h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <SearchableSingleSelect label="Employee" required placeholder="Select Employee" options={employees.map((e) => ({ value: e.employment_id, label: `${e.name} (${e.phone_no})` }))} value={employmentId} onChange={(value) => setEmploymentId(value)} error={errors.employmentId} disabled={isSecondShift} />
+              <div>
+                <SearchableSingleSelect label="Employee" required placeholder={employeesLoading && !employeesReady ? 'Loading employees...' : 'Select Employee'} options={employees.map((e) => ({ value: e.employment_id, label: `${e.name} (${e.phone_no})` }))} value={employmentId} onChange={(value) => setEmploymentId(value)} error={errors.employmentId} disabled={isSecondShift || (employeesLoading && !employeesReady)} />
+                <SectionRetry loading={employeesLoading} error={employeesError} hasData={employeesReady} onRetry={() => void loadEmployees()} label="employees" />
+              </div>
 
               <Field label="Date" required>
                 <input
@@ -225,7 +290,10 @@ export function AddAttendanceScreen() {
                   {errors.date && <span className="mt-1 block text-xs font-medium text-[#F54A4A]">{errors.date}</span>}
               </Field>
 
-              <SelectField label="Shift" required placeholder="Select Shift" options={workShifts.map((s) => ({ value: s.id, label: `${s.name} (${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)})` }))} value={workShiftId} onChange={(value) => setWorkShiftId(value)} error={errors.workShiftId} />
+              <div>
+                <SelectField label="Shift" required placeholder={shiftsLoading && !shiftsReady ? 'Loading shifts...' : 'Select Shift'} options={workShifts.map((s) => ({ value: s.id, label: `${s.name} (${s.start_time.slice(0, 5)} – ${s.end_time.slice(0, 5)})` }))} value={workShiftId} onChange={(value) => setWorkShiftId(value)} error={errors.workShiftId} />
+                <SectionRetry loading={shiftsLoading} error={shiftsError} hasData={shiftsReady} onRetry={() => void loadShifts()} label="shifts" />
+              </div>
 
               <SelectField label="Status" required placeholder="Select Status" options={STATUS_OPTIONS} value={status} onChange={(value) => setStatus(value)} error={!status ? "Status is required" : undefined} />
 
@@ -324,6 +392,37 @@ export function AddAttendanceScreen() {
           </section>
         </form>
       </main>
+    </div>
+  );
+}
+
+function SectionRetry({
+  loading,
+  error,
+  hasData,
+  onRetry,
+  label,
+}: {
+  loading: boolean;
+  error: string | null;
+  hasData: boolean;
+  onRetry: () => void;
+  label: string;
+}) {
+  if (loading && !hasData) {
+    return (
+      <p className="mt-2 inline-flex items-center gap-2 text-xs text-[#676767]">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading {label}...
+      </p>
+    );
+  }
+  if (!error) return null;
+  return (
+    <div className={`mt-2 flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${hasData ? 'border border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]' : 'border border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]'}`}>
+      <span>{hasData ? `Could not refresh ${label}: ${error}` : error}</span>
+      <button type="button" onClick={onRetry} className="inline-flex cursor-pointer items-center gap-1 font-semibold text-[#0658C2]">
+        {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Reload
+      </button>
     </div>
   );
 }

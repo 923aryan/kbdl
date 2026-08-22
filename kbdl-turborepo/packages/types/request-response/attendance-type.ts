@@ -234,6 +234,7 @@ export type AttendanceAnalyticsBreakdown = {
   to: string;
   items: AttendanceAnalyticsBreakdownItem[];
   total: number;
+  headcount: number;
 };
 
 export type EmployeePunchCompany = {
@@ -295,7 +296,9 @@ export type AttendanceAnalyticsInsights = {
     team: string;
     absences: number;
     late: number;
+    early_leaves: number;
     absences_label: string;
     late_label: string;
+    early_leaves_label: string;
   }>;
 };

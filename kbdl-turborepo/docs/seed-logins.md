@@ -39,6 +39,17 @@ These are `CompanyMember`s with roles via `role_id` (not platform admin).
 | `aryan.admin@kbdl.dev` | Aryan Corp | ADMIN |
 | `aryan.warehouse@kbdl.dev` | Aryan Corp | WAREHOUSE_LEAD |
 
+## July payroll test data
+
+`pnpm --filter @repo/db run seed:july-payroll` fills **July 2026** for every company that has active employees:
+
+- Attendance every calendar day (present / OT / half-day / absent / leave / Sunday week-off / 17 Jul holiday)
+- Approved leave on 8–9 Jul (first worker) and 22 Jul (second worker)
+- Daily/monthly rates, EPF/ESIC flags, bank or UPI details
+- Existing July payroll run is deleted so Run Payroll rebuilds from this snapshot
+
+Then in the employer app: **Payroll → Run Payroll → July 2026**.
+
 > Note: employer OTP login today is wired for company **OWNER** accounts. Staff may not log into the employer portal until that flow supports non-owner members.
 
 ## Workers (employee app — phone OTP)

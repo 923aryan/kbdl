@@ -5,9 +5,7 @@
 
 import { getAccessToken } from './auth-tokens';
 
-// const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
-// const BASE_URL = 'http://localhost:8000/api/v1';
-const BASE_URL = 'http://51.20.0.36:8000/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type ApiSuccess<T> = {
   success: true;

@@ -5,6 +5,7 @@ import type {
   EmployeePunchContext,
   EmployeePunchResult,
 } from '@repo/types';
+import { env } from '@repo/validator/server';
 import { AppError } from '../utils/api-error';
 import { employmentForAppUserWhere } from './workforce-person-service';
 import {
@@ -299,7 +300,11 @@ export const employeePunchAttendanceService = async (
   userId: string,
   body: EmployeePunchAttendanceBody,
 ): Promise<EmployeePunchResult> => {
-  if (body.accuracy !== undefined && body.accuracy > MAX_GPS_ACCURACY_METERS) {
+  if (
+    !env.DISABLE_PUNCH_RADIUS_CHECK &&
+    body.accuracy !== undefined &&
+    body.accuracy > MAX_GPS_ACCURACY_METERS
+  ) {
     throw new AppError(
       400,
       'GPS_ACCURACY_TOO_LOW',
@@ -351,7 +356,7 @@ export const employeePunchAttendanceService = async (
   }
 
   const distanceMeters = Math.round(Number(geo.distance_m) * 10) / 10;
-  if (distanceMeters > EMPLOYEE_PUNCH_RADIUS_METERS) {
+  if (!env.DISABLE_PUNCH_RADIUS_CHECK && distanceMeters > EMPLOYEE_PUNCH_RADIUS_METERS) {
     throw new AppError(
       403,
       'OUTSIDE_PUNCH_RADIUS',

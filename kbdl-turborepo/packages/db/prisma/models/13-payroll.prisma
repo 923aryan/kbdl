@@ -1,0 +1,145 @@
+// =============================================================================
+// PAYROLL — one run per company + calendar month, plus frozen worker lines
+// =============================================================================
+
+/// Header for a company payroll close (e.g. October 2026).
+model PayrollRun {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+
+  period_year  Int
+  period_month Int
+  period_start DateTime @db.Date
+  period_end   DateTime @db.Date
+
+  status PayrollRunStatus @default(draft)
+
+  disbursement_method String @default("NEFT") @db.VarChar
+
+  created_by_company_member_id              String? @db.Uuid
+  attendance_confirmed_at                   DateTime? @db.Timestamptz()
+  attendance_confirmed_by_company_member_id String?   @db.Uuid
+  wages_confirmed_at                        DateTime? @db.Timestamptz()
+  wages_confirmed_by_company_member_id      String?   @db.Uuid
+  deductions_confirmed_at                   DateTime? @db.Timestamptz()
+  deductions_confirmed_by_company_member_id String?   @db.Uuid
+  disbursed_at                              DateTime? @db.Timestamptz()
+  disbursed_by_company_member_id            String?   @db.Uuid
+
+  worker_count     Int     @default(0)
+  flagged_count    Int     @default(0)
+  total_gross      Decimal @default(0) @db.Decimal(14, 2)
+  total_basic      Decimal @default(0) @db.Decimal(14, 2)
+  total_ot_pay     Decimal @default(0) @db.Decimal(14, 2)
+  total_allowance  Decimal @default(0) @db.Decimal(14, 2)
+  total_deduction  Decimal @default(0) @db.Decimal(14, 2)
+  total_net        Decimal @default(0) @db.Decimal(14, 2)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company Company @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  created_by              CompanyMember? @relation("PayrollRunCreatedBy", fields: [created_by_company_member_id], references: [id], onDelete: SetNull)
+  attendance_confirmed_by CompanyMember? @relation("PayrollAttendanceConfirmedBy", fields: [attendance_confirmed_by_company_member_id], references: [id], onDelete: SetNull)
+  wages_confirmed_by      CompanyMember? @relation("PayrollWagesConfirmedBy", fields: [wages_confirmed_by_company_member_id], references: [id], onDelete: SetNull)
+  deductions_confirmed_by CompanyMember? @relation("PayrollDeductionsConfirmedBy", fields: [deductions_confirmed_by_company_member_id], references: [id], onDelete: SetNull)
+  disbursed_by            CompanyMember? @relation("PayrollDisbursedBy", fields: [disbursed_by_company_member_id], references: [id], onDelete: SetNull)
+
+  employees PayrollRunEmployee[]
+  filings   PayrollStatutoryFiling[]
+
+  @@unique([company_id, period_year, period_month])
+  @@index([company_id])
+  @@index([status])
+  @@map("payroll_runs")
+}
+
+/// Frozen worksheet row for one employment in a run.
+model PayrollRunEmployee {
+  id String @id @default(uuid()) @db.Uuid
+
+  payroll_run_id String @db.Uuid
+  employment_id  String @db.Uuid
+
+  employee_no  String? @db.VarChar
+  full_name    String  @db.VarChar
+  designation  String  @db.VarChar
+  department   String  @db.VarChar
+  contract     String  @db.VarChar
+  bank_label   String  @db.VarChar
+  payment_mode String  @db.VarChar
+  pan_masked   String? @db.VarChar
+  ifsc         String? @db.VarChar
+
+  present_days Decimal @default(0) @db.Decimal(6, 2)
+  leave_days   Decimal @default(0) @db.Decimal(6, 2)
+  absent_days  Decimal @default(0) @db.Decimal(6, 2)
+  ot_hours     Decimal @default(0) @db.Decimal(8, 2)
+  payable_days Decimal @default(0) @db.Decimal(6, 2)
+  flagged      Boolean @default(false)
+
+  rate_per_day Decimal @default(0) @db.Decimal(12, 2)
+  ot_rate      Decimal @default(0) @db.Decimal(12, 2)
+  basic        Decimal @default(0) @db.Decimal(12, 2)
+  ot_pay       Decimal @default(0) @db.Decimal(12, 2)
+  allowance    Decimal @default(0) @db.Decimal(12, 2)
+  gross        Decimal @default(0) @db.Decimal(12, 2)
+
+  epf_covered Boolean @default(false)
+  esic_covered Boolean @default(false)
+
+  epf               Decimal @default(0) @db.Decimal(12, 2)
+  esic              Decimal @default(0) @db.Decimal(12, 2)
+  tds               Decimal @default(0) @db.Decimal(12, 2)
+  lwf               Decimal @default(0) @db.Decimal(12, 2)
+  advance           Decimal @default(0) @db.Decimal(12, 2)
+  custom_deduction  Decimal @default(0) @db.Decimal(12, 2)
+  total_deduction   Decimal @default(0) @db.Decimal(12, 2)
+  net               Decimal @default(0) @db.Decimal(12, 2)
+
+  employer_epf  Decimal @default(0) @db.Decimal(12, 2)
+  employer_esic Decimal @default(0) @db.Decimal(12, 2)
+
+  payslip_status PayrollPayslipStatus @default(pending)
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  run        PayrollRun         @relation(fields: [payroll_run_id], references: [id], onDelete: Cascade)
+  employment EmployeeEmployment @relation(fields: [employment_id], references: [id], onDelete: Restrict)
+
+  @@unique([payroll_run_id, employment_id])
+  @@index([payroll_run_id])
+  @@index([employment_id])
+  @@map("payroll_run_employees")
+}
+
+/// EPF / ESIC / LWF / PT / TDS obligation for a run (mark filed in-app).
+model PayrollStatutoryFiling {
+  id String @id @default(uuid()) @db.Uuid
+
+  payroll_run_id String @db.Uuid
+  company_id     String @db.Uuid
+
+  kind           PayrollStatutoryKind
+  title          String               @db.VarChar
+  subtitle       String               @db.VarChar
+  employer_share Decimal              @default(0) @db.Decimal(14, 2)
+  employee_share Decimal              @default(0) @db.Decimal(14, 2)
+  total          Decimal              @default(0) @db.Decimal(14, 2)
+  due_date       DateTime             @db.Date
+  status         PayrollFilingStatus  @default(pending)
+  filed_at       DateTime?            @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  run     PayrollRun @relation(fields: [payroll_run_id], references: [id], onDelete: Cascade)
+  company Company    @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  @@unique([payroll_run_id, kind])
+  @@index([company_id])
+  @@map("payroll_statutory_filings")
+}

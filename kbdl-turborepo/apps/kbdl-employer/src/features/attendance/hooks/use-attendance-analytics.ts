@@ -42,7 +42,13 @@ async function runSection<T>(
   }
 }
 
-export function useAttendanceAnalytics(range: AttendanceAnalyticsRangeParams) {
+export function useAttendanceAnalytics(
+  range: AttendanceAnalyticsRangeParams,
+  insightsQuery: Pick<
+    AttendanceAnalyticsRangeParams,
+    'sort_by' | 'sort_dir' | 'issue_filter'
+  > = {},
+) {
   const [summary, setSummary] = useState<SectionState<AttendanceAnalyticsSummary>>(emptySection);
   const [trend, setTrend] = useState<SectionState<AttendanceAnalyticsTrend>>(emptySection);
   const [breakdown, setBreakdown] =
@@ -51,9 +57,20 @@ export function useAttendanceAnalytics(range: AttendanceAnalyticsRangeParams) {
     useState<SectionState<AttendanceAnalyticsInsights>>(emptySection);
 
   const rangeKey = `${range.month ?? ''}|${range.from ?? ''}|${range.to ?? ''}`;
+  const insightsKey = `${insightsQuery.sort_by ?? ''}|${insightsQuery.sort_dir ?? ''}|${insightsQuery.issue_filter ?? ''}`;
   const rangeRef = useRef(range);
   rangeRef.current = range;
+  const insightsRef = useRef(insightsQuery);
+  insightsRef.current = insightsQuery;
   const requestIdRef = useRef(0);
+
+  const combinedParams = useCallback(
+    (): AttendanceAnalyticsRangeParams => ({
+      ...rangeRef.current,
+      ...insightsRef.current,
+    }),
+    [],
+  );
 
   const loadSummary = useCallback(
     () => runSection(() => fetchAttendanceAnalyticsSummary(rangeRef.current), setSummary),
@@ -68,13 +85,13 @@ export function useAttendanceAnalytics(range: AttendanceAnalyticsRangeParams) {
     [],
   );
   const loadInsights = useCallback(
-    () => runSection(() => fetchAttendanceAnalyticsInsights(rangeRef.current), setInsights),
-    [],
+    () => runSection(() => fetchAttendanceAnalyticsInsights(combinedParams()), setInsights),
+    [combinedParams],
   );
 
   const loadAll = useCallback(async () => {
     const requestId = ++requestIdRef.current;
-    const params = rangeRef.current;
+    const params = combinedParams();
 
     setSummary((s) => ({ ...s, loading: true, error: null }));
     setTrend((s) => ({ ...s, loading: true, error: null }));
@@ -109,7 +126,7 @@ export function useAttendanceAnalytics(range: AttendanceAnalyticsRangeParams) {
     apply(settled[1], setTrend);
     apply(settled[2], setBreakdown);
     apply(settled[3], setInsights);
-  }, []);
+  }, [combinedParams]);
 
   const refreshSection = useCallback(
     (key: AnalyticsSectionKey) => {
@@ -124,6 +141,15 @@ export function useAttendanceAnalytics(range: AttendanceAnalyticsRangeParams) {
   useEffect(() => {
     void loadAll();
   }, [rangeKey, loadAll]);
+
+  const insightsReady = useRef(false);
+  useEffect(() => {
+    if (!insightsReady.current) {
+      insightsReady.current = true;
+      return;
+    }
+    void loadInsights();
+  }, [insightsKey, loadInsights]);
 
   return {
     summary,
