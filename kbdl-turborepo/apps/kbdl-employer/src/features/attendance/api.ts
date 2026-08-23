@@ -112,6 +112,10 @@ export type AttendanceAnalyticsRangeParams = {
   from?: string;
   to?: string;
   month?: string;
+  grain?: 'day' | 'week' | 'month';
+  sort_by?: 'employee' | 'department' | 'absences' | 'late' | 'early_leaves' | 'priority';
+  sort_dir?: 'asc' | 'desc';
+  issue_filter?: 'all' | 'absent' | 'late' | 'early_leave';
 };
 
 function analyticsQuery(params: AttendanceAnalyticsRangeParams) {
@@ -119,6 +123,10 @@ function analyticsQuery(params: AttendanceAnalyticsRangeParams) {
   if (params.month) query.set('month', params.month);
   if (params.from) query.set('from', params.from);
   if (params.to) query.set('to', params.to);
+  if (params.grain) query.set('grain', params.grain);
+  if (params.sort_by) query.set('sort_by', params.sort_by);
+  if (params.sort_dir) query.set('sort_dir', params.sort_dir);
+  if (params.issue_filter) query.set('issue_filter', params.issue_filter);
   const qs = query.toString();
   return qs ? `?${qs}` : '';
 }

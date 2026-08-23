@@ -29,6 +29,7 @@ tags:
   - name: Profile
   - name: ShiftSwap
   - name: Operations
+  - name: Payroll
   - name: Jobs
   - name: Notifications
   - name: Leads
@@ -1851,6 +1852,256 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/EmployeeEmployment'
+
+  /api/v1/operations/employer/payroll/runs:
+    get:
+      tags: [Payroll]
+      summary: Get or create payroll run for year/month
+      parameters:
+        - in: query
+          name: year
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: month
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 12 }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50 }
+      responses:
+        '200':
+          description: Payroll run worksheet
+    post:
+      tags: [Payroll]
+      summary: Create payroll run for a month (idempotent)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year, month]
+              properties:
+                year: { type: integer }
+                month: { type: integer }
+      responses:
+        '201':
+          description: Payroll run ready
+
+  /api/v1/operations/employer/payroll/runs/{runId}:
+    get:
+      tags: [Payroll]
+      summary: Get payroll run by id
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Payroll run
+
+  /api/v1/operations/employer/payroll/runs/{runId}/employees/{lineId}:
+    patch:
+      tags: [Payroll]
+      summary: Patch attendance, wages, or deductions on a run line
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: lineId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Updated run
+
+  /api/v1/operations/employer/payroll/runs/{runId}/confirm-attendance:
+    post:
+      tags: [Payroll]
+      summary: Lock attendance and move to wages
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Attendance confirmed }
+
+  /api/v1/operations/employer/payroll/runs/{runId}/confirm-wages:
+    post:
+      tags: [Payroll]
+      summary: Lock wages and move to deductions
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Wages confirmed }
+
+  /api/v1/operations/employer/payroll/runs/{runId}/confirm-deductions:
+    post:
+      tags: [Payroll]
+      summary: Lock deductions and allow disburse
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Deductions confirmed }
+
+  /api/v1/operations/employer/payroll/runs/{runId}/disburse:
+    post:
+      tags: [Payroll]
+      summary: Save disbursement draft or confirm (idempotent)
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                method: { type: string, enum: [NEFT, UPI, CASH] }
+                confirm: { type: boolean }
+      responses:
+        '200': { description: Draft saved or run disbursed }
+
+  /api/v1/operations/employer/payroll/worker-wages:
+    get:
+      tags: [Payroll]
+      summary: List worker wage masters
+      responses:
+        '200': { description: Worker wages }
+
+  /api/v1/operations/employer/payroll/worker-wages/{employmentId}:
+    patch:
+      tags: [Payroll]
+      summary: Update daily rate, OT, EPF/ESIC, payment method
+      parameters:
+        - in: path
+          name: employmentId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Updated wage master }
+
+  /api/v1/operations/employer/payroll/payslips:
+    get:
+      tags: [Payroll]
+      summary: List payslip lines for a month
+      parameters:
+        - in: query
+          name: year
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: month
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Payslips }
+
+  /api/v1/operations/employer/payroll/payslips/{lineId}:
+    get:
+      tags: [Payroll]
+      summary: Payslip preview payload
+      parameters:
+        - in: path
+          name: lineId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Payslip preview }
+
+  /api/v1/operations/employer/payroll/payslips/{lineId}/send:
+    post:
+      tags: [Payroll]
+      summary: Mark payslip sent (after disbursement)
+      parameters:
+        - in: path
+          name: lineId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Payslip sent }
+
+  /api/v1/operations/employer/payroll/settings:
+    get:
+      tags: [Payroll]
+      summary: Company payroll settings aggregate
+      responses:
+        '200': { description: Settings }
+    put:
+      tags: [Payroll]
+      summary: Update pay cycle, statutory, attendance, payment, company details
+      responses:
+        '200': { description: Settings saved }
+
+  /api/v1/operations/employer/payroll/statutory:
+    get:
+      tags: [Payroll]
+      summary: Statutory obligations for a month
+      parameters:
+        - in: query
+          name: year
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: month
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Statutory month }
+
+  /api/v1/operations/employer/payroll/statutory/history:
+    get:
+      tags: [Payroll]
+      summary: Filing history across recent runs
+      responses:
+        '200': { description: History rows }
+
+  /api/v1/operations/employer/payroll/statutory/file-all:
+    post:
+      tags: [Payroll]
+      summary: Mark all pending filings for the month as filed
+      parameters:
+        - in: query
+          name: year
+          required: true
+          schema: { type: integer }
+        - in: query
+          name: month
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Filed }
+
+  /api/v1/operations/employer/payroll/statutory/{filingId}/file:
+    post:
+      tags: [Payroll]
+      summary: Mark one statutory obligation filed
+      parameters:
+        - in: path
+          name: filingId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Filed }
 
   /api/v1/operations/employer/{id}/status:
     patch:

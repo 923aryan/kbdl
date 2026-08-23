@@ -1,17 +1,13 @@
 import { create } from 'zustand';
+import { currentPayrollPeriod, type PayrollPeriod, type PayrollStage } from '../data/payroll-data';
+
 export {
   payrollCoverageOptions,
-  payrollDesignations,
   payrollMonths,
   payrollStatuses,
   payrollTypes,
-  payrollWorkers,
   type PayrollStage,
-  type PayrollWorker,
-  type PayslipStatus,
 } from '../data/payroll-data';
-
-import { type PayrollStage } from '../data/payroll-data';
 
 type PayrollState = {
   search: string;
@@ -19,7 +15,7 @@ type PayrollState = {
   selectedStatuses: string[];
   selectedTypes: string[];
   selectedCoverage: string[];
-  selectedMonth: string;
+  selectedPeriod: PayrollPeriod;
   selectedStage: PayrollStage;
   payslipPreviewOpen: boolean;
   openDropdown: string | null;
@@ -28,7 +24,7 @@ type PayrollState = {
   setSelectedStatuses: (statuses: string[]) => void;
   setSelectedTypes: (types: string[]) => void;
   setSelectedCoverage: (coverage: string[]) => void;
-  setSelectedMonth: (month: string) => void;
+  setSelectedPeriod: (period: PayrollPeriod) => void;
   setSelectedStage: (stage: PayrollStage) => void;
   setPayslipPreviewOpen: (open: boolean) => void;
   setOpenDropdown: (dropdown: string | null) => void;
@@ -40,7 +36,7 @@ export const usePayrollStore = create<PayrollState>((set) => ({
   selectedStatuses: [],
   selectedTypes: [],
   selectedCoverage: [],
-  selectedMonth: 'October 2026',
+  selectedPeriod: currentPayrollPeriod(),
   selectedStage: 'attendance',
   payslipPreviewOpen: false,
   openDropdown: null,
@@ -49,7 +45,7 @@ export const usePayrollStore = create<PayrollState>((set) => ({
   setSelectedStatuses: (selectedStatuses) => set({ selectedStatuses }),
   setSelectedTypes: (selectedTypes) => set({ selectedTypes }),
   setSelectedCoverage: (selectedCoverage) => set({ selectedCoverage }),
-  setSelectedMonth: (selectedMonth) => set({ selectedMonth }),
+  setSelectedPeriod: (selectedPeriod) => set({ selectedPeriod }),
   setSelectedStage: (selectedStage) => set({ selectedStage }),
   setPayslipPreviewOpen: (payslipPreviewOpen) => set({ payslipPreviewOpen }),
   setOpenDropdown: (openDropdown) => set({ openDropdown }),

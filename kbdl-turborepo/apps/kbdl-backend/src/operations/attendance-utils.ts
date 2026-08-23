@@ -101,3 +101,28 @@ export function attendanceStatusLabel(status: string): string {
       return status;
   }
 }
+
+const INDIA_TZ = 'Asia/Kolkata';
+
+/** Calendar day in India (YYYY-MM-DD). */
+export function todayInIndia(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: INDIA_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+export function formatClockFromTimeOnly(time: Date | string): string {
+  const raw = formatTimeOnly(time).slice(0, 5);
+  const [hourStr, minute] = raw.split(':');
+  const hour = Number(hourStr);
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour % 12 || 12;
+  return `${String(hour12).padStart(2, '0')}:${minute} ${suffix}`;
+}
+
+export function formatShiftTimeRange(start: Date | string, end: Date | string): string {
+  return `${formatClockFromTimeOnly(start)} – ${formatClockFromTimeOnly(end)}`;
+}

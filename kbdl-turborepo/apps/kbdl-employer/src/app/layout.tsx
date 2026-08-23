@@ -1,17 +1,18 @@
-'use client';
-
+import type { Metadata } from 'next';
 import { Toaster } from '../components/ui/toaster';
 import './globals.css';
-
 import Providers from './providers';
+
+export const metadata: Metadata = {
+  title: 'KBDL Employer',
+  description: 'Employer portal',
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  console.log('this is root layout');
-
   return (
     <html lang="en">
       <body>

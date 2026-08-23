@@ -18,6 +18,7 @@
 // 09-hrms.prisma                WorkforcePerson, employment, HR profile/docs
 // 10-payments.prisma            Transactions + orders
 // 12-leave.prisma              Leave policy, types, employee requests
+// 13-payroll.prisma            Payroll runs, line items, statutory filings
 //
 // FIELD CONVENTIONS
 // -----------------------------------------------------------------------------

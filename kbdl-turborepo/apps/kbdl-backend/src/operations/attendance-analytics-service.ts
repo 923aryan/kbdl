@@ -49,7 +49,7 @@ type TrendRow = {
   late_pct: string | number;
 };
 
-type BreakdownRow = { status: string; count: number };
+type BreakdownRow = { status: string; count: number; headcount: number };
 
 type InsightsRow = {
   departments: unknown;
@@ -133,10 +133,12 @@ export async function getAttendanceAnalyticsTrendService(
 }
 
 const BREAKDOWN_COLORS: Record<string, string> = {
-  present: '#2563EB',
+  present: '#22C55E',
+  late: '#8B5CF6',
+  early_leave: '#F43F5E',
   on_duty: '#0658C2',
-  absent: '#F54A4A',
-  leave: '#8B5CF6',
+  absent: '#F59E0B',
+  leave: '#06B6D4',
   half_day: '#6478FF',
   holiday: '#0EA5E9',
   week_off: '#94A3B8',
@@ -145,9 +147,11 @@ const BREAKDOWN_COLORS: Record<string, string> = {
 
 const BREAKDOWN_LABELS: Record<string, string> = {
   present: 'Present',
+  late: 'Late',
+  early_leave: 'Early Leave',
   on_duty: 'On Duty',
   absent: 'Absent',
-  leave: 'On Leave',
+  leave: 'Leave',
   half_day: 'Half Day',
   holiday: 'Holiday',
   week_off: 'Week Off',
@@ -169,12 +173,14 @@ export async function getAttendanceAnalyticsBreakdownService(
     value: r.count,
     color: BREAKDOWN_COLORS[r.status] ?? '#94A3B8',
   }));
+  const headcount = rows[0]?.headcount ?? 0;
 
   return {
     from: query.from,
     to: query.to,
     items,
-    total: items.reduce((sum, i) => sum + i.value, 0),
+    total: headcount,
+    headcount,
   };
 }
 
@@ -183,7 +189,11 @@ export async function getAttendanceAnalyticsInsightsService(
   query: GetAttendanceAnalyticsQuery,
 ): Promise<AttendanceAnalyticsInsights> {
   const [row] = await prisma.$queryRawUnsafe<InsightsRow[]>(
-    insightsSql(),
+    insightsSql({
+      sortBy: query.sort_by,
+      sortDir: query.sort_dir,
+      issueFilter: query.issue_filter,
+    }),
     ...rangeParams(companyId, query),
   );
 
@@ -202,20 +212,28 @@ export async function getAttendanceAnalyticsInsightsService(
     team: string;
     absences: number;
     late: number;
+    early_leaves: number;
   }> | null;
 
   return {
     from: query.from,
     to: query.to,
     departments: Array.isArray(departments) ? departments : [],
-    top_absentees: (Array.isArray(topAbsentees) ? topAbsentees : []).map((a) => ({
-      company_member_id: a.company_member_id,
-      employee: a.employee,
-      team: a.team,
-      absences: Number(a.absences) || 0,
-      late: Number(a.late) || 0,
-      absences_label: `${Number(a.absences) || 0} day${Number(a.absences) === 1 ? '' : 's'}`,
-      late_label: `${Number(a.late) || 0} time${Number(a.late) === 1 ? '' : 's'}`,
-    })),
+    top_absentees: (Array.isArray(topAbsentees) ? topAbsentees : []).map((a) => {
+      const absences = Number(a.absences) || 0;
+      const late = Number(a.late) || 0;
+      const earlyLeaves = Number(a.early_leaves) || 0;
+      return {
+        company_member_id: a.company_member_id,
+        employee: a.employee,
+        team: a.team,
+        absences,
+        late,
+        early_leaves: earlyLeaves,
+        absences_label: `${absences} day${absences === 1 ? '' : 's'}`,
+        late_label: `${late} time${late === 1 ? '' : 's'}`,
+        early_leaves_label: `${earlyLeaves} time${earlyLeaves === 1 ? '' : 's'}`,
+      };
+    }),
   };
 }

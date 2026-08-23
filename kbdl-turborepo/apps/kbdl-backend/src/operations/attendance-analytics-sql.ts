@@ -67,15 +67,24 @@ raw_attendance AS (
     a.ot_minutes,
     a.worked_minutes,
     a.check_in,
+    a.check_out,
     a.is_ot,
     wsh.start_time AS shift_start,
+    wsh.end_time AS shift_end,
     CASE
       WHEN a.status = 'present'
         AND a.check_in IS NOT NULL
         AND (a.check_in AT TIME ZONE 'UTC')::time
           > (wsh.start_time + interval '15 minutes')
       THEN 1 ELSE 0
-    END AS is_late
+    END AS is_late,
+    CASE
+      WHEN a.status = 'present'
+        AND a.check_out IS NOT NULL
+        AND (a.check_out AT TIME ZONE 'UTC')::time
+          < wsh.end_time
+      THEN 1 ELSE 0
+    END AS is_early
   FROM attendances a
   CROSS JOIN bounds b
   INNER JOIN work_shifts wsh ON wsh.id = a.work_shift_id
@@ -109,6 +118,7 @@ day_status AS (
     date,
     status AS day_status,
     is_late,
+    is_early,
     ot_minutes,
     worked_minutes,
     is_ot
@@ -125,6 +135,7 @@ member_day AS (
     wd.day AS date,
     ds.day_status,
     COALESCE(ds.is_late, 0) AS is_late,
+    COALESCE(ds.is_early, 0) AS is_early,
     COALESCE(ds.ot_minutes, 0) AS ot_minutes,
     COALESCE(ds.worked_minutes, 0) AS worked_minutes,
     COALESCE(ds.is_ot, false) AS is_ot,
@@ -270,17 +281,77 @@ ORDER BY date
 
 export function breakdownSql() {
   return `
-${analyticsBaseCte()}
-SELECT
-  effective_status AS status,
-  COUNT(*)::int AS count
-FROM member_day
-GROUP BY effective_status
+${analyticsBaseCte()},
+employee_flags AS (
+  SELECT
+    company_member_id,
+    MAX(CASE WHEN effective_status IN ('present', 'on_duty') THEN 1 ELSE 0 END) AS was_present,
+    MAX(CASE WHEN is_late = 1 THEN 1 ELSE 0 END) AS was_late,
+    MAX(CASE WHEN is_early = 1 THEN 1 ELSE 0 END) AS was_early,
+    MAX(CASE WHEN effective_status = 'absent' THEN 1 ELSE 0 END) AS was_absent,
+    MAX(CASE WHEN effective_status = 'leave' THEN 1 ELSE 0 END) AS was_leave
+  FROM member_day
+  GROUP BY company_member_id
+)
+SELECT status, count, (SELECT COUNT(*)::int FROM employee_flags) AS headcount
+FROM (
+  SELECT 'present'::text AS status,
+    COUNT(*) FILTER (WHERE was_present = 1)::int AS count
+  FROM employee_flags
+  UNION ALL
+  SELECT 'late',
+    COUNT(*) FILTER (WHERE was_late = 1)::int
+  FROM employee_flags
+  UNION ALL
+  SELECT 'early_leave',
+    COUNT(*) FILTER (WHERE was_early = 1)::int
+  FROM employee_flags
+  UNION ALL
+  SELECT 'absent',
+    COUNT(*) FILTER (WHERE was_absent = 1)::int
+  FROM employee_flags
+  UNION ALL
+  SELECT 'leave',
+    COUNT(*) FILTER (WHERE was_leave = 1)::int
+  FROM employee_flags
+) s
 ORDER BY count DESC
 `;
 }
 
-export function insightsSql() {
+const INSIGHT_SORT_COLUMNS = {
+  employee: 'employee_name',
+  department: 'team',
+  absences: 'absences',
+  late: 'late_count',
+  early_leaves: 'early_count',
+  priority: 'priority_score',
+} as const;
+
+export type InsightSortBy = keyof typeof INSIGHT_SORT_COLUMNS;
+export type InsightSortDir = 'asc' | 'desc';
+export type InsightIssueFilter = 'all' | 'absent' | 'late' | 'early_leave';
+
+export function insightsSql(opts?: {
+  sortBy?: InsightSortBy;
+  sortDir?: InsightSortDir;
+  issueFilter?: InsightIssueFilter;
+}) {
+  const sortCol = INSIGHT_SORT_COLUMNS[opts?.sortBy ?? 'absences'] ?? 'absences';
+  const sortDir = opts?.sortDir === 'asc' ? 'ASC' : 'DESC';
+  const issueFilter = opts?.issueFilter ?? 'all';
+
+  const havingClause =
+    issueFilter === 'absent'
+      ? 'HAVING COUNT(*) FILTER (WHERE effective_status = \'absent\') > 0'
+      : issueFilter === 'late'
+        ? 'HAVING COUNT(*) FILTER (WHERE is_late = 1) > 0'
+        : issueFilter === 'early_leave'
+          ? 'HAVING COUNT(*) FILTER (WHERE is_early = 1) > 0'
+          : `HAVING COUNT(*) FILTER (WHERE effective_status = 'absent') > 0
+     OR COUNT(*) FILTER (WHERE is_late = 1) > 0
+     OR COUNT(*) FILTER (WHERE is_early = 1) > 0`;
+
   return `
 ${analyticsBaseCte()},
 dept AS (
@@ -307,19 +378,27 @@ dept_rates AS (
   ORDER BY rate DESC
   LIMIT 12
 ),
-absentees AS (
+issues AS (
   SELECT
     company_member_id,
     employee_name,
     COALESCE(department_name, 'Unassigned') AS team,
     COUNT(*) FILTER (WHERE effective_status = 'absent')::int AS absences,
-    COUNT(*) FILTER (WHERE is_late = 1)::int AS late_count
+    COUNT(*) FILTER (WHERE is_late = 1)::int AS late_count,
+    COUNT(*) FILTER (WHERE is_early = 1)::int AS early_count,
+    (
+      COUNT(*) FILTER (WHERE effective_status = 'absent') * 2
+      + COUNT(*) FILTER (WHERE is_late = 1)
+      + COUNT(*) FILTER (WHERE is_early = 1)
+    )::int AS priority_score
   FROM member_day
   GROUP BY company_member_id, employee_name, department_name
-  HAVING COUNT(*) FILTER (WHERE effective_status = 'absent') > 0
-     OR COUNT(*) FILTER (WHERE is_late = 1) > 0
-  ORDER BY absences DESC, late_count DESC
-  LIMIT 10
+  ${havingClause}
+)
+issues_sorted AS (
+  SELECT *
+  FROM issues
+  ORDER BY ${sortCol} ${sortDir} NULLS LAST, employee_name ASC
 )
 SELECT
   (SELECT COALESCE(json_agg(json_build_object(
@@ -333,7 +412,9 @@ SELECT
       'employee', employee_name,
       'team', team,
       'absences', absences,
-      'late', late_count
-    ) ORDER BY absences DESC, late_count DESC), '[]'::json) FROM absentees) AS top_absentees
+      'late', late_count,
+      'early_leaves', early_count
+    ) ORDER BY ${sortCol} ${sortDir} NULLS LAST, employee_name ASC), '[]'::json)
+   FROM issues_sorted) AS top_absentees
 `;
 }

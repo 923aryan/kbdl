@@ -165,6 +165,23 @@ export function EmployeeAttendanceTab({ employmentId }: { employmentId: string }
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-sm text-[#92400E]">
+          <span>Could not refresh: {error}</span>
+          <button
+            type="button"
+            onClick={() => setRefreshTick((n) => n + 1)}
+            className="inline-flex cursor-pointer items-center gap-1 font-semibold text-[#0658C2]"
+          >
+            <RefreshCw className="h-4 w-4" /> Retry
+          </button>
+        </div>
+      )}
+      {loading && (
+        <div className="inline-flex items-center gap-2 text-sm text-[#676767]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Updating…
+        </div>
+      )}
       <div className="flex flex-col gap-3 rounded-xl border border-[#D3D3D3] bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm text-[#676767]">Assigned shift</p>

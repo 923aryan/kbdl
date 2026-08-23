@@ -48,8 +48,9 @@ model EmployeeEmployment {
   company          Company         @relation(fields: [company_id], references: [id])
   workforce_person WorkforcePerson @relation(fields: [workforce_person_id], references: [id])
   hr_profile       EmployeeHrProfile?
-  company_member   CompanyMember?
-  leave_requests   LeaveRequest[]
+  company_member         CompanyMember?
+  leave_requests         LeaveRequest[]
+  payroll_run_employees  PayrollRunEmployee[]
 
   @@index([company_id, workforce_person_id])
   @@index([company_id])
@@ -89,6 +90,7 @@ model EmployeeHrProfile {
   // Job / work — per-stint snapshots; live manager/shift on CompanyMember + EmployeeShift
   designation_id           String?  @db.Uuid
   department_id            String?  @db.Uuid
+  branch_id                String?  @db.Uuid
   branch_location          String?  @db.VarChar
   employee_type            String?  @db.VarChar
   work_location            String?  @db.VarChar
@@ -131,11 +133,13 @@ model EmployeeHrProfile {
   employment  EmployeeEmployment  @relation(fields: [employment_id], references: [id], onDelete: Cascade)
   designation CompanyDesignation? @relation(fields: [designation_id], references: [id], onDelete: SetNull)
   department  Department?         @relation("HrProfileDepartment", fields: [department_id], references: [id], onDelete: SetNull)
+  branch      CompanyBranch?      @relation(fields: [branch_id], references: [id], onDelete: SetNull)
   addresses   EmployeeHrAddress[]
   documents   EmployeeHrDocument[]
 
   @@index([designation_id])
   @@index([department_id])
+  @@index([branch_id])
   @@map("employee_hr_profiles")
 }
 

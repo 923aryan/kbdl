@@ -1,111 +1,116 @@
 'use client';
 
 import { Building2, CalendarDays, ChevronDown, Edit3, Landmark, Save, ShieldCheck, type LucideIcon } from 'lucide-react';
-import { useState } from 'react';
-import { Card, PageShell, PageTitle, PrimaryButton } from './payroll-ui';
+import { useEffect, useState } from 'react';
+import { fetchPayrollSettings, savePayrollSettings, type PayrollSettingsView } from '../api';
+import { Card, LoadState, PageShell, PageTitle, PrimaryButton, RefreshIconButton, errMessage } from './payroll-ui';
 
-const payFrequencies = ['Monthly', 'Bi-weekly', 'Weekly'];
-const payDays = ['Last Working Day', '1st of Month', '7th of Month', '15th of Month'];
-const cutoffDates = ['26 of Month', '25 of Month', 'Last Friday', 'No cutoff'];
-const financialYears = ['April', 'January', 'July'];
-const overtimeRates = ['1.5x', '2x', '1.25x'];
-const maxOtHours = ['4 Hours', '6 Hours', '8 Hours'];
-const absentDeductions = ['Per-day Rate', 'Half-day Rate', 'No Auto Deduction'];
-const halfDayPolicies = ['50% of Daily Rate', '60% of Daily Rate', 'Fixed Rs 300'];
+const payFrequencies = ['monthly', 'bi-weekly', 'weekly'];
+const payDays = ['last_working_day', '1st_of_month', '7th_of_month', '15th_of_month'];
+const cutoffDates = [28, 26, 25, 31];
+const financialYears = ['april', 'january', 'july'];
+const overtimeRates = [1.5, 2, 1.25];
+const maxOtHours = [4, 6, 8];
+const absentDeductions = ['per_day_rate', 'half_day_rate', 'none'];
+const halfDayPolicies = [50, 60];
 const disbursementMethods = [
-  { title: 'NEFT / IMPS Transfer', subtitle: 'Via employer bank account' },
-  { title: 'UPI Instant Pay', subtitle: 'Razorpay / NPCI integration' },
-  { title: 'Cash Payment (Manual)', subtitle: 'Marked manually by HR' },
+  { value: 'NEFT', title: 'NEFT / IMPS Transfer', subtitle: 'Via employer bank account' },
+  { value: 'UPI', title: 'UPI Instant Pay', subtitle: 'Recorded as UPI (live payout later)' },
+  { value: 'CASH', title: 'Cash Payment (Manual)', subtitle: 'Marked manually by HR' },
 ];
+
+function labelize(value: string) {
+  return value.replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 export function PayrollSettingsScreen() {
   const [notice, setNotice] = useState('');
-  const [settings, setSettings] = useState({
-    payFrequency: 'Monthly',
-    payDay: 'Last Working Day',
-    cutoffDate: '26 of Month',
-    financialYear: 'April',
-    lockPayroll: true,
-    overtimeRate: '1.5x',
-    maxOt: '4 Hours',
-    absentDeduction: 'Per-day Rate',
-    halfDayPolicy: '50% of Daily Rate',
-    autoOt: true,
-  });
-  const [rates, setRates] = useState({
-    epfEmployee: '12%',
-    epfEmployer: '12%',
-    esicEmployee: '0.75%',
-    esicEmployer: '3.25%',
-    professionalTax: 'Rs 200/mo',
-    labourWelfare: 'Rs 6/mo',
-  });
-  const [disbursementMethod, setDisbursementMethod] = useState('NEFT / IMPS Transfer');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [editingCompany, setEditingCompany] = useState(false);
-  const [company, setCompany] = useState({
-    companyName: 'Kaam Badlo Pvt. Ltd.',
-    epfRegistration: 'CH/MUM/123456',
-    esicCode: '31-000-1234567-000',
-    gstin: '27AABCT1234E1Z5',
-    state: 'Chandigarh',
-  });
+  const [settings, setSettings] = useState<PayrollSettingsView | null>(null);
 
-  const updateSetting = (key: keyof typeof settings, value: string | boolean) => {
-    setSettings((current) => ({ ...current, [key]: value }));
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setSettings(await fetchPayrollSettings());
+    } catch (err) {
+      setError(errMessage(err, 'Failed to load settings'));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const saveChanges = () => {
-    setEditingCompany(false);
-    setNotice('Payroll settings saved.');
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const saveChanges = async () => {
+    if (!settings) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const saved = await savePayrollSettings(settings);
+      setSettings(saved);
+      setEditingCompany(false);
+      setNotice('Payroll settings saved.');
+    } catch (err) {
+      setError(errMessage(err, 'Failed to save settings'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <PageShell>
-      <PageTitle title="Payroll Settings" subtitle="Payroll  >  Settings" action={<PrimaryButton onClick={saveChanges}><Save className="h-5 w-5" /> Save Changes</PrimaryButton>} />
+      <PageTitle title="Payroll Settings" subtitle="Payroll  >  Settings" action={<><RefreshIconButton loading={loading} onClick={() => void load()} /><PrimaryButton disabled={busy || !settings} onClick={() => void saveChanges()}><Save className="h-5 w-5" /> Save Changes</PrimaryButton></>} />
       {notice && <p className="mb-5 rounded-lg bg-[#DBEAFF] px-4 py-3 text-sm font-semibold text-[#0658C2]">{notice}</p>}
+      <LoadState loading={loading} error={error} hasData={Boolean(settings)} onRetry={() => void load()} label="Loading payroll settings...">
+      {settings && (
       <div className="space-y-5">
         <SettingsPanel icon={CalendarDays} title="Pay Cycle Configuration" subtitle="Set the recurring payroll schedule for all workers">
-          <SelectField label="Pay Frequency" value={settings.payFrequency} options={payFrequencies} onChange={(value) => updateSetting('payFrequency', value)} />
-          <SelectField label="Pay Day" value={settings.payDay} options={payDays} onChange={(value) => updateSetting('payDay', value)} />
-          <SelectField label="Payroll Cutoff Date" value={settings.cutoffDate} options={cutoffDates} onChange={(value) => updateSetting('cutoffDate', value)} />
-          <SelectField label="Financial Year Start" value={settings.financialYear} options={financialYears} onChange={(value) => updateSetting('financialYear', value)} />
-          <Toggle label="Lock Payroll After Processing" note="Prevents edits once Payroll is marked as disbursed" enabled={settings.lockPayroll} onChange={(value) => updateSetting('lockPayroll', value)} />
+          <SelectField label="Pay Frequency" value={settings.pay_cycle.pay_frequency} options={payFrequencies} onChange={(value) => setSettings({ ...settings, pay_cycle: { ...settings.pay_cycle, pay_frequency: value } })} />
+          <SelectField label="Pay Day" value={settings.pay_cycle.pay_day} options={payDays} onChange={(value) => setSettings({ ...settings, pay_cycle: { ...settings.pay_cycle, pay_day: value } })} />
+          <SelectField label="Payroll Cutoff Date" value={String(settings.pay_cycle.payroll_cutoff_day)} options={cutoffDates.map(String)} onChange={(value) => setSettings({ ...settings, pay_cycle: { ...settings.pay_cycle, payroll_cutoff_day: Number(value) } })} />
+          <SelectField label="Financial Year Start" value={settings.pay_cycle.financial_year_start} options={financialYears} onChange={(value) => setSettings({ ...settings, pay_cycle: { ...settings.pay_cycle, financial_year_start: value } })} />
+          <Toggle label="Lock Payroll After Processing" note="Prevents edits once Payroll is marked as disbursed" enabled={settings.pay_cycle.lock_after_processing} onChange={(value) => setSettings({ ...settings, pay_cycle: { ...settings.pay_cycle, lock_after_processing: value } })} />
         </SettingsPanel>
 
         <SettingsPanel icon={ShieldCheck} title="Statutory Deduction Rates" subtitle="Configure EPF, ESIC, and other statutory contribution percentages">
-          <EditableField label="EPF - Employee Contribution" value={rates.epfEmployee} note="Of Basic Wage (mandatory)" onChange={(value) => setRates((current) => ({ ...current, epfEmployee: value }))} />
-          <EditableField label="EPF - Employer Contribution" value={rates.epfEmployer} note="Of Basic Wage" onChange={(value) => setRates((current) => ({ ...current, epfEmployer: value }))} />
-          <EditableField label="ESIC - Employee Contribution" value={rates.esicEmployee} note="If Gross is below Rs 21,000/mo" onChange={(value) => setRates((current) => ({ ...current, esicEmployee: value }))} />
-          <EditableField label="ESIC - Employer Contribution" value={rates.esicEmployer} note="If Gross is below Rs 21,000/mo" onChange={(value) => setRates((current) => ({ ...current, esicEmployer: value }))} />
-          <EditableField label="Professional Tax (CH)" value={rates.professionalTax} note="Above Rs 10,000 salary" onChange={(value) => setRates((current) => ({ ...current, professionalTax: value }))} />
-          <EditableField label="Labour Welfare Fund" value={rates.labourWelfare} note="Employee share" onChange={(value) => setRates((current) => ({ ...current, labourWelfare: value }))} />
+          <EditableField label="EPF - Employee Contribution" value={String(settings.statutory.employee_pf_rate)} note="Of Basic Wage (mandatory)" onChange={(value) => setSettings({ ...settings, statutory: { ...settings.statutory, employee_pf_rate: Number(value) } })} />
+          <EditableField label="EPF - Employer Contribution" value={String(settings.statutory.employer_pf_rate)} note="Of Basic Wage" onChange={(value) => setSettings({ ...settings, statutory: { ...settings.statutory, employer_pf_rate: Number(value) } })} />
+          <EditableField label="ESIC - Employee Contribution" value={String(settings.statutory.employee_esic_rate)} note="If Gross is below Rs 21,000/mo" onChange={(value) => setSettings({ ...settings, statutory: { ...settings.statutory, employee_esic_rate: Number(value) } })} />
+          <EditableField label="ESIC - Employer Contribution" value={String(settings.statutory.employer_esic_rate)} note="If Gross is below Rs 21,000/mo" onChange={(value) => setSettings({ ...settings, statutory: { ...settings.statutory, employer_esic_rate: Number(value) } })} />
+          <EditableField label="Professional Tax" value={String(settings.statutory.professional_tax)} note="Applied when gross is above Rs 10,000" onChange={(value) => setSettings({ ...settings, statutory: { ...settings.statutory, professional_tax: Number(value) } })} />
+          <EditableField label="Labour Welfare Fund" value={String(settings.statutory.labour_welfare_fund)} note="Employee share" onChange={(value) => setSettings({ ...settings, statutory: { ...settings.statutory, labour_welfare_fund: Number(value) } })} />
         </SettingsPanel>
 
         <SettingsPanel icon={ShieldCheck} title="Overtime & Attendance Rules" subtitle="Configure how overtime hours and leaves affect payroll calculation">
-          <SelectField label="Overtime Rate Multiplier" value={settings.overtimeRate} options={overtimeRates} onChange={(value) => updateSetting('overtimeRate', value)} />
-          <SelectField label="Max OT Hours / Day" value={settings.maxOt} options={maxOtHours} onChange={(value) => updateSetting('maxOt', value)} />
-          <SelectField label="Absent Deduction" value={settings.absentDeduction} options={absentDeductions} onChange={(value) => updateSetting('absentDeduction', value)} />
-          <SelectField label="Half-Day Policy" value={settings.halfDayPolicy} options={halfDayPolicies} onChange={(value) => updateSetting('halfDayPolicy', value)} />
-          <Toggle label="Auto-Calculate OT from Shift Logs" note="Pull verified shift durations from the Shifts module automatically" enabled={settings.autoOt} onChange={(value) => updateSetting('autoOt', value)} />
+          <SelectField label="Overtime Rate Multiplier" value={String(settings.attendance.overtime_multiplier)} options={overtimeRates.map(String)} onChange={(value) => setSettings({ ...settings, attendance: { ...settings.attendance, overtime_multiplier: Number(value) } })} />
+          <SelectField label="Max OT Hours / Day" value={String(settings.attendance.max_ot_hours_per_day)} options={maxOtHours.map(String)} onChange={(value) => setSettings({ ...settings, attendance: { ...settings.attendance, max_ot_hours_per_day: Number(value) } })} />
+          <SelectField label="Absent Deduction" value={settings.attendance.absent_deduction_type} options={absentDeductions} onChange={(value) => setSettings({ ...settings, attendance: { ...settings.attendance, absent_deduction_type: value } })} />
+          <SelectField label="Half-Day Policy %" value={String(settings.attendance.half_day_percentage)} options={halfDayPolicies.map(String)} onChange={(value) => setSettings({ ...settings, attendance: { ...settings.attendance, half_day_percentage: Number(value) } })} />
+          <Toggle label="Auto-Calculate OT from Shift Logs" note="Use verified attendance OT minutes when creating a run" enabled={settings.attendance.auto_calculate_ot} onChange={(value) => setSettings({ ...settings, attendance: { ...settings.attendance, auto_calculate_ot: value } })} />
         </SettingsPanel>
 
         <div className="grid gap-5 xl:grid-cols-2">
           <Card className="p-5">
             <SectionTitle icon={Landmark} title="Disbursement Method" />
             <div className="mt-4 space-y-3 border-t border-[#D3D3D3] pt-4">
-              {disbursementMethods.map(({ title, subtitle }) => (
+              {disbursementMethods.map(({ value, title, subtitle }) => (
                 <button
-                  key={title}
+                  key={value}
                   type="button"
-                  onClick={() => {
-                    setDisbursementMethod(title);
-                    setNotice(`${title} selected as disbursement method.`);
-                  }}
-                  className={`flex w-full cursor-pointer items-center gap-4 rounded-xl border px-4 py-3 text-left text-sm ${title === disbursementMethod ? 'border-[#0658C2] bg-[#DBEAFF]' : 'border-[#D3D3D3] bg-white hover:bg-[#FAFAFA]'}`}
+                  onClick={() => setSettings({
+                    ...settings,
+                    payment: { ...settings.payment, default_disbursement_method: value },
+                  })}
+                  className={`flex w-full cursor-pointer items-center gap-4 rounded-xl border px-4 py-3 text-left text-sm ${settings.payment.default_disbursement_method === value ? 'border-[#0658C2] bg-[#DBEAFF]' : 'border-[#D3D3D3] bg-white hover:bg-[#FAFAFA]'}`}
                 >
-                  <span className={`grid h-7 w-7 place-items-center rounded-md border ${title === disbursementMethod ? 'border-[#0658C2] bg-[#0658C2] text-white' : 'border-[#D3D3D3] text-[#676767]'}`}><Landmark className="h-4 w-4" /></span>
+                  <span className={`grid h-7 w-7 place-items-center rounded-md border ${settings.payment.default_disbursement_method === value ? 'border-[#0658C2] bg-[#0658C2] text-white' : 'border-[#D3D3D3] text-[#676767]'}`}><Landmark className="h-4 w-4" /></span>
                   <span className="flex-1"><b>{title}</b><span className="block text-xs text-[#676767]">{subtitle}</span></span>
-                  <span className={`h-3 w-3 rounded-sm border ${title === disbursementMethod ? 'border-[#0658C2] bg-[#0658C2]' : 'border-[#D3D3D3]'}`} />
                 </button>
               ))}
             </div>
@@ -117,15 +122,17 @@ export function PayrollSettingsScreen() {
               <button type="button" onClick={() => setEditingCompany((value) => !value)} className="inline-flex cursor-pointer items-center gap-1 text-sm font-semibold text-[#0658C2]"><Edit3 className="h-4 w-4" /> {editingCompany ? 'Done' : 'Edit'}</button>
             </div>
             <div className="border-t border-[#D3D3D3] pt-2">
-              <CompanyField label="Company Name" value={company.companyName} editing={editingCompany} onChange={(value) => setCompany((current) => ({ ...current, companyName: value }))} />
-              <CompanyField label="EPF Registration No." value={company.epfRegistration} editing={editingCompany} onChange={(value) => setCompany((current) => ({ ...current, epfRegistration: value }))} />
-              <CompanyField label="ESIC Code" value={company.esicCode} editing={editingCompany} onChange={(value) => setCompany((current) => ({ ...current, esicCode: value }))} />
-              <CompanyField label="GSTIN" value={company.gstin} editing={editingCompany} onChange={(value) => setCompany((current) => ({ ...current, gstin: value }))} />
-              <CompanyField label="State" value={company.state} editing={editingCompany} onChange={(value) => setCompany((current) => ({ ...current, state: value }))} />
+              <CompanyField label="Company Name" value={settings.company_details.company_name} editing={editingCompany} onChange={(value) => setSettings({ ...settings, company_details: { ...settings.company_details, company_name: value } })} />
+              <CompanyField label="EPF Registration No." value={settings.company_details.epf_registration_no ?? ''} editing={editingCompany} onChange={(value) => setSettings({ ...settings, company_details: { ...settings.company_details, epf_registration_no: value } })} />
+              <CompanyField label="ESIC Code" value={settings.company_details.esic_code ?? ''} editing={editingCompany} onChange={(value) => setSettings({ ...settings, company_details: { ...settings.company_details, esic_code: value } })} />
+              <CompanyField label="GSTIN" value={settings.company_details.gstin ?? ''} editing={editingCompany} onChange={(value) => setSettings({ ...settings, company_details: { ...settings.company_details, gstin: value } })} />
+              <CompanyField label="State" value={settings.company_details.state ?? ''} editing={editingCompany} onChange={(value) => setSettings({ ...settings, company_details: { ...settings.company_details, state: value } })} />
             </div>
           </Card>
         </div>
       </div>
+      )}
+      </LoadState>
     </PageShell>
   );
 }
@@ -149,12 +156,13 @@ function SectionTitle({ icon: Icon, title, subtitle }: { icon: LucideIcon; title
 }
 
 function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+  const all = options.includes(value) ? options : [value, ...options];
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-semibold">{label}</span>
       <span className="relative block">
         <select value={value} onChange={(event) => onChange(event.target.value)} className="h-12 w-full cursor-pointer appearance-none rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] px-4 pr-10 text-sm text-[#676767] outline-none focus:border-[#0658C2]">
-          {options.map((option) => <option key={option}>{option}</option>)}
+          {all.map((option) => <option key={option} value={option}>{labelize(option)}</option>)}
         </select>
         <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black" />
       </span>
@@ -164,7 +172,6 @@ function SelectField({ label, value, options, onChange }: { label: string; value
 
 function EditableField({ label, value, note, onChange }: { label: string; value: string; note: string; onChange: (value: string) => void }) {
   const [editing, setEditing] = useState(false);
-
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-semibold">{label}</span>
@@ -195,7 +202,7 @@ function CompanyField({ label, value, editing, onChange }: { label: string; valu
       {editing ? (
         <input value={value} onChange={(event) => onChange(event.target.value)} className="w-full max-w-[260px] rounded-md border border-[#D3D3D3] bg-white px-3 py-2 text-right font-semibold outline-none focus:border-[#0658C2]" />
       ) : (
-        <b className="text-right">{value}</b>
+        <b className="text-right">{value || '—'}</b>
       )}
     </label>
   );

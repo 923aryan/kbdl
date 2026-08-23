@@ -52,9 +52,31 @@ model Company {
   leave_policy     CompanyLeavePolicy?
   leave_types      CompanyLeaveType[]
   leave_requests   LeaveRequest[]
+  branches         CompanyBranch[]
+  payroll_runs     PayrollRun[]
+  payroll_filings  PayrollStatutoryFiling[]
 
   @@index([company_name])
   @@map("companies")
+}
+
+/// Company work site used for geo attendance (onboard branch + 50m punch).
+model CompanyBranch {
+  id String @id @default(uuid()) @db.Uuid
+
+  company_id String @db.Uuid
+  name       String @db.VarChar
+  location   Unsupported("geography(Point, 4326)")?
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  company     Company            @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  hr_profiles EmployeeHrProfile[]
+
+  @@unique([company_id, name])
+  @@index([company_id])
+  @@map("company_branches")
 }
 
 /// Per-company role catalog (like Department).
@@ -222,6 +244,12 @@ model CompanyMember {
   attendances_marked     Attendance[]     @relation("AttendanceMarkedBy")
   leave_requests_applied LeaveRequest[]   @relation("LeaveAppliedBy")
   leave_requests_decided LeaveRequest[]   @relation("LeaveDecidedBy")
+
+  payroll_runs_created               PayrollRun[] @relation("PayrollRunCreatedBy")
+  payroll_runs_attendance_confirmed  PayrollRun[] @relation("PayrollAttendanceConfirmedBy")
+  payroll_runs_wages_confirmed       PayrollRun[] @relation("PayrollWagesConfirmedBy")
+  payroll_runs_deductions_confirmed  PayrollRun[] @relation("PayrollDeductionsConfirmedBy")
+  payroll_runs_disbursed             PayrollRun[] @relation("PayrollDisbursedBy")
 
   @@index([company_id])
   @@index([company_id, user_id])

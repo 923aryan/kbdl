@@ -1,8 +1,10 @@
 import {
   bulkMarkHolidaySchema,
   bulkMarkPresentSchema,
+  employeePunchAttendanceSchema,
   getAttendanceAnalyticsRangeSchema,
   getDailyAttendanceSchema,
+  getEmployeeAttendanceContextSchema,
   getEmployeeAttendanceMonthSchema,
   updateAttendanceSchema,
   upsertAttendanceSchema,
@@ -232,7 +234,52 @@ export type AttendanceAnalyticsBreakdown = {
   to: string;
   items: AttendanceAnalyticsBreakdownItem[];
   total: number;
+  headcount: number;
 };
+
+export type EmployeePunchCompany = {
+  employment_id: string;
+  company_member_id: string;
+  company_id: string;
+  company_name: string;
+  branch_name: string | null;
+  branch_has_location: boolean;
+};
+
+export type EmployeePunchShift = {
+  id: string;
+  name: string;
+  start_time: string;
+  end_time: string;
+  label: string;
+};
+
+export type EmployeePunchContext = {
+  companies: EmployeePunchCompany[];
+  selected: EmployeePunchCompany | null;
+  date: string;
+  date_label: string;
+  shift: EmployeePunchShift | null;
+  attendance: {
+    id: string | null;
+    status: string | null;
+    status_label: string | null;
+    source: string | null;
+    check_in: string | null;
+    check_out: string | null;
+  };
+  mode: 'select_company' | 'punch_in' | 'punch_out' | 'completed' | 'blocked';
+  punch_blocked_reason: string | null;
+  radius_meters: number;
+};
+
+export type EmployeePunchResult = EmployeePunchContext & {
+  distance_meters: number;
+};
+
+export type GetEmployeeAttendanceContextRequest = z.infer<typeof getEmployeeAttendanceContextSchema>;
+export type EmployeePunchAttendanceRequest = z.infer<typeof employeePunchAttendanceSchema>;
+export type EmployeePunchAttendanceBody = EmployeePunchAttendanceRequest['body'];
 
 export type AttendanceAnalyticsInsights = {
   from: string;
@@ -249,7 +296,9 @@ export type AttendanceAnalyticsInsights = {
     team: string;
     absences: number;
     late: number;
+    early_leaves: number;
     absences_label: string;
     late_label: string;
+    early_leaves_label: string;
   }>;
 };

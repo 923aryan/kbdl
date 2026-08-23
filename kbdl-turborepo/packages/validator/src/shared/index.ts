@@ -1,4 +1,5 @@
 export * from '../../validation-schema/leave';
+export * from '../../validation-schema/payroll';
 export * from '../../validation-schema/attendance';
 export * from '../../validation-schema/auth';
 export * from '../../validation-schema/jobs';

@@ -1,8 +1,10 @@
 import {
   BulkMarkHolidayRequest,
   BulkMarkPresentRequest,
+  EmployeePunchAttendanceRequest,
   GetAttendanceAnalyticsRequest,
   GetDailyAttendanceRequest,
+  GetEmployeeAttendanceContextRequest,
   GetEmployeeAttendanceMonthRequest,
   UpdateAttendanceRequest,
   UpsertAttendanceRequest,
@@ -10,8 +12,10 @@ import {
 import {
   bulkMarkHolidaySchema,
   bulkMarkPresentSchema,
+  employeePunchAttendanceSchema,
   getAttendanceAnalyticsRangeSchema,
   getDailyAttendanceSchema,
+  getEmployeeAttendanceContextSchema,
   getEmployeeAttendanceMonthSchema,
   updateAttendanceSchema,
   upsertAttendanceSchema,
@@ -33,6 +37,10 @@ import {
   updateAttendanceService,
   upsertAttendanceService,
 } from './attendance-service';
+import {
+  employeePunchAttendanceService,
+  getEmployeeAttendanceContextService,
+} from './attendance-employee-punch-service';
 
 export const getDailyAttendance = async (req: Request, res: Response) => {
   const input: GetDailyAttendanceRequest = validate(getDailyAttendanceSchema, req);
@@ -106,4 +114,22 @@ export const upsertAttendance = async (req: Request, res: Response) => {
   const companyId = req.payload.employer.id;
   const item = await upsertAttendanceService(companyId, input.body);
   sendSuccess(res, 'Attendance saved successfully', item);
+};
+
+export const getEmployeeAttendanceContext = async (req: Request, res: Response) => {
+  const input: GetEmployeeAttendanceContextRequest = validate(
+    getEmployeeAttendanceContextSchema,
+    req,
+  );
+  const userId = (req.payload as { user: { id: string } }).user.id;
+  const data = await getEmployeeAttendanceContextService(userId, input.query.employment_id);
+  sendSuccess(res, 'Attendance context retrieved', data);
+};
+
+export const employeePunchAttendance = async (req: Request, res: Response) => {
+  const input: EmployeePunchAttendanceRequest = validate(employeePunchAttendanceSchema, req);
+  const userId = (req.payload as { user: { id: string } }).user.id;
+  const data = await employeePunchAttendanceService(userId, input.body);
+  const message = input.body.action === 'in' ? 'Punched in successfully' : 'Punched out successfully';
+  sendSuccess(res, message, data);
 };

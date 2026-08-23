@@ -146,6 +146,32 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
+        {/* Attendance Card */}
+        <View style={[styles.mainCard, { backgroundColor: '#ECFDF5' }]}>
+          <View style={styles.mainCardTop}>
+            <View style={styles.mainCardTextContainer}>
+              <Text style={styles.cardTitle}>{t.attendanceCardTitle}</Text>
+              <Text style={styles.cardSubtitle}>{t.attendanceCardSubtitle}</Text>
+            </View>
+            <Ionicons name="finger-print" size={56} color="#16A34A" />
+          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.actionButton,
+              { backgroundColor: '#16A34A', overflow: 'hidden' },
+            ]}
+            onPress={() => router.push('/attendance' as never)}
+          >
+            {({ pressed }) => (
+              <>
+                {pressed && <View style={styles.darkOverlay} />}
+                <Text style={styles.actionButtonText}>{t.markAttendance}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </>
+            )}
+          </Pressable>
+        </View>
+
         {/* Find Job Card */}
         <View style={[styles.mainCard, { backgroundColor: '#F0F6FF' }]}>
           <View style={styles.mainCardTop}>

@@ -7,13 +7,10 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useAuthStore } from '../features/auth/stores/use-auth-store';
 
 export default function Providers({ children }: { children: ReactNode }) {
-  console.log('this is src/app/providers.tsx');
-
   const hydrateAuth = useAuthStore((state) => state.hydrateAuth);
 
-  // Run once on mount to load data from localStorage
   useEffect(() => {
-    hydrateAuth();
+    void hydrateAuth();
   }, [hydrateAuth]);
 
   const [queryClient] = useState(
