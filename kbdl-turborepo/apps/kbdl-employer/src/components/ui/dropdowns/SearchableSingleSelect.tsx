@@ -1,71 +1,87 @@
 'use client';
 
 import { ChevronDown, Search } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
-export type AsyncSearchOption = {
-  id: string;
-  label: string;
-  sublabel?: string;
-};
+import type { SelectOption } from './dropdown.types';
+import { useClickOutside } from './useClickOutside';
 
-type AsyncSearchSelectProps = {
+type SearchableSingleSelectProps = {
   label: string;
   required?: boolean;
   placeholder: string;
-  valueId: string;
-  valueLabel: string;
-  options: AsyncSearchOption[];
-  loading?: boolean;
-  error?: string | null;
-  search: string;
-  onSearchChange: (value: string) => void;
-  onSelect: (option: AsyncSearchOption) => void;
-  onClear?: () => void;
+  options: SelectOption[];
+  value?: string;
+  onChange?: (value: string) => void;
+  error?: string;
+  disabled?: boolean;
 };
 
-export function AsyncSearchSelect({
+export function SearchableSingleSelect({
   label,
   required,
   placeholder,
-  valueId,
-  valueLabel,
   options,
-  loading = false,
-  error = null,
-  search,
-  onSearchChange,
-  onSelect,
-  onClear,
-}: AsyncSearchSelectProps) {
+  value,
+  onChange,
+  error,
+  disabled = false,
+}: SearchableSingleSelectProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [localValue, setLocalValue] = useState('');
+
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [open]);
+  const selectedValue = value ?? localValue;
+
+  const selectedOption = options.find(
+    (option) => option.value === selectedValue,
+  );
+
+  const filteredOptions = options.filter((option) =>
+    option.label.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  useClickOutside(rootRef, open, () => {
+    setOpen(false);
+    setSearch('');
+  });
+
+  const handleSelect = (option: SelectOption) => {
+    setLocalValue(option.value);
+    onChange?.(option.value);
+    setOpen(false);
+    setSearch('');
+  };
+
+  const handleClear = () => {
+    setLocalValue('');
+    onChange?.('');
+    setSearch('');
+  };
 
   return (
     <div ref={rootRef} className="relative block">
+      {/* Label */}
       <span className="mb-2 block text-sm font-semibold">
         {label} {required && <span className="text-[#F54A4A]">*</span>}
       </span>
 
+      {/* Select Button */}
       <button
         type="button"
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-lg border px-4 text-base font-semibold outline-none ${
+        className={`flex h-11 w-full items-center justify-between rounded-lg border px-4 text-base font-semibold outline-none ${
+          disabled
+            ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+            : 'cursor-pointer'
+        } ${
           open
             ? 'border-[#0658C2] text-blue-950'
             : error
@@ -73,14 +89,25 @@ export function AsyncSearchSelect({
               : 'border-gray-300 text-gray-900'
         }`}
       >
-        <span className={valueId ? 'font-normal text-sm text-[#111827]' : 'font-normal text-sm text-gray-500'}>
-          {valueLabel || placeholder}
+        <span
+          className={
+            selectedValue
+              ? 'text-sm font-normal text-[#111827]'
+              : 'text-sm font-normal text-gray-500'
+          }
+        >
+          {selectedOption?.label || placeholder}
         </span>
 
-        <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`h-5 w-5 text-black transition-transform duration-200 ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
       </button>
 
-      {open && (
+      {/* Dropdown */}
+      {open && !disabled && (
         <div className="absolute left-0 z-40 mt-2 w-full rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
           {/* Search */}
           <div className="relative mb-3">
@@ -88,7 +115,7 @@ export function AsyncSearchSelect({
               autoFocus
               type="text"
               value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder={`Search ${label.toLowerCase()}...`}
               className="w-full rounded-md border border-transparent bg-[#F8F8F8] px-4 py-[9px] pr-10 text-sm outline-none focus:border-[#0658C2]"
             />
@@ -97,37 +124,27 @@ export function AsyncSearchSelect({
           </div>
 
           {/* Selected */}
-          {valueId && (
+          {selectedOption && (
             <>
               <div className="flex items-center justify-between px-1 py-3 text-xs font-semibold uppercase text-[#676767]">
                 <span>Selected</span>
 
-                {onClear && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClear();
-                      onSearchChange('');
-                    }}
-                    className="cursor-pointer normal-case text-[#0658C2]"
-                  >
-                    Clear All
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="hidden cursor-pointer normal-case text-[#0658C2]"
+                >
+                  Clear All
+                </button>
               </div>
 
               <div className="max-h-[150px] space-y-1 overflow-y-auto border-b border-[#D3D3D3] pb-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    onClear?.();
-                    onSearchChange('');
-                  }}
+                  onClick={handleClear}
                   className="flex w-full cursor-pointer items-center justify-between rounded-md bg-[#DBEAFF] px-4 py-[9px] text-left text-sm text-[#0658C2]"
                 >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{valueLabel}</span>
-                  </div>
+                  {selectedOption.label}
 
                   <span className="relative h-4 w-4 rounded bg-white">
                     <span className="absolute inset-0 left-[2px] top-[-2px] w-[22px] bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] bg-no-repeat" />
@@ -147,64 +164,39 @@ export function AsyncSearchSelect({
             role="listbox"
             className="max-h-[260px] space-y-1 overflow-y-auto"
           >
-            {loading && (
-              <p className="px-3 py-2 text-sm text-[#676767]">
-                Searching...
-              </p>
-            )}
-
-            {!loading && error && (
-              <p className="px-3 py-2 text-sm text-[#F54A4A]">
-                {error}
-              </p>
-            )}
-
-            {!loading && !error && options.length === 0 && (
-              <p className="px-3 py-2 text-sm text-[#676767]">
-                No results found
-              </p>
-            )}
-
-            {!loading &&
-              !error &&
-              options.map((option) => (
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option) => (
                 <button
-                  key={option.id}
+                  key={option.value}
                   type="button"
                   role="option"
-                  aria-selected={option.id === valueId}
-                  onClick={() => {
-                    onSelect(option);
-                    setOpen(false);
-                    onSearchChange('');
-                  }}
+                  aria-selected={selectedValue === option.value}
+                  onClick={() => handleSelect(option)}
                   className={`flex w-full cursor-pointer items-center justify-between rounded-md border px-4 py-[9px] text-left text-sm transition-colors ${
-                    option.id === valueId
+                    selectedValue === option.value
                       ? 'border-transparent bg-[#DBEAFF] text-[#0658C2]'
                       : 'border-[#D3D3D3] text-gray-900 hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]'
                   }`}
                 >
-                  <div className="flex flex-col">
-                    <span className="font-medium">{option.label}</span>
+                  {option.label}
 
-                    {option.sublabel && (
-                      <span className="text-xs text-[#676767]">
-                        {option.sublabel}
-                      </span>
-                    )}
-                  </div>
-
-                  {option.id === valueId && (
+                  {selectedValue === option.value && (
                     <span className="relative h-4 w-4 rounded bg-white">
                       <span className="absolute inset-0 left-[2px] top-[-2px] w-[22px] bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] bg-no-repeat" />
                     </span>
                   )}
                 </button>
-              ))}
+              ))
+            ) : (
+              <p className="px-3 py-2 text-sm text-[#676767]">
+                No results found
+              </p>
+            )}
           </div>
         </div>
       )}
 
+      {/* Error */}
       {error && (
         <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
           {error}
@@ -213,3 +205,5 @@ export function AsyncSearchSelect({
     </div>
   );
 }
+
+export default SearchableSingleSelect;

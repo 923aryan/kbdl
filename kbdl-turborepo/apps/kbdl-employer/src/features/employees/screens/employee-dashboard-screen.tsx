@@ -42,9 +42,10 @@ import { z } from 'zod';
 
 import { useEmployeesList } from '../hooks/use-employees-list';
 import { useMetaSearch } from '../hooks/use-meta-search';
-import { AsyncSearchSelect } from '../components/async-search-select';
 import { AddressFormBlock } from '../components/address-form-block';
-import { AsyncMultiSearchSelect } from '../components/async-multi-search-select';
+import { SelectField } from '@/components/ui/dropdowns/SelectField';
+import { AsyncSearchSelect } from '@/components/ui/dropdowns/AsyncSearchSelect';
+import { AsyncMultiSearchSelect } from '@/components/ui/dropdowns/AsyncMultiSearchSelect';
 import { OnboardErrorModal } from '../components/onboard-error-modal';
 import { extractOnboardApiErrors } from '../lib/onboard-error-messages';
 import { filterBanks } from '../lib/indian-banks';
@@ -582,7 +583,6 @@ const createEmployeeFromForm = (form: OnboardFormState, paymentMethod: PaymentMe
 function EmployeesPageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f7f7f8] text-[#111827]">
-      <TopBar />
       <main className="p-[20px]">{children}</main>
     </div>
   );
@@ -839,37 +839,6 @@ export function EmployeeOnboardScreen() {
 
 /** @deprecated Use route-based screens: EmployeeListScreen, EmployeeDetailScreen, EmployeeOnboardScreen */
 export const EmployeeDashboardScreen = EmployeeListScreen;
-
-function TopBar() {
-  return (
-    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#D3D3D3] bg-white px-4 sm:px-6 lg:px-8">
-      <div className="relative w-full max-w-[315px]">
-        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#676767]" />
-        <input
-          className="h-12 w-full rounded-lg bg-[#FAFAFA] pl-12 pr-4 text-sm outline-none ring-1 ring-transparent focus:ring-blue-500"
-          placeholder="Search anything..."
-        />
-      </div>
-      <div className="flex items-center gap-5">
-        <button className="relative rounded-full p-2 text-[#676767] hover:bg-[#FAFAFA]" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-2 top-1 h-2 w-2 rounded-full bg-blue-600" />
-        </button>
-        <button className="rounded-full p-2 text-[#676767] hover:bg-[#FAFAFA]" aria-label="Help">
-          <HelpCircle className="h-5 w-5" />
-        </button>
-        <div className="hidden h-10 w-px bg-gray-200 sm:block" />
-        <div className="flex items-center gap-3">
-          <Avatar name="Abhinav Barwal" size="md" />
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold">Abhinav Barwal</p>
-            <p className="text-xs text-[#676767]">Operations Head</p>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function EmployeeList({
   employees,
@@ -1675,6 +1644,260 @@ function BankPayments({
   );
 }
 
+function parseDisplayDate(value: string) {
+  const [day, month, year] = value.split(' ');
+  const monthIndex = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(
+    month ?? '',
+  );
+
+  return new Date(Number(year), monthIndex, Number(day));
+}
+
+function buildCalendarDays(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  return Array.from({ length: totalCells }, (_, index) => {
+    const dayNumber = index - startOffset + 1;
+    const inCurrentMonth = dayNumber >= 1 && dayNumber <= daysInMonth;
+    const displayedDay =
+      dayNumber < 1 ? previousMonthDays + dayNumber : dayNumber > daysInMonth ? dayNumber - daysInMonth : dayNumber;
+    const currentDate = new Date(year, month, Math.min(Math.max(dayNumber, 1), daysInMonth));
+    const statusMap: Record<number, string> = {
+      1: 'A',
+      2: 'P',
+      3: 'L',
+      4: 'L',
+      5: 'P',
+      17: 'H',
+    };
+    const code = inCurrentMonth ? statusMap[dayNumber] ?? (currentDate.getDay() === 0 ? 'OF' : '') : '';
+
+    return { day: displayedDay, code, muted: !inCurrentMonth };
+  });
+}
+
+const requiredString = (message: string) => z.string({ error: message }).min(1, { message });
+
+const numericString = (message: string) =>
+  requiredString(message).regex(/^\d+(\.\d+)?$/, {
+    message: 'Must be a valid number',
+  });
+
+const phoneRegex = /^\+91\d{10}$/;
+const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/i;
+const aadhaarRegex = /^\d{12}$/;
+const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/i;
+const pincodeRegex = /^\d{6}$/;
+
+const getOnboardValidationSchema = (paymentMethod: PaymentMethod) => {
+  const baseSchema = z.object({
+    // Personal Info
+    fullName: z.string()
+    .trim()
+    .min(1, 'Full Name is required')
+    .regex(/^[A-Za-z\s]+$/, 'Full Name can contain only letters'),
+    mobileNumber: requiredString('Mobile Number is required')
+      .transform((val) => normalizePhoneNumber(val))
+      .refine((val) => phoneRegex.test(val), {
+        message: 'Must be a valid 10-digit Indian mobile number',
+      }),
+    email: z
+  .string()
+  .email({ message: 'Invalid email address' })
+  .optional()
+  .or(z.literal('')),
+    dateOfBirth: requiredString('Date of Birth is required').refine(
+      (value) => {
+        const dob = new Date(value);
+        const today = new Date();
+        const age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        const actualAge =
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < dob.getDate())
+            ? age - 1
+            : age;
+        return actualAge >= 14;
+      },
+      {
+        message: 'Employee must be at least 14 years old',
+      },
+    ),
+    gender: requiredString('Gender is required'),
+    bloodGroup: requiredString('Blood Group is required'),
+    emergencyContactName: z.string()
+    .trim()
+    .min(1, 'Emergency Contact Name is required')
+    .regex(/^[A-Za-z\s]+$/, 'Emergency Contact Name can contain only letters'),
+    emergencyContactRelation: z.string()
+      .trim()
+      .min(1, 'Emergency Contact Relation is required')
+      .regex(/^[A-Za-z\s]+$/, 'Emergency Contact Relation can contain only letters'),
+
+    emergencyContactNumber: requiredString('Emergency Contact Number is required')
+      .transform((val) => normalizePhoneNumber(val))
+      .refine((val) => phoneRegex.test(val), {
+        message: 'Must be a valid 10-digit Indian mobile number',
+      }),
+    fatherName: z.string().trim().refine(
+        (value) => value === '' || /^[A-Za-z\s]+$/.test(value),
+        'Father\'s Name can contain only letters',
+      ),
+
+      motherName: z.string().trim().refine(
+        (value) => value === '' || /^[A-Za-z\s]+$/.test(value),
+        'Mother\'s Name can contain only letters',
+      ),
+
+      nationality: z.string().trim().refine(
+        (value) => value === '' || /^[A-Za-z\s]+$/.test(value),
+        'Invalid nationality',
+      ),
+
+      alternatePhone: z.string().trim().refine(
+        (value) => value === '' || /^[6-9]\d{9}$/.test(value),
+        'Invalid mobile number',
+      ),
+
+    // Address
+    address: z.string().trim().refine(
+      (value) => value === '' || value.length >= 5,
+      'Address must be at least 5 characters',
+    ),
+    presentAddressLine1: requiredString('Present Address Line 1 is required'),
+    presentCity: requiredString('Present City is required'),
+    presentState: requiredString('Present State is required'),
+    presentPincode: requiredString('Present Pincode is required').regex(
+      pincodeRegex,
+      'Pincode must be 6 digits',
+    ),
+    sameAsPresentAddress: requiredString(
+      'Please specify whether permanent address is same as present address',
+    ),
+
+    // Job Info
+    designationId: requiredString('Designation is required'),
+    departmentId: requiredString('Department is required'),
+    branchLocation: requiredString('Branch / Location is required'),
+    reportingSupervisorId: requiredString('Reporting Supervisor is required'),
+    employeeType: requiredString('Employee Type is required'),
+    joiningDate: requiredString('Joining Date is required'),
+    workShiftId: requiredString('Shift Assignment is required'),
+    probationPeriodMonths: z.string().trim().refine(
+    (value) => value === '' || /^\d+$/.test(value),
+      'Probation Period must be a valid number',
+    ),
+    noticePeriodDays: z.string().trim().refine(
+      (value) => value === '' || /^\d+$/.test(value),
+      'Notice Period must be a valid number',
+    ),
+    weeklyOff: z.string().trim().refine(
+      (value) => value === '' || /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i.test(value),
+      'Please enter a valid day',
+    ),
+    workingHours: z.string().trim().refine(
+      (value) => value === '' || value.length >= 5,
+      'Please enter valid working hours',
+    ),
+    confirmationDate: z.string().trim().refine(
+      (value) => value === '' || !Number.isNaN(Date.parse(value)),
+      'Invalid confirmation date',
+    ),
+    workLocation: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9\s,./()&-]+$/.test(value),
+      'Work Location contains invalid characters',
+    ),
+
+    // Work Details
+    skillTrade: requiredString('Skill / Trade is required'),
+    experienceYears: numericString('Experience is required'),
+    safetyTrainingCompleted: requiredString('Safety Training completion status is required'),
+    certificationLicenses: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9\s,./()&-]+$/.test(value),
+      'Certification / Licenses contains invalid characters',
+    ),
+
+    // Identity
+    aadhaarNumber: requiredString('Aadhaar Number is required').regex(aadhaarRegex, 'Aadhaar must be 12 digits'),
+    panNumber: requiredString('PAN Number is required').regex(panRegex, 'Invalid PAN format'),
+    drivingLicenseNumber: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9-]{5,20}$/.test(value),
+      'Invalid Driving License Number',
+    ),
+    voterId: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9]{10}$/.test(value),
+      'Voter ID must be 10 characters',
+    ),
+    uanNumber: z.string().trim().refine(
+      (value) => value === '' || /^\d{12}$/.test(value),
+      'UAN Number must be exactly 12 digits',
+    ),
+    esiNumber: z.string().trim().refine(
+      (value) => value === '' || /^\d{10,17}$/.test(value),
+      'Invalid ESI Number',
+    ),
+    pfNumber: z.string().trim().refine(
+      (value) => value === '' || /^[A-Za-z0-9/-]{5,30}$/.test(value),
+      'Invalid PF Number',
+    ),
+
+    // Salary
+    basicSalary: numericString('Basic Salary / Wage is required'),
+    salaryType: requiredString('Salary / Wage Type is required'),
+    salaryPaymentFrequency: requiredString('Payment Frequency is required'),
+    overtimeEligible: requiredString('Overtime eligibility is required'),
+    pfApplicable: requiredString('PF applicability is required'),
+    esiApplicable: requiredString('ESI applicability is required'),
+
+    //Documents
+    documents: z.array(z.any()).min(1, 'At least one document is required'),
+  });
+
+  let schema = baseSchema;
+
+  if (paymentMethod === 'upi') {
+    schema = schema.extend({
+      upiId: z.string().trim().min(1, 'UPI ID is required').regex(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+$/, 'Invalid UPI ID format'),
+      upiName: z.string().trim().min(1, 'Name on UPI is required').regex(/^[A-Za-z\s]+$/, 'Name on UPI can contain only letters'),
+      wageAmount: z.string().trim().min(1, 'Wage Amount is required').regex(/^\d+(\.\d{1,2})?$/, 'Wage Amount must be a valid number'),
+      upiPaymentFrequency: requiredString('Payment Frequency is required'),
+    });
+  }
+
+  if (paymentMethod === 'bank') {
+    schema = schema.extend({
+      accountHolderName: z.string().trim().min(1, 'Account Holder Name is required').regex(/^[A-Za-z\s]+$/, 'Account Holder Name can contain only letters'),
+      accountNumber: z.string().trim().min(1, 'Account Number is required').regex(/^\d{9,18}$/, 'Account Number must contain 9-18 digits'),
+      bankName: z.string().trim().min(1, 'Bank Name is required').regex(/^[A-Za-z0-9\s&.-]+$/, 'Bank Name contains invalid characters'),
+      ifscCode: z.string().trim().min(1, 'IFSC Code is required').regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, 'Invalid IFSC code format'),
+    });
+  }
+  
+
+  return schema.passthrough().superRefine((data: OnboardFormState, ctx) => {
+    if (data.sameAsPresentAddress?.toLowerCase() === 'no') {
+      if (!data.permanentAddressLine1?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent Address Line 1 is required', path: ['permanentAddressLine1'] });
+      if (!data.permanentCity?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent City is required', path: ['permanentCity'] });
+      if (!data.permanentState?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent State is required', path: ['permanentState'] });
+      if (!data.permanentPincode?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Permanent Pincode is required', path: ['permanentPincode'] });
+      else if (!pincodeRegex.test(data.permanentPincode.trim())) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Pincode must be 6 digits', path: ['permanentPincode'] });
+    }
+    if (paymentMethod === 'bank' && data.bankName === OTHER_BANK_OPTION && !data.bankNameManual.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please enter the bank name manually',
+        path: ['bankNameManual'],
+      });
+    }
+  });
+};
+
 function AddEmployee({
   paymentMethod,
   onPaymentMethod,
@@ -2416,167 +2639,6 @@ function Field({
         )}
       </span>
 
-      {error && (
-        <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
-          {error}
-        </span>
-      )}
-    </label>
-  );
-}
-
-function SelectField({
-  id,
-  label,
-  placeholder,
-  required,
-  options,
-  value,
-  onChange,
-  error,
-}: {
-  id?: string;
-  label: string;
-  placeholder: string;
-  required?: boolean;
-  options: string[];
-  value?: string;
-  onChange?: (value: string) => void;
-  error?: string;
-}) {
-  const { openDropdown, setOpenDropdown } = useEmployeeStore();
-  const dropdownId = id || `select-${label}`;
-  const open = openDropdown === dropdownId;
-  const [localValue, setLocalValue] = useState('');
-  const selectedValue = value ?? localValue;
-
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-semibold">
-        {label} {required && <span className="text-[#F54A4A]">*</span>}
-      </span>
-
-      <span className="relative block">
-        {/* Select Button */}
-        <button
-          type="button"
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={dropdownId}
-          onClick={() => setOpenDropdown(open ? null : dropdownId)}
-          className={`flex h-11 w-full cursor-pointer items-center justify-between rounded-lg border px-4 text-base font-semibold outline-none ${
-            open
-              ? 'border-[#0658C2] text-blue-950'
-              : error
-                ? 'border-[#F54A4A] text-gray-900'
-                : 'border-gray-300 text-gray-900'
-          }`}
-        >
-          <span
-            className={
-              selectedValue
-                ? 'text-sm font-normal text-[#111827]'
-                : 'text-sm font-normal text-gray-500'
-            }
-          >
-            {selectedValue || placeholder}
-          </span>
-
-          <ChevronDown
-            className={`h-5 w-5 text-black transition-transform duration-200 ${
-              open ? 'rotate-180' : ''
-            }`}
-          />
-        </button>
-
-        {/* Dropdown */}
-        {open && (
-          <div className="absolute left-0 z-40 mt-2 w-full rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
-            {/* Selected */}
-            {selectedValue && (
-              <>
-                <div className="flex items-center justify-between px-1 py-3 text-xs font-semibold uppercase text-[#676767]">
-                  <span>Selected</span>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLocalValue('');
-                      onChange?.('');
-                    }}
-                    className="cursor-pointer normal-case text-[#0658C2]"
-                  >
-                    Clear All
-                  </button>
-                </div>
-
-                <div className="max-h-[150px] space-y-1 overflow-y-auto border-b border-[#D3D3D3] pb-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLocalValue('');
-                      onChange?.('');
-                    }}
-                    className="flex w-full cursor-pointer items-center justify-between rounded-md bg-[#DBEAFF] px-4 py-[9px] text-left text-sm text-[#0658C2]"
-                  >
-                    {selectedValue}
-
-                    <span className="relative h-4 w-4 rounded bg-white">
-                      <span className="absolute inset-0 left-[2px] top-[-2px] w-[22px] bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] bg-no-repeat" />
-                    </span>
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Available */}
-            <p className="px-1 py-3 text-xs font-semibold uppercase text-[#676767]">
-              Available {label}
-            </p>
-
-            <div
-              id={dropdownId}
-              role="listbox"
-              className="max-h-[260px] space-y-1 overflow-y-auto"
-            >
-              {options.length > 0 ? (
-                options.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    role="option"
-                    aria-selected={selectedValue === option}
-                    onClick={() => {
-                      setLocalValue(option);
-                      onChange?.(option);
-                      setOpenDropdown(null);
-                    }}
-                    className={`group flex w-full cursor-pointer items-center justify-between rounded-md border px-4 py-[9px] text-left text-sm ${
-                      selectedValue === option
-                        ? 'border-transparent bg-[#DBEAFF] text-[#0658C2]'
-                        : 'border-[#D3D3D3] text-gray-900 hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]'
-                    }`}
-                  >
-                  {option}
-
-                  {selectedValue === option && (
-                    <span className="relative h-4 w-4 rounded bg-white">
-                      <span className="absolute inset-0 left-[2px] top-[-2px] w-[22px] bg-[url('/Vector-Check.svg')] bg-[length:15px_16px] bg-no-repeat" />
-                    </span>
-                  )}
-                  </button>
-                ))
-              ) : (
-                <p className="px-3 py-2 text-sm text-[#676767]">
-                  No options found
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-      </span>
-
-      {/* Error */}
       {error && (
         <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
           {error}

@@ -1,12 +1,10 @@
 'use client';
 
 import { ChevronDown, Search, X } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 
-export type MultiSearchOption = {
-  id: string;
-  label: string;
-};
+import type { MultiSearchOption } from './dropdown.types';
+import { useClickOutside } from './useClickOutside';
 
 type AsyncMultiSearchSelectProps = {
   label: string;
@@ -19,6 +17,7 @@ type AsyncMultiSearchSelectProps = {
   onAdd: (label: string) => void;
   onRemove: (label: string) => void;
   onClear?: () => void;
+  error?: string;
 };
 
 export function AsyncMultiSearchSelect({
@@ -32,33 +31,48 @@ export function AsyncMultiSearchSelect({
   onAdd,
   onRemove,
   onClear,
+  error,
 }: AsyncMultiSearchSelectProps) {
   const [open, setOpen] = useState(false);
+
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
   const availableOptions = useMemo(
-    () => options.filter((option) => !selected.includes(option.label)),
+    () =>
+      options.filter(
+        (option) => !selected.includes(option.label),
+      ),
     [options, selected],
   );
 
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
-  }, [open]);
+  useClickOutside(rootRef, open, () => {
+    setOpen(false);
+    onSearchChange('');
+  });
+
+  const handleAdd = (option: MultiSearchOption) => {
+    onAdd(option.label);
+    onSearchChange('');
+  };
+
+  const handleRemove = (label: string) => {
+    onRemove(label);
+  };
+
+  const handleClear = () => {
+    onClear?.();
+    onSearchChange('');
+  };
 
   return (
     <div ref={rootRef} className="relative block">
+      {/* Label */}
       <span className="mb-2 block text-sm font-semibold">
         {label} {required && <span className="text-[#F54A4A]">*</span>}
       </span>
 
+      {/* Select Button */}
       <button
         type="button"
         aria-haspopup="listbox"
@@ -68,16 +82,31 @@ export function AsyncMultiSearchSelect({
         className={`flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg border px-4 py-2 text-base font-semibold outline-none ${
           open
             ? 'border-[#0658C2] text-blue-950'
-            : 'border-gray-300 text-gray-400'
+            : error
+              ? 'border-[#F54A4A] text-gray-900'
+              : 'border-gray-300 text-gray-400'
         }`}
       >
-        <span className={selected.length ? 'font-normal text-sm text-[#111827]' : 'font-normal text-sm text-gray-500'}>
-          {selected.length ? `${selected.length} selected` : placeholder}
+        <span
+          className={
+            selected.length
+              ? 'text-sm font-normal text-[#111827]'
+              : 'text-sm font-normal text-gray-500'
+          }
+        >
+          {selected.length
+            ? `${selected.length} selected`
+            : placeholder}
         </span>
 
-        <ChevronDown className={`h-5 w-5 transition-transform duration-200 text-black ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          className={`h-5 w-5 text-black transition-transform duration-200 ${
+            open ? 'rotate-180' : ''
+          }`}
+        />
       </button>
 
+      {/* Selected Tags */}
       {selected.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2">
           {selected.map((item) => (
@@ -90,7 +119,7 @@ export function AsyncMultiSearchSelect({
               <button
                 type="button"
                 aria-label={`Remove ${item}`}
-                onClick={() => onRemove(item)}
+                onClick={() => handleRemove(item)}
                 className="rounded-full p-0.5 hover:bg-[#DBEAFF]"
               >
                 <X className="h-3 w-3" />
@@ -100,6 +129,7 @@ export function AsyncMultiSearchSelect({
         </div>
       )}
 
+      {/* Dropdown */}
       {open && (
         <div className="absolute left-0 z-40 mt-2 w-full rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
           {/* Search */}
@@ -125,8 +155,8 @@ export function AsyncMultiSearchSelect({
                 {onClear && (
                   <button
                     type="button"
-                    onClick={() => onClear()}
-                    className="normal-case text-[#0658C2] cursor-pointer"
+                    onClick={handleClear}
+                    className="cursor-pointer normal-case text-[#0658C2]"
                   >
                     Clear All
                   </button>
@@ -138,7 +168,7 @@ export function AsyncMultiSearchSelect({
                   <button
                     key={item}
                     type="button"
-                    onClick={() => onRemove(item)}
+                    onClick={() => handleRemove(item)}
                     className="flex w-full cursor-pointer items-center justify-between rounded-md bg-[#DBEAFF] px-4 py-[9px] text-left text-sm text-[#0658C2]"
                   >
                     {item}
@@ -168,10 +198,7 @@ export function AsyncMultiSearchSelect({
                   key={option.id}
                   type="button"
                   role="option"
-                  onClick={() => {
-                    onAdd(option.label);
-                    onSearchChange('');
-                  }}
+                  onClick={() => handleAdd(option)}
                   className="group flex w-full cursor-pointer items-center justify-between rounded-md border border-[#D3D3D3] px-4 py-[9px] text-left text-sm hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]"
                 >
                   {option.label}
@@ -187,6 +214,15 @@ export function AsyncMultiSearchSelect({
           </div>
         </div>
       )}
+
+      {/* Error */}
+      {error && (
+        <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
+
+export default AsyncMultiSearchSelect;

@@ -227,40 +227,6 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
-      {/* ── Topbar ── */}
-      <div className="bg-white border-b border-gray-100 px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Good morning, Sharma Industries 👋</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Here's what's happening with your workforce today.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-600">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <span className="font-medium">20 May 2025, Tue</span>
-          </div>
-          <div className="relative">
-            <button className="w-10 h-10 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
-              <Bell className="w-5 h-5 text-gray-500" />
-            </button>
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
-              8
-            </span>
-          </div>
-          <div className="flex items-center gap-2 cursor-pointer">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-300 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
-              J
-            </div>
-            <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-gray-800 leading-tight">John Doe</p>
-              <p className="text-xs text-gray-400">Employer</p>
-            </div>
-            <ChevronDown className="w-4 h-4 text-gray-400" />
-          </div>
-        </div>
-      </div>
-
       <div className="px-6 lg:px-8 py-6 space-y-6">
         {/* ── Stats Row ── */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
