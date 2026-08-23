@@ -1,25 +1,24 @@
 'use client';
 
-import { ChevronDown, Search } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
 
-type SearchSelectOption = {
-  value: string;
-  label: string;
-};
+import type { SelectOption } from './dropdown.types';
+import { useClickOutside } from './useClickOutside';
 
-type SearchableSingleSelectProps = {
+type SelectFieldProps = {
+  id?: string;
   label: string;
   required?: boolean;
   placeholder: string;
-  options: SearchSelectOption[];
+  options: SelectOption[] | string[];
   value?: string;
   onChange?: (value: string) => void;
   error?: string;
   disabled?: boolean;
 };
 
-export function SearchableSingleSelect({
+export function SelectField({
   label,
   required,
   placeholder,
@@ -28,9 +27,8 @@ export function SearchableSingleSelect({
   onChange,
   error,
   disabled = false,
-}: SearchableSingleSelectProps) {
+}: SelectFieldProps) {
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [localValue, setLocalValue] = useState('');
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -38,50 +36,39 @@ export function SearchableSingleSelect({
 
   const selectedValue = value ?? localValue;
 
-  const selectedOption = options.find(
+  const normalizedOptions: SelectOption[] = options.map((option) =>
+  typeof option === 'string'
+    ? { value: option, label: option }
+    : option,
+  );
+
+  const selectedOption = normalizedOptions.find(
     (option) => option.value === selectedValue,
   );
 
-  const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(search.toLowerCase()),
-  );
+  useClickOutside(rootRef, open, () => {
+    setOpen(false);
+  });
 
-  useEffect(() => {
-    if (!open) return;
-
-    const handleOutsideClick = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-        setSearch('');
-      }
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-
-    return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-    };
-  }, [open]);
-
-  const handleSelect = (option: SearchSelectOption) => {
+  const handleSelect = (option: SelectOption) => {
     setLocalValue(option.value);
     onChange?.(option.value);
     setOpen(false);
-    setSearch('');
   };
 
   const handleClear = () => {
     setLocalValue('');
     onChange?.('');
-    setSearch('');
   };
 
   return (
     <div ref={rootRef} className="relative block">
+      {/* Label */}
       <span className="mb-2 block text-sm font-semibold">
         {label} {required && <span className="text-[#F54A4A]">*</span>}
       </span>
 
+      {/* Select Button */}
       <button
         type="button"
         disabled={disabled}
@@ -118,22 +105,9 @@ export function SearchableSingleSelect({
         />
       </button>
 
+      {/* Dropdown */}
       {open && !disabled && (
         <div className="absolute left-0 z-40 mt-2 w-full rounded-xl border border-[#DBEAFF] bg-white p-3 shadow-xl">
-          {/* Search */}
-          <div className="relative mb-3">
-            <input
-              autoFocus
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={`Search ${label.toLowerCase()}...`}
-              className="w-full rounded-md border border-transparent bg-[#F8F8F8] px-4 py-[9px] pr-10 text-sm outline-none focus:border-[#0658C2]"
-            />
-
-            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black" />
-          </div>
-
           {/* Selected */}
           {selectedOption && (
             <>
@@ -143,7 +117,7 @@ export function SearchableSingleSelect({
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="cursor-pointer normal-case text-[#0658C2] hidden"
+                  className="hidden cursor-pointer normal-case text-[#0658C2]"
                 >
                   Clear All
                 </button>
@@ -175,8 +149,8 @@ export function SearchableSingleSelect({
             role="listbox"
             className="max-h-[260px] space-y-1 overflow-y-auto"
           >
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
+            {options.length > 0 ? (
+              normalizedOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -200,13 +174,14 @@ export function SearchableSingleSelect({
               ))
             ) : (
               <p className="px-3 py-2 text-sm text-[#676767]">
-                No results found
+                No options found
               </p>
             )}
           </div>
         </div>
       )}
 
+      {/* Error */}
       {error && (
         <span className="mt-1 block text-xs font-medium text-[#F54A4A]">
           {error}
@@ -215,3 +190,5 @@ export function SearchableSingleSelect({
     </div>
   );
 }
+
+export default SelectField;

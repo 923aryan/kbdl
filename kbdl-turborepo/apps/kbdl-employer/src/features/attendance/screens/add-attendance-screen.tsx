@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { todayIsoDate, upsertAttendance } from '../api';
-import { SelectField } from '../components/async-single-select';
-import { SearchableSingleSelect } from '../components/searchable-single-select';
+import { SelectField } from '@/components/ui/dropdowns/SelectField';
+import { SearchableSingleSelect } from '@/components/ui/dropdowns/SearchableSingleSelect';
 
 import { z } from 'zod';
 

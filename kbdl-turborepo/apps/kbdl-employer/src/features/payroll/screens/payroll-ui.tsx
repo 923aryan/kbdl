@@ -105,34 +105,25 @@ export function LoadState({
   );
 }
 
-export function PayrollTopBar() {
-  const { search, setSearch } = usePayrollStore();
+export function Header() {
 
   return (
-    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#D3D3D3] bg-white px-4 sm:px-6 lg:px-8">
-      <div className="relative w-full max-w-[315px]">
-        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#676767]" />
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="h-12 w-full rounded-lg bg-[#FAFAFA] pl-12 pr-4 text-sm outline-none ring-1 ring-transparent focus:ring-[#0658C2]"
-          placeholder="Search anything..."
-        />
-      </div>
+    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-end border-b border-[#D3D3D3] bg-white px-4 sm:px-6 lg:px-8">
       <div className="flex items-center gap-5">
-        <button className="relative cursor-pointer rounded-full p-2 text-[#676767] hover:bg-[#FAFAFA]" aria-label="Notifications" onClick={() => window.alert('No new payroll notifications.')}>
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-2 top-1 h-2 w-2 rounded-full bg-[#0658C2]" />
-        </button>
-        <button className="cursor-pointer rounded-full p-2 text-[#676767] hover:bg-[#FAFAFA]" aria-label="Help" onClick={() => window.alert('Payroll help center will open from here.')}>
-          <HelpCircle className="h-5 w-5" />
-        </button>
+        <div className="relative">
+          <button className="w-10 h-10 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors">
+            <Bell className="w-5 h-5 text-gray-500" />
+          </button>
+          <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center">
+            8
+          </span>
+        </div>
         <div className="hidden h-10 w-px bg-gray-200 sm:block" />
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBEAFF] text-xs font-bold text-[#0658C2]">AB</div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#DBEAFF] text-xs font-bold text-[#0658C2]">KB</div>
           <div className="hidden sm:block">
-            <p className="text-sm font-semibold">Abhinav Barwal</p>
-            <p className="text-xs text-[#676767]">Operations Head</p>
+            <p className="text-sm font-semibold">Kaam Badlo</p>
+            <p className="text-xs text-[#676767]">HRMS Portal</p>
           </div>
         </div>
       </div>
@@ -143,7 +134,6 @@ export function PayrollTopBar() {
 export function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#FAFAFA] text-[#0F172A]">
-      <PayrollTopBar />
       <main className="p-5 lg:p-6">{children}</main>
     </div>
   );

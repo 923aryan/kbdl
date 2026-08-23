@@ -41,10 +41,10 @@ import { z } from 'zod';
 
 import { useEmployeesList } from '../hooks/use-employees-list';
 import { useMetaSearch } from '../hooks/use-meta-search';
-import { AsyncSearchSelect } from '../components/async-search-select';
 import { AddressFormBlock } from '../components/address-form-block';
-import { AsyncMultiSearchSelect } from '../components/async-multi-search-select';
-import { SelectField } from '../components/async-single-select';
+import { SelectField } from '@/components/ui/dropdowns/SelectField';
+import { AsyncSearchSelect } from '@/components/ui/dropdowns/AsyncSearchSelect';
+import { AsyncMultiSearchSelect } from '@/components/ui/dropdowns/AsyncMultiSearchSelect';
 import { OnboardErrorModal } from '../components/onboard-error-modal';
 import { extractOnboardApiErrors } from '../lib/onboard-error-messages';
 import { filterBanks } from '../lib/indian-banks';
@@ -578,7 +578,6 @@ const createEmployeeFromForm = (form: OnboardFormState, paymentMethod: PaymentMe
 function EmployeesPageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f7f7f8] text-[#111827]">
-      <TopBar />
       <main className="p-[20px]">{children}</main>
     </div>
   );
@@ -786,37 +785,6 @@ export function EmployeeOnboardScreen() {
 
 /** @deprecated Use route-based screens: EmployeeListScreen, EmployeeDetailScreen, EmployeeOnboardScreen */
 export const EmployeeDashboardScreen = EmployeeListScreen;
-
-function TopBar() {
-  return (
-    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#D3D3D3] bg-white px-4 sm:px-6 lg:px-8">
-      <div className="relative w-full max-w-[315px]">
-        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#676767]" />
-        <input
-          className="h-12 w-full rounded-lg bg-[#FAFAFA] pl-12 pr-4 text-sm outline-none ring-1 ring-transparent focus:ring-blue-500"
-          placeholder="Search anything..."
-        />
-      </div>
-      <div className="flex items-center gap-5">
-        <button className="relative rounded-full p-2 text-[#676767] hover:bg-[#FAFAFA]" aria-label="Notifications">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-2 top-1 h-2 w-2 rounded-full bg-blue-600" />
-        </button>
-        <button className="rounded-full p-2 text-[#676767] hover:bg-[#FAFAFA]" aria-label="Help">
-          <HelpCircle className="h-5 w-5" />
-        </button>
-        <div className="hidden h-10 w-px bg-gray-200 sm:block" />
-        <div className="flex items-center gap-3">
-          <Avatar name="Abhinav Barwal" size="md" />
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold">Abhinav Barwal</p>
-            <p className="text-xs text-[#676767]">Operations Head</p>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function EmployeeList({
   employees,
@@ -1657,7 +1625,7 @@ function buildCalendarDays(date: Date) {
   });
 }
 
-const requiredString = (message: string) => z.string({ required_error: message }).min(1, { message });
+const requiredString = (message: string) => z.string({ error: message }).min(1, { message });
 
 const numericString = (message: string) =>
   requiredString(message).regex(/^\d+(\.\d+)?$/, {

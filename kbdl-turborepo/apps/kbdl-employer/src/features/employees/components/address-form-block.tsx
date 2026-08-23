@@ -2,7 +2,7 @@
 
 import { MapPin } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { AsyncSearchSelect } from './async-search-select';
+import { AsyncSearchSelect } from '@/components/ui/dropdowns/AsyncSearchSelect';
 import { filterStates, lookupIndianPincode } from '../lib/india-address';
 
 export type AddressBlockValues = {

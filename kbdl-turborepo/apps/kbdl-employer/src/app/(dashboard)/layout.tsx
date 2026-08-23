@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { Header } from '@/components/ui/layout/Header';
 
 const menuItems = [
   { path: '/', label: 'Overview', icon: LayoutDashboard },
@@ -373,6 +374,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content */}
       <div className="min-h-screen lg:ml-[var(--sidebar-width)] transition-[margin] duration-300 ease-in-out">
+        <Header/>
         {children}
       </div>
     </div>

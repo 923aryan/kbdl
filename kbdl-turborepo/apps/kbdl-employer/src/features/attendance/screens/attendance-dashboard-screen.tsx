@@ -37,7 +37,7 @@ import {
   type DailyAttendanceSummary,
 } from '../api';
 import { fetchWorkShiftsMeta, type MetaWorkShift } from '@/features/employees/api';
-import { SelectField } from '../components/async-single-select';
+import { SelectField } from '@/components/ui/dropdowns/SelectField';
 import { employeeAttendancePath } from '@/features/employees/lib/employee-routes';
 
 const ROWS_PER_PAGE = 10;
@@ -282,7 +282,6 @@ export function AttendanceDashboardScreen() {
 
   return (
     <div className="min-h-screen bg-[#F6F7F9] text-[#111827]">
-      <AttendanceTopBar />
       <main className="space-y-7 p-5 lg:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
@@ -294,7 +293,7 @@ export function AttendanceDashboardScreen() {
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <label className="inline-flex h-12 cursor-pointer items-center justify-center gap-3 rounded-xl border border-[#D3D3D3] bg-white px-5 text-base font-semibold text-[#061A3D] shadow-sm">
-              <Calendar className="h-5 w-5" />
+              <Calendar className="h-5 w-5 cursor-pointer hidden" />
               <input
                 type="date"
                 value={selectedDate}
@@ -309,13 +308,13 @@ export function AttendanceDashboardScreen() {
               type="button"
               disabled={actionLoading}
               onClick={() => setHolidayModalOpen(true)}
-              className="inline-flex h-12 items-center justify-center rounded-xl border border-[#0658C2] bg-white px-6 text-base font-semibold text-[#0658C2] shadow-sm transition hover:bg-[#EFF6FF] disabled:opacity-60"
+              className="inline-flex h-12 items-center justify-center rounded-xl border border-[#0658C2] bg-white px-6 text-base font-semibold text-[#0658C2] shadow-sm transition-all duration-200 hover:bg-[#F0F6FF] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             >
               Mark Day Holiday
             </button>
             <Link
               href="/attendance/add"
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-[#0658C2] px-7 text-base font-semibold text-white shadow-sm transition hover:bg-[#054A9F]"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-[#0658C2] px-7 text-base font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             >
               + Add Attendance
             </Link>
@@ -387,7 +386,7 @@ export function AttendanceDashboardScreen() {
                     ),
                   )
                 }
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#0658C2] px-5 text-sm font-semibold text-white disabled:opacity-60"
+                className="inline-flex h-11 items-center justify-center rounded-xl bg-[#0658C2] px-5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
               >
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : `Mark All Pending (${summary.pending})`}
               </button>
@@ -396,7 +395,7 @@ export function AttendanceDashboardScreen() {
                   type="button"
                   disabled={actionLoading}
                   onClick={() => void handleBulkMarkPresent(selectedMemberIds)}
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-[#0658C2] bg-white px-5 text-sm font-semibold text-[#0658C2] disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-xl border border-[#0658C2] bg-white px-5 text-sm font-semibold text-[#0658C2] transition-all duration-200 hover:bg-[#F0F6FF] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                 >
                   Mark Selected ({selectedPending.size})
                 </button>
@@ -475,6 +474,7 @@ export function AttendanceDashboardScreen() {
                             checked={allPendingSelected}
                             onChange={toggleSelectAllPending}
                             aria-label="Select all pending"
+                            className="cursor-pointer"
                           />
                         )}
                       </th>
@@ -497,6 +497,7 @@ export function AttendanceDashboardScreen() {
                               checked={selectedPending.has(record.row_key)}
                               onChange={() => togglePending(record.row_key)}
                               aria-label={`Select ${record.employee_name}`}
+                              className="cursor-pointer"
                             />
                           )}
                         </td>
@@ -539,7 +540,7 @@ export function AttendanceDashboardScreen() {
                                 type="button"
                                 disabled={actionLoading}
                                 onClick={() => void handleMarkPresent(record)}
-                                className="text-xs font-semibold text-[#0658C2] hover:underline disabled:opacity-50"
+                                className="text-xs font-semibold text-[#0658C2] hover:underline disabled:opacity-50 cursor-pointer"
                               >
                                 Mark Present
                               </button>
@@ -548,7 +549,7 @@ export function AttendanceDashboardScreen() {
                                 <button
                                   type="button"
                                   onClick={() => setEditingRecord(record)}
-                                  className="rounded-md p-1 text-[#0658C2] transition hover:bg-[#DBEAFF]"
+                                  className="rounded-md p-1 text-[#0658C2] transition hover:bg-[#DBEAFF] cursor-pointer"
                                   aria-label={`Edit attendance for ${record.employee_name}`}
                                 >
                                   <Edit3 className="h-5 w-5" />
@@ -612,21 +613,6 @@ export function AttendanceDashboardScreen() {
         />
       )}
     </div>
-  );
-}
-
-function AttendanceTopBar() {
-  return (
-    <header className="sticky top-0 z-20 flex h-[72px] items-center justify-between border-b border-[#D3D3D3] bg-white px-4 sm:px-6 lg:px-8">
-      <div className="relative hidden w-full max-w-[310px] sm:block">
-        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black" />
-        <input placeholder="Search anything..." className="h-12 w-full rounded-lg bg-[#FAFAFA] pl-12 pr-4 text-sm outline-none" />
-      </div>
-      <div className="ml-auto flex items-center gap-5">
-        <UserRoundCheck className="h-5 w-5 text-[#676767]" />
-        <UserRoundX className="h-5 w-5 text-[#676767]" />
-      </div>
-    </header>
   );
 }
 
@@ -702,7 +688,7 @@ function FilterMultiSelect({
             <>
               <div className="flex items-center justify-between px-1 py-2 text-xs font-semibold uppercase text-[#676767]">
                 <span>Selected ({selected.length})</span>
-                <button type="button" onClick={() => onChange([])} className="normal-case text-[#0658C2]">
+                <button type="button" onClick={() => onChange([])} className="normal-case text-[#0658C2] cursor-pointer">
                   Clear All
                 </button>
               </div>
@@ -712,7 +698,7 @@ function FilterMultiSelect({
                     key={option}
                     type="button"
                     onClick={() => toggle(option)}
-                    className="flex w-full items-center justify-between rounded-md bg-[#DBEAFF] px-4 py-2 text-left text-sm text-[#0658C2]"
+                    className="flex w-full items-center justify-between rounded-md bg-[#DBEAFF] px-4 py-2 text-left text-sm text-[#0658C2] cursor-pointer"
                   >
                     {formatOption(option)}
                   </button>
@@ -729,7 +715,7 @@ function FilterMultiSelect({
                   key={option}
                   type="button"
                   onClick={() => toggle(option)}
-                  className="flex w-full items-center justify-between rounded-md border border-[#D3D3D3] px-4 py-2 text-left text-sm hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2]"
+                  className="flex w-full items-center justify-between rounded-md border border-[#D3D3D3] px-4 py-2 text-left text-sm hover:border-transparent hover:bg-[#DBEAFF] hover:text-[#0658C2] cursor-pointer"
                 >
                   {formatOption(option)}
                 </button>
@@ -874,7 +860,7 @@ function MarkHolidayModal({
           <button
             type="button"
             onClick={onClose}
-            className="h-12 rounded-xl border border-[#0658C2] px-8 font-semibold"
+            className="h-12 rounded-xl border border-[#0658C2] px-8 font-semibold transition-all duration-200 hover:bg-[#F0F6FF] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
           >
             Cancel
           </button>
@@ -882,7 +868,7 @@ function MarkHolidayModal({
             type="button"
             disabled={saving || name.trim().length < 2}
             onClick={() => void onConfirm(name.trim(), overrideExisting)}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#0658C2] px-8 font-semibold text-white disabled:opacity-60"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#0658C2] px-8 font-semibold text-white transition-all duration-200 hover:bg-[#054A9F] hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             Confirm holiday
@@ -929,7 +915,7 @@ function UpdateAttendanceModal({
             <p className="text-sm text-[#676767]">{record.employee_name}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close">
-            <X className="h-6 w-6" />
+            <X className="h-6 w-6 cursor-pointer" />
           </button>
         </div>
 
