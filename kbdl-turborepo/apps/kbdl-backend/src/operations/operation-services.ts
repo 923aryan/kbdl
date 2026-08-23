@@ -625,6 +625,8 @@ export const getEmployerDepartmentsMetaService = async (
   companyId: string,
   query: GetEmployerDepartmentsMetaQuery,
 ): Promise<{ items: MetaDepartmentItem[]; meta: Record<string, number> }> => {
+  const { ensureCompanyOrgCatalog } = await import('./company-setup-service');
+  await ensureCompanyOrgCatalog(companyId);
   const { search, limit = 20, page = 1 } = query;
   const skip = (page - 1) * limit;
   const where = {

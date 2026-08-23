@@ -30,7 +30,14 @@ export type EmployerDto = {
   email?: string | null;
   company_address: string | null;
   gst_number?: string | null;
+  pan?: string | null;
+  state?: string | null;
+  epf_registration_no?: string | null;
+  esic_code?: string | null;
   is_verified: boolean;
+  status?: string;
+  setup_pending?: boolean;
+  role_code?: string;
   subscription_tier?: string | null;
   preferences: unknown;
   role?: string;

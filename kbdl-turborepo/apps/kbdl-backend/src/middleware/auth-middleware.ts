@@ -2,11 +2,11 @@ import { prisma } from '@repo/db/server';
 import { env } from '@repo/validator/server';
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { setAuthCookies } from '../auth/auth-controller';
-import { generateAccessToken, generateRefreshToken } from '../auth/auth-service';
+import { setAuthCookies, tokensFromRequest } from '../auth/auth-cookies';
+import { generateAccessToken, generateRefreshToken } from '../auth/jwt-tokens';
 import { ensureEmployerContext } from '../compat/employer-compat';
 import { AppError } from '../utils/api-error';
-import { ROLES } from '../utils/constants';
+import { ROLES, type Role } from '../utils/constants';
 import { JwtPayload } from '../utils/jwt-payload';
 
 export const authenticate = (
@@ -14,104 +14,105 @@ export const authenticate = (
   bypass: boolean = false,
 ) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    let token: string | undefined;
-
-    // 1. Authorization header
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-      token = req.headers.authorization.split(' ')[1];
-      console.log('bearer: ', token);
-    }
-    // 2. Cookies fallback
-    else if (req.cookies?.accessToken) {
-      token = req.cookies.accessToken;
-      console.log('cookie: ', token);
-    }
-
-    // 3. No token
-    if (!token) {
+    const candidates = tokensFromRequest(req, allowedRoles as Role[] | undefined);
+    if (!candidates.length) {
       return next(new AppError(401, 'UNAUTHORIZED', 'No token provided'));
     }
 
-    try {
-      // 4. Verify token
-      const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET);
+    let lastAuthError: AppError | jwt.JsonWebTokenError | jwt.TokenExpiredError | unknown;
 
-      if (typeof decoded === 'string') {
-        return next(new AppError(401, 'INVALID_TOKEN', 'Invalid token payload'));
-      }
-
-      const user = decoded as JwtPayload;
-
-      // 5. Attach role and payload to request
-      req.role = user.role;
-      req.payload = user.payload;
-
-      // 6. Role authorization
-      if (allowedRoles && !allowedRoles.includes(user.role)) {
-        return next(
-          new AppError(403, 'FORBIDDEN', 'You do not have permission to access this resource'),
-        );
-      }
-      if (user.role === ROLES.EMPLOYER && user.payload.employer.is_verified === false) {
-        if (bypass) {
-          return next();
-        }
-        console.log('inside auth middleware: role : employer id =  ', user.payload.employer.id);
-        const { company, ownerUser } = await ensureEmployerContext(user.payload.employer.id);
-        console.log('curent employer ', { id: company.id, email: ownerUser.email, is_verified: company.is_verified });
-        if (!company.is_verified) {
-          return next(new AppError(403, 'UNVERIFIED', 'Verification pending.'));
+    for (const token of candidates) {
+      try {
+        const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET);
+        if (typeof decoded === 'string') {
+          lastAuthError = new AppError(401, 'INVALID_TOKEN', 'Invalid token payload');
+          continue;
         }
 
-        // employer became verified in DB
-        // issue fresh token
-        const payload: JwtPayload = {
-          role: ROLES.EMPLOYER,
-          payload: {
-            employer: {
-              id: company.id,
-              email: ownerUser.email ?? '',
-              is_verified: true,
-            },
-          },
-        };
+        const user = decoded as JwtPayload;
+        if (allowedRoles && !allowedRoles.includes(user.role)) {
+          lastAuthError = new AppError(
+            403,
+            'FORBIDDEN',
+            'You do not have permission to access this resource',
+          );
+          continue;
+        }
 
-        const newAccessToken = generateAccessToken(payload);
+        req.role = user.role;
+        req.payload = user.payload;
 
-        const newRefreshToken = generateRefreshToken(payload);
+        if (user.role === ROLES.EMPLOYER) {
+          const emp = user.payload.employer;
+          if (emp.status === 'suspended' || emp.status === 'rejected') {
+            if (bypass) return next();
+            return next(
+              new AppError(403, 'COMPANY_SUSPENDED', 'This company is suspended. Contact KBDL support.'),
+            );
+          }
+          if (emp.setup_pending || !emp.id) {
+            if (bypass) return next();
+            return next(
+              new AppError(403, 'COMPANY_SETUP_REQUIRED', 'Complete company onboarding first'),
+            );
+          }
+          if (emp.is_verified === false) {
+            if (bypass) {
+              return next();
+            }
+            const { company, ownerUser } = await ensureEmployerContext(emp.id);
+            if (company.status === 'suspended' || company.status === 'rejected') {
+              return next(
+                new AppError(403, 'COMPANY_SUSPENDED', 'This company is suspended. Contact KBDL support.'),
+              );
+            }
+            if (!company.is_verified) {
+              return next(new AppError(403, 'UNVERIFIED', 'Verification pending.'));
+            }
 
-        /*
-          Persist refresh token on owner User
-        */
+            const payload: JwtPayload = {
+              role: ROLES.EMPLOYER,
+              payload: {
+                employer: {
+                  id: company.id,
+                  email: ownerUser.email ?? '',
+                  is_verified: true,
+                  user_id: emp.user_id ?? ownerUser.id,
+                  role_code: emp.role_code,
+                  setup_pending: false,
+                  status: company.status,
+                },
+              },
+            };
 
-        await prisma.user.update({
-          where: {
-            id: ownerUser.id,
-          },
-          data: {
-            refresh_token: newRefreshToken,
-          },
-        });
+            const newAccessToken = generateAccessToken(payload);
+            const newRefreshToken = generateRefreshToken(payload);
 
-        /*
-          Set fresh cookies
-        */
+            await prisma.user.update({
+              where: { id: ownerUser.id },
+              data: { refresh_token: newRefreshToken },
+            });
 
-        setAuthCookies(res, newAccessToken, newRefreshToken);
+            setAuthCookies(res, newAccessToken, newRefreshToken, ROLES.EMPLOYER);
+            res.setHeader('x-access-token', newAccessToken);
+          }
+        }
 
-        // optional for mobile clients
-        res.setHeader('x-access-token', newAccessToken);
-      }
-
-      next();
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
-        next(new AppError(401, 'TOKEN_EXPIRED', 'Access token has expired'));
-      } else if (error instanceof jwt.JsonWebTokenError) {
-        next(new AppError(401, 'INVALID_TOKEN', 'Invalid access token'));
-      } else {
-        next(error);
+        return next();
+      } catch (error) {
+        lastAuthError = error;
       }
     }
+
+    if (lastAuthError instanceof jwt.TokenExpiredError) {
+      return next(new AppError(401, 'TOKEN_EXPIRED', 'Access token has expired'));
+    }
+    if (lastAuthError instanceof jwt.JsonWebTokenError) {
+      return next(new AppError(401, 'INVALID_TOKEN', 'Invalid access token'));
+    }
+    if (lastAuthError instanceof AppError) {
+      return next(lastAuthError);
+    }
+    return next(lastAuthError);
   };
 };

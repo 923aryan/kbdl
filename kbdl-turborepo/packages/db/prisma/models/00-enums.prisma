@@ -211,6 +211,25 @@ enum PayrollFilingStatus {
   @@map("payroll_filing_status")
 }
 
+enum CompanyStatus {
+  onboarding
+  pending_review
+  active
+  suspended
+  rejected
+
+  @@map("company_status")
+}
+
+enum HrInviteStatus {
+  pending
+  accepted
+  expired
+  revoked
+
+  @@map("hr_invite_status")
+}
+
 enum AttendanceSource {
   hr_manual
   device

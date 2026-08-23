@@ -91,7 +91,7 @@ async function findHrActor(companyId: string) {
 }
 
 async function ensurePayrollSettings(companyId: string) {
-  const [pay, statutory, schedule, overtime, payment, company] = await prisma.$transaction([
+  const [pay, statutory, schedule, overtime, payment, company] = await Promise.all([
     prisma.payrollSettings.upsert({
       where: { company_id: companyId },
       update: {},

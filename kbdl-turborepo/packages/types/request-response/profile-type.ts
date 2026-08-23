@@ -72,7 +72,11 @@ export type UploadEmployerDocumentsRequest = z.infer<typeof uploadEmployerDocume
 
 export type UploadEmployerDocumentsResponse = { message: string; files: any };
 
-export type GetEmployerVerificationStatusResponse = { is_verified: boolean };
+export type GetEmployerVerificationStatusResponse = {
+  is_verified: boolean;
+  status?: string | null;
+  setup_pending?: boolean;
+};
 
 export type GetPublicEmployerProfileRequest = z.infer<typeof getPublicEmployerProfileSchema>;
 export type GetPublicEmployerProfileResponse = Partial<EmployerDTO>;

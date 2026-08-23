@@ -17,6 +17,9 @@ import {
   findEmployerByEmail,
   toEmployerDto,
 } from '../compat/employer-compat';
+import { persistEmployerSession } from './employer-session';
+import { generateAccessToken, generateRefreshToken } from './jwt-tokens';
+import { attachInvitedHrToCompany } from '../operations/company-setup-service';
 import { resendClient } from '../config/resend';
 import { AppError } from '../utils/api-error';
 import { linkWorkforcePersonToUser } from '../operations/workforce-person-service';
@@ -32,6 +35,20 @@ function otpWhere(lookup: OtpLookup) {
   return 'phone_no' in lookup
     ? { phone_no: lookup.phone_no, role: lookup.role }
     : { email: lookup.email, role: lookup.role };
+}
+
+async function assertEmployeeCompanyIsActive(userId: string) {
+  const memberships = await prisma.companyMember.findMany({
+    where: { user_id: userId, is_active: true, platform_type: PlatformType.EMPLOYEE },
+    select: { company: { select: { status: true } } },
+  });
+  if (!memberships.length) return;
+  if (memberships.some((row) => row.company.status === 'active')) return;
+  throw new AppError(
+    403,
+    'COMPANY_NOT_ACTIVE',
+    'Your company is not active yet. The company owner must finish setup and KBDL must activate it.',
+  );
 }
 
 async function findOtpRecord(lookup: OtpLookup) {
@@ -319,6 +336,8 @@ export const sendUserOtpService = async (payload: { phone: string }): Promise<nu
     throw new AppError(404, 'NON_EXISTENT_USER', 'User not found. Please register first.');
   }
 
+  await assertEmployeeCompanyIsActive(existingUser.id);
+
   // TODO: uncomment in production
   // const otp = generateOtp();
 
@@ -378,6 +397,7 @@ export const verifyUserOtpService = async (payload: {
   }
 
   await linkWorkforcePersonToUser(existingUser.id, existingUser.phone_no);
+  await assertEmployeeCompanyIsActive(existingUser.id);
 
   const accessToken = jwt.sign(
     {
@@ -526,6 +546,8 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
         company_address: pendingEmployerData.company_address,
         gst_number: pendingEmployerData.gst_number || null,
         preferences: preferences as any,
+        status: 'pending_review',
+        is_verified: false,
       },
     });
 
@@ -562,58 +584,29 @@ export const verifyEmployerRegistrationOtpService = async (payload: {
 
   await deleteOtpRecord({ email, role: OTP_ROLES.EMPLOYER_REGISTER });
 
-  const accessToken = jwt.sign(
-    {
-      role: ROLES.EMPLOYER,
-      payload: {
-        employer: {
-          id: company.id,
-          email: ownerUser.email,
-          is_verified: company.is_verified,
-        },
-      },
-    } as JwtPayload,
-    env.JWT_ACCESS_SECRET as string,
-    {
-      expiresIn: env.JWT_ACCESS_EXPIRY as any,
-    },
-  );
-
-  const refreshToken = jwt.sign(
-    {
-      role: ROLES.EMPLOYER,
-      payload: {
-        employer: {
-          id: company.id,
-          email: ownerUser.email,
-          is_verified: company.is_verified,
-        },
-      },
-    } as JwtPayload,
-    env.JWT_REFRESH_SECRET as string,
-    {
-      expiresIn: env.JWT_REFRESH_EXPIRY as any,
-    },
-  );
-
-  const updatedOwner = await prisma.user.update({
-    where: { id: ownerUser.id },
-    data: { refresh_token: refreshToken },
+  return persistEmployerSession({
+    user: ownerUser,
+    company,
+    roleCode: SYSTEM_ROLE_CODES.OWNER,
+    setupPending: false,
   });
-
-  return {
-    accessToken,
-    employer: toEmployerDto(company, updatedOwner),
-    refreshToken,
-  };
 };
 
 export const sendEmployerOtpService = async (payload: { email: string }): Promise<null> => {
   const { email } = payload;
 
   const existingEmployer = await findEmployerByEmail(email);
+  const pendingInvite = existingEmployer
+    ? null
+    : await prisma.hrInvite.findFirst({
+        where: {
+          email,
+          status: { in: ['pending', 'accepted'] },
+          expires_at: { gt: new Date() },
+        },
+      });
 
-  if (!existingEmployer) {
+  if (!existingEmployer && !pendingInvite) {
     throw new AppError(404, 'NON_EXISTENT_EMPLOYER', 'Employer not found. Please register first.');
   }
 
@@ -668,64 +661,82 @@ export const verifyEmployerOtpService = async (payload: {
     where: { email },
     include: {
       companyMemberships: {
-        where: { platform_type: PlatformType.EMPLOYER },
-        include: { company: true },
+        where: { platform_type: PlatformType.EMPLOYER, is_active: true },
+        include: { company: true, role: true },
         take: 1,
       },
     },
   });
 
   const membership = ownerUser?.companyMemberships[0];
-  if (!ownerUser || !membership) {
+  if (ownerUser && membership) {
+    return persistEmployerSession({
+      user: ownerUser,
+      company: membership.company,
+      roleCode: membership.role.code,
+      setupPending: false,
+    });
+  }
+
+  const invite = await prisma.hrInvite.findFirst({
+    where: {
+      email,
+      status: { in: ['pending', 'accepted'] },
+      expires_at: { gt: new Date() },
+    },
+    orderBy: { created_at: 'desc' },
+  });
+
+  if (!invite) {
     throw new AppError(404, 'NON_EXISTENT_EMPLOYER', 'Employer not found');
   }
 
-  const company = membership.company;
-
-  const accessToken = jwt.sign(
-    {
-      role: ROLES.EMPLOYER,
-      payload: {
-        employer: {
-          id: company.id,
-          email: ownerUser.email,
-          is_verified: company.is_verified,
-        },
+  const user =
+    ownerUser ??
+    (await prisma.user.create({
+      data: {
+        name: invite.full_name,
+        email: invite.email,
+        phone_no: invite.phone_no,
       },
-    } as JwtPayload,
-    env.JWT_ACCESS_SECRET as string,
-    {
-      expiresIn: env.JWT_ACCESS_EXPIRY as any,
-    },
-  );
+    }));
 
-  const refreshToken = jwt.sign(
-    {
-      role: ROLES.EMPLOYER,
-      payload: {
-        employer: {
-          id: company.id,
-          email: ownerUser.email,
-          is_verified: company.is_verified,
-        },
-      },
-    } as JwtPayload,
-    env.JWT_REFRESH_SECRET as string,
-    {
-      expiresIn: env.JWT_REFRESH_EXPIRY as any,
+  await prisma.hrInvite.update({
+    where: { id: invite.id },
+    data: {
+      status: 'accepted',
+      accepted_at: invite.accepted_at ?? new Date(),
+      user_id: user.id,
     },
-  );
-
-  const updatedOwner = await prisma.user.update({
-    where: { id: ownerUser.id },
-    data: { refresh_token: refreshToken },
   });
 
-  return {
-    accessToken,
-    employer: toEmployerDto(company, updatedOwner),
-    refreshToken,
-  };
+  if (invite.company_id) {
+    const company = await prisma.company.findUnique({ where: { id: invite.company_id } });
+    if (company) {
+      await attachInvitedHrToCompany({
+        user: {
+          id: user.id,
+          name: user.name || invite.full_name,
+          email: user.email,
+          phone_no: user.phone_no,
+        },
+        companyId: company.id,
+      });
+      return persistEmployerSession({
+        user,
+        company,
+        roleCode: SYSTEM_ROLE_CODES.HR,
+        setupPending: false,
+      });
+    }
+  }
+
+  return persistEmployerSession({
+    user,
+    company: null,
+    roleCode: SYSTEM_ROLE_CODES.HR,
+    setupPending: true,
+  });
 };
 
 export const generateRefreshTokenService = async (
@@ -775,65 +786,60 @@ export const generateRefreshTokenService = async (
 
       return { accessToken, refreshToken: newRefreshToken, user: updatedUser };
     } else if (decoded.role === ROLES.EMPLOYER) {
-      console.log('employer here');
+      const userId = decoded.payload.employer.user_id;
       const companyId = decoded.payload.employer.id;
-      const ownerMember = await prisma.companyMember.findFirst({
-        where: {
-          company_id: companyId,
-          platform_type: PlatformType.EMPLOYER,
-          role: { code: SYSTEM_ROLE_CODES.OWNER },
-        },
-        include: {
-          user: true,
-          company: true,
-          role: true,
-        },
-      });
-      console.log('existin here');
 
-      if (!ownerMember?.user || ownerMember.user.refresh_token !== oldRefreshToken) {
+      const user = userId
+        ? await prisma.user.findUnique({ where: { id: userId } })
+        : await prisma.user.findUnique({ where: { email: decoded.payload.employer.email } });
+
+      if (!user || user.refresh_token !== oldRefreshToken) {
         throw new AppError(401, 'INVALID_TOKEN', 'Invalid refresh token');
       }
-      console.log('after employer here');
 
-      const accessToken = jwt.sign(
-        {
-          role: ROLES.EMPLOYER,
-          payload: {
-            employer: {
-              id: ownerMember.company.id,
-              email: ownerMember.user.email,
-              is_verified: ownerMember.company.is_verified,
+      const membership = companyId
+        ? await prisma.companyMember.findFirst({
+            where: {
+              company_id: companyId,
+              user_id: user.id,
+              platform_type: PlatformType.EMPLOYER,
+              is_active: true,
             },
-          },
-        } as JwtPayload,
-        env.JWT_ACCESS_SECRET as string,
-        { expiresIn: env.JWT_ACCESS_EXPIRY as any },
-      );
-      const newRefreshToken = jwt.sign(
-        {
-          role: ROLES.EMPLOYER,
-          payload: {
-            employer: {
-              id: ownerMember.company.id,
-              email: ownerMember.user.email,
-              is_verified: ownerMember.company.is_verified,
-            },
-          },
-        } as JwtPayload,
-        env.JWT_REFRESH_SECRET as string,
-        { expiresIn: env.JWT_REFRESH_EXPIRY as any },
-      );
+            include: { company: true, role: true },
+          })
+        : null;
 
-      const updatedOwner = await prisma.user.update({
-        where: { id: ownerMember.user.id },
-        data: { refresh_token: newRefreshToken },
+      if (membership) {
+        return persistEmployerSession({
+          user,
+          company: membership.company,
+          roleCode: membership.role.code,
+          setupPending: false,
+        });
+      }
+
+      return persistEmployerSession({
+        user,
+        company: null,
+        roleCode: decoded.payload.employer.role_code || SYSTEM_ROLE_CODES.HR,
+        setupPending: true,
       });
-
+    } else if (decoded.role === ROLES.ADMIN) {
+      const admin = await prisma.admin.findUnique({
+        where: { id: decoded.payload.admin.id },
+      });
+      if (!admin) {
+        throw new AppError(401, 'INVALID_TOKEN', 'Invalid refresh token');
+      }
+      const payload: JwtPayload = {
+        role: ROLES.ADMIN,
+        payload: {
+          admin: { id: admin.id, email: admin.email, name: admin.name },
+        },
+      };
       return {
-        accessToken,
-        refreshToken: newRefreshToken,
-        employer: toEmployerDto(ownerMember.company, updatedOwner),
+        accessToken: generateAccessToken(payload),
+        refreshToken: generateRefreshToken(payload),
       };
     } else {
       throw new AppError(401, 'INVALID_ROLE', 'Invalid role in token');
@@ -842,14 +848,4 @@ export const generateRefreshTokenService = async (
     throw new AppError(401, 'INVALID_TOKEN', 'Session expired or invalid token');
   }
 };
-export const generateAccessToken = (payload: JwtPayload) => {
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET as string, {
-    expiresIn: env.JWT_ACCESS_EXPIRY as any,
-  });
-};
-
-export const generateRefreshToken = (payload: JwtPayload) => {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET as string, {
-    expiresIn: env.JWT_REFRESH_EXPIRY as any,
-  });
-};
+export { generateAccessToken, generateRefreshToken } from './jwt-tokens';

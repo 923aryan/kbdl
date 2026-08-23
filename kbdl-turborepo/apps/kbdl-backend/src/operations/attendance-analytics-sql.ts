@@ -394,7 +394,7 @@ issues AS (
   FROM member_day
   GROUP BY company_member_id, employee_name, department_name
   ${havingClause}
-)
+),
 issues_sorted AS (
   SELECT *
   FROM issues

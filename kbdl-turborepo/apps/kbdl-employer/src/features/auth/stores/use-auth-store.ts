@@ -15,6 +15,7 @@ type AuthState = {
   ) => void;
   logout: () => void;
   hydrateAuth: () => Promise<void>;
+  refreshEmployer: () => Promise<GetCurrentEmployerProfileResponse | null>;
 };
 
 let hydrateInFlight: Promise<void> | null = null;
@@ -59,5 +60,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     })();
 
     return hydrateInFlight;
+  },
+
+  refreshEmployer: async () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const response = await api.get<GetCurrentEmployerProfileResponse>('/profile/employers/me');
+      const employer = response.data || null;
+      if (employer) {
+        localStorage.setItem('employer', JSON.stringify(employer));
+        set({ employer, isHydrated: true });
+      }
+      return employer;
+    } catch {
+      return get().employer;
+    }
   },
 }));

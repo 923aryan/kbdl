@@ -38,6 +38,12 @@ export type MetaWorkShift = {
   is_active: boolean;
 };
 
+export type MetaBranch = {
+  id: string;
+  name: string;
+  has_location: boolean;
+};
+
 type MetaListParams = {
   search?: string;
   page?: number;
@@ -69,18 +75,28 @@ export async function fetchWorkShiftsMeta(params: MetaListParams = {}) {
   return api.get<MetaWorkShift[]>(`/operations/employer/meta/work-shifts${toQuery(params)}`);
 }
 
+export async function fetchBranchesMeta(params: MetaListParams = {}) {
+  const catalog = await api.get<import('@repo/types').CompanyCatalogView>('/operations/employer/catalog');
+  const q = params.search?.trim().toLowerCase();
+  const rows = q
+    ? catalog.data.branches.filter((row) => row.name.toLowerCase().includes(q))
+    : catalog.data.branches;
+  return { ...catalog, data: rows };
+}
+
 export async function fetchNextEmployeeNumber() {
   return api.get<{ employee_no: string }>('/operations/employer/meta/next-employee-no');
 }
 
 /** Initial onboard dropdown data — parallel fetch */
 export async function fetchOnboardMetaInitial(limit = 30) {
-  const [departments, designations, supervisors, workShifts, nextEmployeeNo] = await Promise.all([
+  const [departments, designations, supervisors, workShifts, nextEmployeeNo, catalog] = await Promise.all([
     fetchDepartmentsMeta({ limit }),
     fetchDesignationsMeta({ limit }),
     fetchSupervisorsMeta({ limit }),
     fetchWorkShiftsMeta({ limit }),
     fetchNextEmployeeNumber(),
+    api.get<import('@repo/types').CompanyCatalogView>('/operations/employer/catalog'),
   ]);
 
   return {
@@ -88,6 +104,7 @@ export async function fetchOnboardMetaInitial(limit = 30) {
     designations: designations.data,
     supervisors: supervisors.data,
     workShifts: workShifts.data,
+    branches: catalog.data.branches,
     nextEmployeeNo: nextEmployeeNo.data.employee_no,
   };
 }
@@ -222,6 +239,41 @@ export async function addEmployeeDocument(
   const response = await api.post<EmployeeEmploymentDTO>(
     `/operations/employer/${employmentId}/documents`,
     payload,
+  );
+  return response.data;
+}
+
+export type EmployeeImportResult = {
+  total: number;
+  created: number;
+  failed: number;
+  errors: Array<{ row: number; message: string }>;
+};
+
+export async function downloadEmployeeImportTemplate() {
+  const { getAccessToken } = await import('@/lib/auth-tokens');
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+  const token = getAccessToken();
+  const response = await fetch(`${base}/operations/employer/employees/import/template`, {
+    credentials: 'include',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) throw new Error('Could not download template');
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'kbdl-employee-onboard-template.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function importEmployeesSpreadsheet(file: File): Promise<EmployeeImportResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.upload<EmployeeImportResult>(
+    '/operations/employer/employees/import',
+    formData,
   );
   return response.data;
 }

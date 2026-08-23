@@ -236,6 +236,46 @@ export const getEmployerDesignationsMetaSchema = z.object({
   query: metaSearchQuerySchema,
 });
 
+const catalogNameBody = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(80),
+  description: z.string().trim().max(255).optional().or(z.literal('')),
+});
+
+export const createCompanyDepartmentSchema = z.object({ body: catalogNameBody });
+export const createCompanyDesignationSchema = z.object({ body: catalogNameBody });
+
+export const createCompanyBranchSchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(1, 'Branch name is required').max(80),
+    latitude: z.number().gte(-90).lte(90),
+    longitude: z.number().gte(-180).lte(180),
+  }),
+});
+
+export const saveCompanyHqLocationSchema = z.object({
+  body: z.object({
+    latitude: z.number().gte(-90).lte(90),
+    longitude: z.number().gte(-180).lte(180),
+  }),
+});
+
+export const createCompanyWorkShiftSchema = z.object({
+  body: z.object({
+    name: z.string().trim().min(1, 'Shift name is required').max(80),
+    start_time: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM'),
+    end_time: z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM'),
+    break_minutes: z.number().int().min(0).max(240).optional(),
+  }),
+});
+
+export const createCompanyHolidaySchema = z.object({
+  body: z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
+    name: z.string().trim().min(1, 'Holiday name is required').max(80),
+    is_optional: z.boolean().optional(),
+  }),
+});
+
 const upiPaymentSchema = z.object({
   upi_id: z
     .string()

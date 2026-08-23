@@ -6,13 +6,49 @@ model Admin {
   id            String @id @default(uuid()) @db.Uuid
   name          String @db.VarChar
   email         String @unique @db.VarChar
+  phone_no      String @unique @db.VarChar
   role          String @default("admin")
   password_hash String @db.VarChar
 
   created_at DateTime @default(now()) @db.Timestamptz()
   updated_at DateTime @updatedAt @db.Timestamptz()
 
+  hr_invites HrInvite[]
+
   @@map("admins")
+}
+
+/// Company owner (or product admin) invite: HR joins that company as employee with role HR.
+model HrInvite {
+  id String @id @default(uuid()) @db.Uuid
+
+  email     String @db.VarChar
+  phone_no  String @db.VarChar
+  full_name String @db.VarChar
+
+  status HrInviteStatus @default(pending)
+
+  invited_by_admin_id String? @db.Uuid
+  invited_by_user_id  String? @db.Uuid
+  user_id             String? @db.Uuid
+  company_id          String? @db.Uuid
+
+  expires_at  DateTime  @db.Timestamptz()
+  accepted_at DateTime? @db.Timestamptz()
+
+  created_at DateTime @default(now()) @db.Timestamptz()
+  updated_at DateTime @updatedAt @db.Timestamptz()
+
+  invited_by      Admin?   @relation(fields: [invited_by_admin_id], references: [id], onDelete: Restrict)
+  invited_by_user User?    @relation("HrInviteSentBy", fields: [invited_by_user_id], references: [id], onDelete: SetNull)
+  user            User?    @relation("HrInviteSubject", fields: [user_id], references: [id], onDelete: SetNull)
+  company         Company? @relation(fields: [company_id], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([status])
+  @@index([invited_by_admin_id])
+  @@index([invited_by_user_id])
+  @@map("hr_invites")
 }
 
 

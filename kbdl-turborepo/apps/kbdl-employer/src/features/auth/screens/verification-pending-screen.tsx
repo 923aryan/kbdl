@@ -2,6 +2,7 @@
 
 import { Button } from '@repo/ui/button';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -12,8 +13,14 @@ import { useAuthStore } from '../stores/use-auth-store';
 export default function VerificationPendingScreen() {
   const router = useRouter();
   const logoutAction = useAuthStore((state) => state.logout);
+  const refreshEmployer = useAuthStore((state) => state.refreshEmployer);
   const { mutate: logout, isPending } = useLogout();
   const { data, refetch, isFetching } = useGetEmployerVerificationStatus();
+
+  const goToCompany = async () => {
+    await refreshEmployer();
+    router.replace('/company');
+  };
 
   const handleLogout = () => {
     logout(undefined, {
@@ -29,24 +36,24 @@ export default function VerificationPendingScreen() {
     });
   };
 
-  // Redirect to dashboard automatically if verified on initial fetch
   useEffect(() => {
-    const isVerified = (data as any)?.data?.is_verified ?? data?.is_verified;
+    const isVerified = (data as { is_verified?: boolean } | undefined)?.is_verified;
     if (isVerified) {
-      router.replace('/');
+      void goToCompany();
     }
-  }, [data, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const handleRefresh = async () => {
     const { data: refreshData, isSuccess, isError } = await refetch();
 
     if (isSuccess) {
-      const isVerified = (refreshData as any)?.data?.is_verified ?? refreshData?.is_verified;
+      const isVerified = (refreshData as { is_verified?: boolean } | undefined)?.is_verified;
       if (isVerified) {
-        toast.success('Your account is verified!');
-        router.replace('/');
+        toast.success('Your company is active.');
+        await goToCompany();
       } else {
-        toast.info('Your account is still pending verification.');
+        toast.info('Your company is still pending activation.');
       }
     } else if (isError) {
       toast.error('Failed to check verification status');
@@ -76,21 +83,33 @@ export default function VerificationPendingScreen() {
           </div>
         </div>
 
-        <h1 className="mt-5 text-2xl font-bold text-[#0A2540]">Verification Pending</h1>
+        <h1 className="mt-5 text-2xl font-bold text-[#0A2540]">Company under review</h1>
 
         <p className="mt-4 text-sm leading-relaxed text-zinc-500">
-          Your employer account is currently under review by our administration team. You will be
-          notified once your account is verified and approved.
+          You sent company details to KBDL. A product admin checks the name, address, GSTIN, and PAN,
+          then marks the company <span className="font-semibold text-zinc-700">Active</span>. Until
+          then payroll, attendance, and leave stay closed so a company cannot run payroll before it
+          is activated.
+        </p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-500">
+          You can still edit company details and invite HR while you wait.
         </p>
 
         <div className="mt-8 flex flex-col gap-4">
+          <Link
+            href="/company"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[#0658C2] px-4 text-sm font-semibold text-[#0658C2]"
+          >
+            Edit company details
+          </Link>
+
           <Button
             type="button"
             disabled={isFetching}
-            onClick={handleRefresh}
-            className="w-full rounded-xl bg-[#0057D9] py-3 font-semibold text-white transition-all duration-300 hover:bg-[#0047B3]"
+            onClick={() => void handleRefresh()}
+            className="w-full rounded-xl bg-[#0658C2] py-3 font-semibold text-white hover:bg-[#0549A3]"
           >
-            {isFetching ? 'Checking Status...' : 'Check Status'}
+            {isFetching ? 'Checking…' : 'Check if activated'}
           </Button>
 
           <Button

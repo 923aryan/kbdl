@@ -10,7 +10,6 @@ import {
   UserVerifyOTPRequest,
   UserVerifyRegisterRequest,
 } from '@repo/types';
-import { env } from '@repo/validator/server';
 import {
   employerRegisterSchema,
   employerSendOtpSchema,
@@ -23,8 +22,10 @@ import {
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
 import { AppError } from '../utils/api-error';
+import { ROLES } from '../utils/constants';
 import { sendSuccess } from '../utils/send-success';
 import { validate } from '../utils/validate';
+import { clearAuthCookies, setAuthCookies } from './auth-cookies';
 import {
   generateRefreshTokenService,
   registerEmployerService,
@@ -47,7 +48,7 @@ const verifyRegisteredUser = async (req: Request, res: Response) => {
   const registerInput: UserVerifyRegisterRequest = validate(userVerifyRegisterSchema, req);
   const response = await verifyUserRegistrationOtpService(registerInput.body);
   const { accessToken, user, refreshToken } = response;
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken, ROLES.USER);
   sendSuccess(res, 'User Created', { accessToken, user, refreshToken }, 201);
 };
 
@@ -61,7 +62,7 @@ const verifyUserOtp = async (req: Request, res: Response) => {
   const input: UserVerifyOTPRequest = validate(userVerifyOtpSchema, req);
   const response = await verifyUserOtpService(input.body);
   const { accessToken, user, refreshToken } = response;
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken, ROLES.USER);
   sendSuccess(res, 'User login successful', { user, accessToken, refreshToken }, 200);
 };
 
@@ -75,7 +76,7 @@ const verifyRegisteredEmployer = async (req: Request, res: Response) => {
   const registerInput: EmployerVerifyRegisterRequest = validate(employerVerifyRegisterSchema, req);
   const response = await verifyEmployerRegistrationOtpService(registerInput.body);
   const { accessToken, employer, refreshToken } = response;
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken, ROLES.EMPLOYER);
   sendSuccess(res, 'Employer Created', { accessToken, employer, refreshToken }, 201);
 };
 
@@ -90,7 +91,7 @@ const verifyEmployerOtp = async (req: Request, res: Response) => {
   const response = await verifyEmployerOtpService(input.body);
   const { accessToken, employer, refreshToken } = response;
 
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken, ROLES.EMPLOYER);
   sendSuccess<EmployerVerifyOTPResponse>(
     res,
     'Employer login successful',
@@ -108,6 +109,9 @@ const userTokenRefresh = async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   let oldRefreshToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
 
+  if (!oldRefreshToken && req.cookies?.kbdl_user_refresh) {
+    oldRefreshToken = req.cookies.kbdl_user_refresh;
+  }
   if (!oldRefreshToken && req.cookies?.refreshToken) {
     oldRefreshToken = req.cookies.refreshToken;
   }
@@ -119,7 +123,7 @@ const userTokenRefresh = async (req: Request, res: Response) => {
   const response = await generateRefreshTokenService(oldRefreshToken);
   const { accessToken, user, refreshToken } = response;
 
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken, ROLES.USER);
   sendSuccess<TokenRefreshResponse>(
     res,
     'Token Refreshed',
@@ -132,10 +136,12 @@ const employerTokenRefresh = async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
   let oldRefreshToken = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
 
+  if (!oldRefreshToken && req.cookies?.kbdl_employer_refresh) {
+    oldRefreshToken = req.cookies.kbdl_employer_refresh;
+  }
   if (!oldRefreshToken && req.cookies?.refreshToken) {
     oldRefreshToken = req.cookies.refreshToken;
   }
-  console.log('old refresh token is ', oldRefreshToken);
   if (!oldRefreshToken) {
     throw new AppError(401, 'NO_REFRESH_TOKEN', 'No refresh token provided');
   }
@@ -143,7 +149,7 @@ const employerTokenRefresh = async (req: Request, res: Response) => {
   const response = await generateRefreshTokenService(oldRefreshToken);
   const { accessToken, employer, refreshToken } = response;
 
-  setAuthCookies(res, accessToken, refreshToken);
+  setAuthCookies(res, accessToken, refreshToken, ROLES.EMPLOYER);
   sendSuccess<TokenRefreshResponse>(
     res,
     'Token Refreshed',
@@ -152,47 +158,15 @@ const employerTokenRefresh = async (req: Request, res: Response) => {
   );
 };
 
-export const setAuthCookies = (res: Response, accessToken: string, refreshToken: string) => {
-  const isProduction = env.NODE_ENV === 'production';
-
-  res.cookie('accessToken', accessToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 15 * 24 * 60 * 60 * 1000,
-  });
-};
-
-export const clearAuthCookies = (res: Response) => {
-  const isProduction = env.NODE_ENV === 'production';
-
-  res.clearCookie('accessToken', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-  });
-
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
-  });
-};
-
 export {
+  clearAuthCookies,
   employerTokenRefresh,
   logout,
   registerEmployer as registerOrg,
   registerUser,
   sendEmployerOtp,
   sendUserOtp,
+  setAuthCookies,
   userTokenRefresh,
   verifyEmployerOtp,
   verifyRegisteredEmployer,

@@ -30,26 +30,31 @@ export const errorHandler = (err: unknown, _req: Request, res: Response, _next: 
     switch (prismaErr.code) {
       case 'P2002': {
         const target = prismaErr.meta?.target;
-        const fieldLabel = Array.isArray(target)
-          ? target.join(', ')
+        const fields = Array.isArray(target)
+          ? target.map(String)
           : typeof target === 'string'
-            ? target
-            : 'unique field';
-        const isAttendanceDayClash =
-          Array.isArray(target) &&
-          target.includes('company_member_id') &&
-          target.includes('date') &&
-          !target.includes('work_shift_id');
+            ? [target]
+            : [];
+        const joined = fields.join(',').toLowerCase();
+        const isAttendance =
+          fields.includes('company_member_id') && fields.includes('date');
+        const message = isAttendance
+          ? fields.includes('work_shift_id')
+            ? 'Attendance already exists for this employee / date / shift. Edit the existing row instead.'
+            : 'Attendance already exists for this employee on this date. Edit the existing row or add a different shift.'
+          : joined.includes('email')
+            ? 'This email is already registered.'
+            : joined.includes('phone')
+              ? 'This phone number is already registered.'
+              : fields.length
+                ? `A record with this ${fields.join(', ')} already exists.`
+                : 'A record with these details already exists.';
 
         response = {
           success: false,
           error: {
             code: 'DUPLICATE_ERROR',
-            message: isAttendanceDayClash
-              ? 'Attendance already exists for this employee on this date. Edit the existing row or add a different shift.'
-              : fieldLabel === 'unique field'
-                ? 'Attendance already exists for this employee / date / shift. Edit the existing row instead.'
-                : `A record with this ${fieldLabel} already exists.`,
+            message,
             details: { field: target },
           },
         };

@@ -6,6 +6,8 @@ After `pnpm db:seed` or `docker compose run --rm backend seed`, use these accoun
 
 Useful URLs (Swagger, OpenAPI, apps): [dev-links.md](./dev-links.md)
 
+Full founder → owner → HR → company → employees playbook: [onboarding-flow.md](./onboarding-flow.md)
+
 ## Company owners (employer login)
 
 One OWNER per company — email OTP login on the employer app.
@@ -50,7 +52,7 @@ These are `CompanyMember`s with roles via `role_id` (not platform admin).
 
 Then in the employer app: **Payroll → Run Payroll → July 2026**.
 
-> Note: employer OTP login today is wired for company **OWNER** accounts. Staff may not log into the employer portal until that flow supports non-owner members.
+> Employer OTP login works for company **OWNER** accounts and invited **HR** (and other employer-portal staff with `platform_type EMPLOYER`).
 
 ## Workers (employee app — phone OTP)
 
@@ -64,11 +66,16 @@ Then in the employer app: **Payroll → Run Payroll → July 2026**.
 | Arif Khan | `+917275890926` | `worker6@kbdl.dev` |
 | Test Worker | `+911234567898` | `worker7@kbdl.dev` |
 
-## Platform admin (kbdl-admin)
+## Platform admin / product owner (kbdl-admin at http://localhost:3000)
 
-| Email | Notes |
-|-------|--------|
-| `admin@kbdl.dev` | Platform `Admin` table — not a company owner. Password hash in seed is placeholder (`seed-not-for-login`). |
+Login with **email or phone** plus password.
+
+| Name | Email | Phone | Password |
+|------|-------|-------|----------|
+| **mdarif** | `mdarif@kbdl.dev` | `+919876540001` | `Mdarif@123456` |
+| KBDL Admin | `admin@kbdl.dev` | `+919000000000` | `Admin@123456` |
+
+Product owner invites HR from this console. Invited HR is a **company employee with role HR** (roster + employer portal). They log into the employer app (`http://localhost:3002`) with email OTP (`123456` in local/dev), complete their profile + company details, then wait for the product owner to set company status to **active**. After that they onboard other employees.
 
 ## Re-seed
 
@@ -82,7 +89,8 @@ pnpm --filter @repo/db run migrate:deploy
 pnpm --filter @repo/db run generate
 pnpm --filter @repo/db run seed
 
-# Or seed only (clears + re-inserts demo rows)
+# Apply schema then seed
+pnpm db:push
 pnpm db:seed
 
 # Dev only — wipes ALL tables then seeds

@@ -12,6 +12,7 @@ import {
   verifyRegisteredUser,
   verifyUserOtp,
 } from './auth-controller';
+import { adminLogin } from '../admin/admin-controllers';
 
 const authRouter: Router = Router();
 
@@ -30,6 +31,8 @@ authRouter.post('/user/token-refresh', userTokenRefresh);
 authRouter.post('/employer/send-otp', sendEmployerOtp);
 authRouter.post('/employer/verify-otp', verifyEmployerOtp);
 authRouter.post('/employer/token-refresh', employerTokenRefresh);
+
+authRouter.post('/admin/login', adminLogin);
 
 // --- Shared Routes ---
 // Handles clearing cookies for both Users and Employers on the web

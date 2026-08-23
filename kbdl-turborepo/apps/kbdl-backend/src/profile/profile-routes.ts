@@ -50,7 +50,7 @@ profileRouter.get(
   getPublicUserProfile,
 );
 
-profileRouter.get('/employers/me', authenticate([ROLES.EMPLOYER]), getCurrentEmployerProfile);
+profileRouter.get('/employers/me', authenticate([ROLES.EMPLOYER], true), getCurrentEmployerProfile);
 
 profileRouter.patch('/employers/me', authenticate([ROLES.EMPLOYER]), updateEmployerProfile);
 

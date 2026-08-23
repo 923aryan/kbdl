@@ -120,8 +120,8 @@ function appliedByLabel(
   return kind === 'hr' ? `HR / Employer${who}` : `Reporting manager${who}`;
 }
 
-async function ensureLeaveSetup(companyId: string) {
-  const policy = await prisma.companyLeavePolicy.upsert({
+export async function ensureLeaveSetup(companyId: string, db: typeof prisma = prisma) {
+  const policy = await db.companyLeavePolicy.upsert({
     where: { company_id: companyId },
     update: {},
     create: {
@@ -135,12 +135,12 @@ async function ensureLeaveSetup(companyId: string) {
     },
   });
 
-  const existing = await prisma.companyLeaveType.findMany({
+  const existing = await db.companyLeaveType.findMany({
     where: { company_id: companyId },
     select: { id: true, name: true },
   });
   if (existing.length === 0) {
-    await prisma.companyLeaveType.createMany({
+    await db.companyLeaveType.createMany({
       data: DEFAULT_TYPES.map((t) => ({
         company_id: companyId,
         name: t.name,
@@ -150,7 +150,7 @@ async function ensureLeaveSetup(companyId: string) {
     });
   }
 
-  const types = await prisma.companyLeaveType.findMany({
+  const types = await db.companyLeaveType.findMany({
     where: { company_id: companyId },
     orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
   });

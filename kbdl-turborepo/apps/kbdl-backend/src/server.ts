@@ -16,6 +16,7 @@ import jobRouter from './jobs/job-routes';
 import leadRouter from './leads/leads-routes';
 import notificationRouter from './notifications/notification-routes';
 import operationsRouter from './operations/operation-routes';
+import adminRouter from './admin/admin-routes';
 import profileRouter from './profile/profile-routes';
 import shiftSwapRouter from './shift-swap/shift-swap-routes';
 import uploadRouter from './uploads/upload-routes';
@@ -78,6 +79,7 @@ app.use('/api/v1/leads', leadRouter);
 app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/profile', profileRouter);
 app.use('/api/v1/operations', operationsRouter);
+app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/jobs', jobRouter);
 app.use('/api/v1/uploads', uploadRouter);
 app.get('/health', (_req: Request, res: Response) => {

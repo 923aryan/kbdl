@@ -2,6 +2,7 @@
 
 import { useAuthStore } from '@/features/auth/stores/use-auth-store';
 import {
+  Building2,
   Briefcase,
   ChevronDown,
   ChevronUp,
@@ -23,7 +24,15 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 const menuItems = [
-  { path: '/', label: 'Overview', icon: LayoutDashboard },
+  {
+    path: '/company',
+    label: 'Company',
+    icon: Building2,
+    subItems: [
+      { path: '/company', label: 'Details', icon: Building2 },
+      { path: '/company/organization', label: 'Catalogs & locations', icon: Settings },
+    ],
+  },
   { path: '/employees', label: 'Employees', icon: Users },
   { path: '/shifts', label: 'Shifts', icon: Clock },
   { path: '/jobs', label: 'Jobs', icon: Briefcase },
@@ -183,10 +192,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // If no employer, redirect to login
     if (!employer) {
-      console.log('No employer found, redirecting to login');
       router.replace('/login');
+      return;
     }
-  }, [employer, isHydrated, isClient, router]);
+    const status = employer.status ?? (employer.is_verified ? 'active' : 'onboarding');
+    if (employer.setup_pending || status === 'onboarding' || status === 'rejected') {
+      if (!pathname.startsWith('/company')) router.replace('/company');
+      return;
+    }
+    if (employer.role_code === 'OWNER' && (pathname === '/' || pathname === '')) {
+      router.replace('/company');
+    }
+  }, [employer, isHydrated, isClient, router, pathname]);
 
   const startResizing = useCallback(() => {
     setIsResizing(true);
@@ -249,6 +266,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const isCollapsed = sidebarWidth === 80;
+  const companyStatus = employer.status ?? (employer.is_verified ? 'active' : 'onboarding');
+  const companyIsLive = companyStatus === 'active';
+  const visibleMenu = companyIsLive ? menuItems : menuItems.filter((item) => item.path === '/company');
 
   return (
     <div 
@@ -288,7 +308,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <nav className="mt-6 flex-1 overflow-y-auto overflow-x-hidden">
             {isCollapsed
-              ? menuItems.map((item) => {
+              ? visibleMenu.map((item) => {
                   const Icon = item.icon;
                   const isActive =
                     pathname === item.path || item.subItems?.some((sub) => pathname === sub.path);
@@ -311,7 +331,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                   );
                 })
-              : menuItems.map((item) => (
+              : visibleMenu.map((item) => (
                   <NavItem
                     key={item.path}
                     item={item}
@@ -331,8 +351,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-[#676767]">
-                <span>Status: Verified</span>
-                <span className="h-2 w-2 rounded-full bg-[#10B981]" />
+                <span className="capitalize">
+                  Status: {companyStatus.replaceAll('_', ' ')}
+                </span>
+                <span
+                  className={`h-2 w-2 rounded-full ${companyIsLive ? 'bg-[#10B981]' : 'bg-[#F59E0B]'}`}
+                />
               </div>
             </div>
           )}

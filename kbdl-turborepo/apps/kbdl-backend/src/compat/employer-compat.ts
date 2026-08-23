@@ -11,7 +11,14 @@ export type EmployerDto = {
   phone_no: string | null;
   company_address: string | null;
   gst_number: string | null;
+  pan?: string | null;
+  state?: string | null;
+  epf_registration_no?: string | null;
+  esic_code?: string | null;
   is_verified: boolean;
+  status?: string;
+  setup_pending?: boolean;
+  role_code?: string;
   subscription_tier: string | null;
   preferences: unknown;
   role: 'employer';
@@ -26,7 +33,12 @@ export type CompanyForEmployerDto = Pick<
   | 'company_name'
   | 'company_address'
   | 'gst_number'
+  | 'pan'
+  | 'state'
+  | 'epf_registration_no'
+  | 'esic_code'
   | 'is_verified'
+  | 'status'
   | 'preferences'
   | 'created_at'
   | 'updated_at'
@@ -73,6 +85,7 @@ export const getSubscriptionTier = (preferences: unknown): string | null => {
 export const toEmployerDto = (
   company: CompanyForEmployerDto,
   ownerUser?: OwnerUserForEmployerDto | null,
+  extras?: { setup_pending?: boolean; role_code?: string },
 ): EmployerDto => ({
   id: company.id,
   company_name: company.company_name,
@@ -80,7 +93,14 @@ export const toEmployerDto = (
   phone_no: ownerUser?.phone_no ?? null,
   company_address: company.company_address,
   gst_number: company.gst_number,
+  pan: company.pan,
+  state: company.state,
+  epf_registration_no: company.epf_registration_no,
+  esic_code: company.esic_code,
   is_verified: company.is_verified,
+  status: company.status,
+  setup_pending: extras?.setup_pending ?? false,
+  role_code: extras?.role_code,
   subscription_tier: getSubscriptionTier(company.preferences),
   preferences: company.preferences,
   role: 'employer',
@@ -164,14 +184,23 @@ export const findEmployerByPhone = async (phone: string): Promise<EmployerDto | 
   return toEmployerDto(membership.company, user);
 };
 
-/** Resolve company + owner user from JWT company id (API employer.id). */
+/** Resolve company + acting employer user from JWT company id (API employer.id). */
 export const ensureEmployerContext = async (
   companyId: string,
 ): Promise<{ company: Company; ownerUser: User; employer: EmployerDto }> => {
+  if (!companyId) {
+    throw new AppError(403, 'COMPANY_SETUP_REQUIRED', 'Complete company onboarding first');
+  }
+
   const company = await prisma.company.findUnique({
     where: { id: companyId },
     include: {
-      members: ownerMemberInclude,
+      members: {
+        where: { platform_type: PlatformType.EMPLOYER, is_active: true },
+        take: 5,
+        include: { user: true, role: true },
+        orderBy: { created_at: 'asc' },
+      },
     },
   });
 
@@ -179,7 +208,7 @@ export const ensureEmployerContext = async (
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
 
-  const ownerUser = company.members[0]?.user;
+  const ownerUser = company.members.find((m) => m.user)?.user;
   if (!ownerUser) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer owner not found');
   }

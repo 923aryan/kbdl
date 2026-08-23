@@ -6,6 +6,10 @@ export type JwtPayload =
           id: string;
           email: string;
           is_verified: boolean;
+          user_id?: string;
+          role_code?: string;
+          setup_pending?: boolean;
+          status?: string;
         };
       };
     }
@@ -24,6 +28,7 @@ export type JwtPayload =
         admin: {
           id: string;
           email: string;
+          name?: string;
         };
       };
     };

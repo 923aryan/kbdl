@@ -21,6 +21,7 @@ import {
   uploadEmployerDocumentsSchema,
 } from '@repo/validator/shared';
 import { Request, Response } from 'express';
+import { AppError } from '../utils/api-error';
 import { sendSuccess } from '../utils/send-success';
 import { validate } from '../utils/validate';
 import {
@@ -56,8 +57,10 @@ import {
 } from '@repo/types';
 
 export const getCurrentEmployerProfile = async (req: Request, res: Response) => {
-  const employerId = req.payload.employer.id;
-  const employer = await getCurrentEmployerProfileService(employerId);
+  if (req.role !== 'employer' || !req.payload || !('employer' in req.payload)) {
+    throw new AppError(401, 'UNAUTHORIZED', 'Employer session required');
+  }
+  const employer = await getCurrentEmployerProfileService(req.payload.employer);
   sendSuccess(res, 'Employer profile retrieved successfully', employer);
 };
 

@@ -30,13 +30,50 @@ import {
 import { AppError } from '../utils/api-error';
 
 export const getCurrentEmployerProfileService = async (
-  employerId: string,
+  auth: { id: string; email: string; user_id?: string; setup_pending?: boolean; role_code?: string },
 ): Promise<GetCurrentEmployerProfileResponse> => {
-  const employer = await findEmployerById(employerId);
-  if (!employer) {
+  if (!auth.id || auth.setup_pending) {
+    const user = auth.user_id
+      ? await prisma.user.findUnique({ where: { id: auth.user_id } })
+      : await prisma.user.findUnique({ where: { email: auth.email } });
+    return {
+      id: '',
+      company_name: '',
+      email: user?.email ?? auth.email,
+      phone_no: user?.phone_no ?? null,
+      company_address: null,
+      gst_number: null,
+      pan: null,
+      state: null,
+      epf_registration_no: null,
+      esic_code: null,
+      is_verified: false,
+      status: 'onboarding',
+      setup_pending: true,
+      role_code: auth.role_code ?? 'HR',
+      preferences: {},
+      role: 'employer',
+      subscription_tier: null,
+    };
+  }
+
+  const company = await prisma.company.findUnique({ where: { id: auth.id } });
+  if (!company) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
-  return employer;
+  const member = await prisma.companyMember.findFirst({
+    where: {
+      company_id: auth.id,
+      ...(auth.user_id ? { user_id: auth.user_id } : {}),
+      platform_type: 'EMPLOYER',
+      is_active: true,
+    },
+    include: { user: true, role: true },
+  });
+  return toEmployerDto(company, member?.user ?? null, {
+    setup_pending: false,
+    role_code: member?.role.code ?? auth.role_code,
+  });
 };
 
 export const updateEmployerProfileService = async (
@@ -113,7 +150,7 @@ export const updateEmployerLocationService = async (
     SET company_location = ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
     WHERE id = ${employerId}::uuid
   `;
-  return getCurrentEmployerProfileService(employerId);
+  return getCurrentEmployerProfileService({ id: employerId, email: '' });
 };
 
 export const uploadEmployerDocumentsService = async (
@@ -130,15 +167,22 @@ export const uploadEmployerDocumentsService = async (
 
 export const getEmployerVerificationStatusService = async (
   employerId: string,
-): Promise<{ is_verified: boolean }> => {
+): Promise<{ is_verified: boolean; status: string | null; setup_pending: boolean }> => {
+  if (!employerId) {
+    return { is_verified: false, status: 'onboarding', setup_pending: true };
+  }
   const company = await prisma.company.findUnique({
     where: { id: employerId },
-    select: { is_verified: true },
+    select: { is_verified: true, status: true },
   });
   if (!company) {
     throw new AppError(404, 'EMPLOYER_NOT_FOUND', 'Employer not found');
   }
-  return { is_verified: company.is_verified };
+  return {
+    is_verified: company.is_verified,
+    status: company.status,
+    setup_pending: false,
+  };
 };
 
 export const getPublicEmployerProfileService = async (

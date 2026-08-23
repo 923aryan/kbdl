@@ -21,6 +21,7 @@ model Company {
   epf_registration_no String?                             @db.VarChar
   esic_code        String?                                @db.VarChar
   is_verified      Boolean                                @default(false)
+  status           CompanyStatus                          @default(onboarding)
   preferences      Json                                   @default("{}")
 
   created_at DateTime @default(now()) @db.Timestamptz()
@@ -55,8 +56,10 @@ model Company {
   branches         CompanyBranch[]
   payroll_runs     PayrollRun[]
   payroll_filings  PayrollStatutoryFiling[]
+  hr_invites       HrInvite[]
 
   @@index([company_name])
+  @@index([status])
   @@map("companies")
 }
 
@@ -200,7 +203,7 @@ model CompanyMember {
   /// Nullable for HR-only worker rows until app account links via WorkforcePerson.
   user_id       String? @db.Uuid
   company_id    String  @db.Uuid
-  /// Worker rows link to one employment stint; null for owner/HR/staff.
+  /// Worker and invited HR rows link to one employment stint; null for owner/office staff without a roster profile.
   employment_id String? @unique @db.Uuid
   department_id String? @db.Uuid
   team_id       String? @db.Uuid

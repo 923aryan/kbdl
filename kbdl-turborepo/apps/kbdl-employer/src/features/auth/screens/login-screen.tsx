@@ -68,8 +68,16 @@ export default function LoginPage() {
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
           });
-          if (!data.employer.is_verified) {
+          const status = data.employer.status;
+          const isOwner = data.employer.role_code === 'OWNER';
+          if (status === 'pending_review') {
             router.replace('/verification-pending');
+          } else if (isOwner && status !== 'active') {
+            router.replace('/company');
+          } else if (data.employer.setup_pending || status !== 'active') {
+            router.replace('/company');
+          } else if (data.employer.role_code === 'HR') {
+            router.replace('/company/organization');
           } else {
             router.replace('/');
           }

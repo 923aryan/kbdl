@@ -39,6 +39,8 @@ model User {
 
   // Relations
   companyMemberships CompanyMember[]
+  hr_invites      HrInvite[] @relation("HrInviteSubject")
+  hr_invites_sent HrInvite[] @relation("HrInviteSentBy")
 
   original_shifts    Shift[] @relation("OriginalEmployeeShift")
   replacement_shifts Shift[] @relation("ReplacementEmployeeShift")

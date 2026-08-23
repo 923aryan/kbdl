@@ -8,5 +8,6 @@ export * from './request-response/payroll-type';
 export * from './request-response/attendance-type';
 export * from './request-response/operation-type';
 export * from './request-response/profile-type';
+export * from './request-response/platform-type';
 export * from './request-response/shift-swap-type';
 export * from './user';

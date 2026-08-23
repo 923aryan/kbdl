@@ -21,7 +21,7 @@
   },
   "scripts": {
     "generate": "node ./scripts/prisma-cli.mjs generate",
-    "push": "node ./scripts/prisma-cli.mjs db push",
+    "push": "node ./scripts/prisma-cli.mjs db push --accept-data-loss",
     "migrate:deploy": "node ./scripts/prisma-cli.mjs migrate deploy",
     "build": "node ./scripts/prisma-cli.mjs generate",
     "clone-db": "node ./scripts/clone-database.mjs",

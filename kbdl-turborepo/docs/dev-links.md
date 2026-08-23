@@ -51,6 +51,7 @@ Restart `next dev` after changes.
 | Doc | Path |
 |-----|------|
 | Seed logins | [seed-logins.md](./seed-logins.md) |
+| Onboarding playbook (Arif → owner → HR → company → employees) | [onboarding-flow.md](./onboarding-flow.md) |
 | Docker stack | [docker.md](./docker.md) |
 | Data model + SQL | [data-model-and-queries.md](./data-model-and-queries.md) |
 | OpenAPI source file | `apps/kbdl-backend/docs/openapi.yaml` |

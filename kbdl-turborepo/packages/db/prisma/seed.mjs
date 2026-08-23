@@ -744,6 +744,7 @@ async function seedAttendanceForCompany({
 }
 
 async function clearAll() {
+  await prisma.hrInvite.deleteMany();
   await prisma.payrollStatutoryFiling.deleteMany().catch(() => {});
   await prisma.payrollRunEmployee.deleteMany().catch(() => {});
   await prisma.payrollRun.deleteMany().catch(() => {});
@@ -977,6 +978,7 @@ async function main() {
         company_address: def.address,
         gst_number: def.gst ?? null,
         is_verified: def.verified,
+        status: def.verified ? 'active' : 'pending_review',
         preferences: { language: 'en-IN', subscription_tier: def.tier },
       },
     });
@@ -1550,8 +1552,18 @@ async function main() {
     data: {
       name: 'KBDL Admin',
       email: 'admin@kbdl.dev',
+      phone_no: '+919000000000',
       role: 'admin',
-      password_hash: 'seed-not-for-login',
+      password_hash: '$2b$10$y0YAbrACxPW.efOpZy/fQeErK53/sURpIQxwEywLc/2dTX/f1m.1i',
+    },
+  });
+  await prisma.admin.create({
+    data: {
+      name: 'mdarif',
+      email: 'mdarif@kbdl.dev',
+      phone_no: '+919876540001',
+      role: 'admin',
+      password_hash: '$2b$10$U4BCrpIw2UqFZhxZLOgRduNalk.4ALfxUUdfPq1sGpy1tE./lkmV2',
     },
   });
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Bell,
   Briefcase,
@@ -62,13 +63,17 @@ import {
   fetchOnboardMetaInitial,
   fetchSupervisorsMeta,
   fetchWorkShiftsMeta,
+  fetchBranchesMeta,
   updateEmployeeProfile,
   uploadEmployeeDocument,
   addEmployeeDocument,
+  downloadEmployeeImportTemplate,
+  importEmployeesSpreadsheet,
   type MetaDepartment,
   type MetaDesignation,
   type MetaSupervisor,
   type MetaWorkShift,
+  type MetaBranch,
 } from '../api';
 import { mapEmploymentDtoToEmployee } from '../lib/employee-detail-mapper';
 import {
@@ -583,6 +588,55 @@ function EmployeesPageShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function EmployeeImportActions() {
+  const bump = useEmployeeStore((s) => s.bumpEmployeeListVersion);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-col items-stretch gap-2 sm:items-end">
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => void downloadEmployeeImportTemplate()}
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-[#D3D3D3] px-4 text-sm font-semibold text-[#0658C2]"
+        >
+          <Download className="h-4 w-4" /> Excel template
+        </button>
+        <label className="inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#0658C2] px-4 text-sm font-semibold text-[#0658C2]">
+          <UploadCloud className="h-4 w-4" />
+          {busy ? 'Importing…' : 'Upload CSV'}
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file) return;
+              setBusy(true);
+              setNotice(null);
+              void importEmployeesSpreadsheet(file)
+                .then((result) => {
+                  bump();
+                  setNotice(
+                    `Imported ${result.created} of ${result.total} row(s) as drafts.${result.failed ? ` ${result.failed} failed.` : ''}`,
+                  );
+                })
+                .catch((err: unknown) => {
+                  setNotice(err instanceof Error ? err.message : 'Import failed');
+                })
+                .finally(() => setBusy(false));
+            }}
+          />
+        </label>
+      </div>
+      {notice && <p className="max-w-xs text-right text-xs text-[#676767]">{notice}</p>}
+    </div>
+  );
+}
+
 export function EmployeeListScreen() {
   const router = useRouter();
   const {
@@ -873,6 +927,7 @@ function EmployeeList({
           <h1 className="text-2xl font-bold tracking-normal">EMPLOYEES</h1>
           <p className="mt-1 text-sm text-[#676767]">Manage Your Employee</p>
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <button
           onClick={onAdd}
           className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#0658C2] px-8 text-base font-semibold text-white shadow-sm hover:bg-blue-700 cursor-pointer"
@@ -880,6 +935,8 @@ function EmployeeList({
           <Plus className="h-5 w-5" />
           Add New Onboard
         </button>
+        <EmployeeImportActions />
+        </div>
       </div>
 
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1643,6 +1700,7 @@ function AddEmployee({
   const [initialDesignations, setInitialDesignations] = useState<MetaDesignation[]>([]);
   const [initialSupervisors, setInitialSupervisors] = useState<MetaSupervisor[]>([]);
   const [initialWorkShifts, setInitialWorkShifts] = useState<MetaWorkShift[]>([]);
+  const [initialBranches, setInitialBranches] = useState<MetaBranch[]>([]);
   const [religionSearch, setReligionSearch] = useState('');
   const [languageSearch, setLanguageSearch] = useState('');
   const [bankSearch, setBankSearch] = useState('');
@@ -1697,6 +1755,7 @@ function AddEmployee({
       setInitialDesignations(meta.designations);
       setInitialSupervisors(meta.supervisors);
       setInitialWorkShifts(meta.workShifts);
+      setInitialBranches(meta.branches);
 
       if (!form.employeeNumber.trim()) {
         setValue('employeeNumber', meta.nextEmployeeNo);
@@ -1737,6 +1796,10 @@ function AddEmployee({
   const workShiftSearch = useMetaSearch(
     async (search) => (await fetchWorkShiftsMeta({ search, limit: 40 })).data,
     initialWorkShifts,
+  );
+  const branchSearch = useMetaSearch(
+    async (search) => (await fetchBranchesMeta({ search, limit: 40 })).data,
+    initialBranches,
   );
 
   const saveEmployee = async (action: 'draft' | 'submit') => {
@@ -1917,7 +1980,24 @@ function AddEmployee({
           <Field label="Karigari ID" placeholder="Platform worker ID e.g. KG1000 (globally unique if set)" value={form.karigariId} onChange={(value) => setValue('karigariId', value)} />
           <AsyncSearchSelect label="Designation" required placeholder={metaLoading ? 'Loading designations…' : 'Search designation'} valueId={form.designationId} valueLabel={form.designationLabel} search={designationSearch.search} onSearchChange={designationSearch.setSearch} loading={metaLoading || designationSearch.loading} error={errors.designationId || metaError || designationSearch.error} options={designationSearch.items.map((item) => ({ id: item.id, label: item.name, sublabel: item.description || undefined }))} onSelect={(option) => { setValue('designationId', option.id); setValue('designationLabel', option.label); }} onClear={() => { setValue('designationId', ''); setValue('designationLabel', ''); }} />
           <AsyncSearchSelect label="Department" required placeholder={metaLoading ? 'Loading departments…' : 'Search department'} valueId={form.departmentId} valueLabel={form.departmentLabel} search={departmentSearch.search} onSearchChange={departmentSearch.setSearch} loading={metaLoading || departmentSearch.loading} error={errors.departmentId || metaError || departmentSearch.error} options={departmentSearch.items.map((item) => ({ id: item.id, label: item.name, sublabel: item.description || undefined }))} onSelect={(option) => { setValue('departmentId', option.id); setValue('departmentLabel', option.label); }} onClear={() => { setValue('departmentId', ''); setValue('departmentLabel', ''); }} />
-          <SelectField label="Branch / Location" required placeholder="Select Branch" options={dropdownOptions.branch} value={form.branchLocation} onChange={(value) => setValue('branchLocation', value)} error={errors.branchLocation} />
+          {initialDepartments.length === 0 && !metaLoading ? (
+            <p className="-mt-2 text-xs text-[#F54A4A]">
+              No departments yet.{' '}
+              <Link href="/company/organization" className="font-semibold underline">
+                Add them under Company → Catalogs & locations
+              </Link>
+            </p>
+          ) : null}
+          <AsyncSearchSelect label="Branch / Location" required placeholder={metaLoading ? 'Loading branches…' : 'Search punch location'} valueId={form.branchLocation} valueLabel={form.branchLocation} search={branchSearch.search} onSearchChange={branchSearch.setSearch} loading={metaLoading || branchSearch.loading} error={errors.branchLocation || branchSearch.error} options={branchSearch.items.map((item) => ({ id: item.name, label: item.name, sublabel: item.has_location ? 'GPS set — employee can punch' : 'No GPS — add coordinates first' }))} onSelect={(option) => { setValue('branchLocation', option.label); }} onClear={() => { setValue('branchLocation', ''); }} />
+          {initialBranches.length === 0 && !metaLoading ? (
+            <p className="-mt-2 text-xs text-[#F54A4A]">
+              No punch locations yet.{' '}
+              <Link href="/company/organization" className="font-semibold underline">
+                Add a branch with GPS
+              </Link>{' '}
+              so the employee can mark attendance within 50m.
+            </p>
+          ) : null}
           <AsyncSearchSelect label="Reporting Supervisor" required placeholder={metaLoading ? 'Loading supervisors…' : 'Search supervisor'} valueId={form.reportingSupervisorId} valueLabel={form.reportingSupervisorLabel} search={supervisorSearch.search} onSearchChange={supervisorSearch.setSearch} loading={metaLoading || supervisorSearch.loading} error={errors.reportingSupervisorId || metaError || supervisorSearch.error} options={supervisorSearch.items.map((item) => ({ id: item.id, label: item.name || item.phone_no, sublabel: [item.role_name, item.department_name, item.phone_no].filter(Boolean).join(' · ') }))} onSelect={(option) => { setValue('reportingSupervisorId', option.id); setValue('reportingSupervisorLabel', option.label); }} onClear={() => { setValue('reportingSupervisorId', ''); setValue('reportingSupervisorLabel', ''); }} />
           <SelectField label="Employee Type" required placeholder="Select Employee Type" options={dropdownOptions.type} value={form.employeeType} onChange={(value) => setValue('employeeType', value)} error={errors.employeeType} />
           <Field label="Joining Date" required type="date" placeholder="YYYY-MM-DD" value={form.joiningDate} onChange={(value) => setValue('joiningDate', value)} error={errors.joiningDate} />

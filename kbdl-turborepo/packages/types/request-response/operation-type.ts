@@ -15,6 +15,12 @@ import {
   addEmployeeDocumentSchema,
   updateEmploymentStatusSchema,
   updateEmployeeProfileSchema,
+  createCompanyDepartmentSchema,
+  createCompanyDesignationSchema,
+  createCompanyBranchSchema,
+  saveCompanyHqLocationSchema,
+  createCompanyWorkShiftSchema,
+  createCompanyHolidaySchema,
 } from '@repo/validator/shared';
 import { z } from 'zod';
 import { EmployerDTO, UserDTO } from './profile-type';
@@ -200,6 +206,35 @@ export type GetEmployerDesignationsMetaRequest = z.infer<typeof getEmployerDesig
 export type GetEmployerDesignationsMetaQuery = z.infer<
   typeof getEmployerDesignationsMetaSchema
 >['query'];
+
+export type CreateCompanyDepartmentRequest = z.infer<typeof createCompanyDepartmentSchema>;
+export type CreateCompanyDesignationRequest = z.infer<typeof createCompanyDesignationSchema>;
+export type CreateCompanyBranchRequest = z.infer<typeof createCompanyBranchSchema>;
+export type SaveCompanyHqLocationRequest = z.infer<typeof saveCompanyHqLocationSchema>;
+export type CreateCompanyWorkShiftRequest = z.infer<typeof createCompanyWorkShiftSchema>;
+export type CreateCompanyHolidayRequest = z.infer<typeof createCompanyHolidaySchema>;
+
+export type CompanyCatalogView = {
+  hq: { latitude: number; longitude: number } | null;
+  departments: Array<{ id: string; name: string; description: string | null }>;
+  designations: Array<{ id: string; name: string; description: string | null; is_active: boolean }>;
+  branches: Array<{
+    id: string;
+    name: string;
+    latitude: number | null;
+    longitude: number | null;
+    has_location: boolean;
+  }>;
+  work_shifts: Array<{
+    id: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+    break_minutes: number;
+    is_active: boolean;
+  }>;
+  holidays: Array<{ id: string; date: string; name: string; is_optional: boolean }>;
+};
 
 export type MetaDepartmentItem = {
   id: string;

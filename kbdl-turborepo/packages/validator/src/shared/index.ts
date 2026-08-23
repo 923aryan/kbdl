@@ -9,4 +9,5 @@ export * from '../../validation-schema/operation';
 export * from '../../validation-schema/profile';
 export * from '../../validation-schema/shift-swap';
 export * from '../../validation-schema/uploads';
+export * from '../../validation-schema/platform';
 

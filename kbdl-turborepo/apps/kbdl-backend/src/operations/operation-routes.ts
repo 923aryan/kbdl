@@ -1,6 +1,8 @@
 import { Router } from 'express';
 
 import { authenticate } from '../middleware/auth-middleware';
+import multer from 'multer';
+import { AppError } from '../utils/api-error';
 
 import { ROLES } from '../utils/constants';
 import {
@@ -22,6 +24,19 @@ import {
   updateEmploymentStatus,
   updateEmployeeProfile,
   addEmployeeDocument,
+  getCompanyProfile,
+  upsertCompanyProfile,
+  inviteCompanyHr,
+  listCompanyHrInvites,
+  downloadEmployeeImportTemplate,
+  importEmployeesSpreadsheet,
+  getCompanyCatalog,
+  createCompanyDepartment,
+  createCompanyDesignation,
+  createCompanyBranch,
+  saveCompanyHqLocation,
+  createCompanyWorkShift,
+  createCompanyHoliday,
 } from './operation-controllers';
 import {
   bulkMarkHoliday,
@@ -72,6 +87,42 @@ import {
 const operationsRouter: Router = Router();
 
 const employerAuth = authenticate([ROLES.EMPLOYER]);
+const employerSetupAuth = authenticate([ROLES.EMPLOYER], true);
+const spreadsheetUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+});
+
+operationsRouter.get('/employer/company', employerSetupAuth, getCompanyProfile);
+operationsRouter.put('/employer/company', employerSetupAuth, upsertCompanyProfile);
+operationsRouter.get('/employer/hr-invites', employerSetupAuth, listCompanyHrInvites);
+operationsRouter.post('/employer/hr-invites', employerSetupAuth, inviteCompanyHr);
+operationsRouter.get('/employer/catalog', employerSetupAuth, getCompanyCatalog);
+operationsRouter.post('/employer/catalog/departments', employerSetupAuth, createCompanyDepartment);
+operationsRouter.post('/employer/catalog/designations', employerSetupAuth, createCompanyDesignation);
+operationsRouter.post('/employer/catalog/branches', employerSetupAuth, createCompanyBranch);
+operationsRouter.put('/employer/catalog/hq-location', employerSetupAuth, saveCompanyHqLocation);
+operationsRouter.post('/employer/catalog/work-shifts', employerSetupAuth, createCompanyWorkShift);
+operationsRouter.post('/employer/catalog/holidays', employerSetupAuth, createCompanyHoliday);
+operationsRouter.get(
+  '/employer/employees/import/template',
+  employerAuth,
+  downloadEmployeeImportTemplate,
+);
+operationsRouter.post(
+  '/employer/employees/import',
+  employerAuth,
+  (req, res, next) => {
+    spreadsheetUpload.single('file')(req, res, (err: unknown) => {
+      if (err instanceof multer.MulterError) {
+        return next(new AppError(400, 'UPLOAD_MULTER_ERROR', err.message));
+      }
+      if (err) return next(err);
+      return next();
+    });
+  },
+  importEmployeesSpreadsheet,
+);
 
 // --- Roster + meta (meta MUST be registered before /employer/:id) ---
 operationsRouter.get('/employer', employerAuth, getEmployerRoster);

@@ -128,8 +128,9 @@ export const LeaveTypesScreen = () => {
   return (
     <PageShell title="Leave Types" crumb="Leave Types">
       <p className="mb-5 text-sm text-gray-600">
-        Leave types and policy belong to the company, like departments. Employees use this catalog
-        when leave is applied.
+        Leave types are the company catalog a manager chooses from when applying leave for someone
+        (Casual Leave, Sick Leave, Earned Leave, plus any types you add). Reporting manager apply
+        stays pending until HR approves. HR apply auto-approves.
       </p>
       {error && (
         <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">

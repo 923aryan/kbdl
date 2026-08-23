@@ -167,10 +167,10 @@ export const ApplyLeaveScreen = () => {
               </div>
             </div>
             <p className="mt-3 text-sm text-gray-500">
-              Types come from the company catalog
+              The manager (or HR) selects a leave type from this company catalog
               {leave.leave_types.length === 0
                 ? '. Add types under Leave → Leave Types first.'
-                : '.'}
+                : ' — not a free-text reason only.'}
             </p>
           </section>
 
