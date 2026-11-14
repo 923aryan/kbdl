@@ -51,7 +51,7 @@
 // adminRouter.use(authenticate([ROLES.ADMIN]));
 
 // // ==========================================
-// // 👷 WORKERS MANAGEMENT ROUTES
+// // WORKERS MANAGEMENT ROUTES
 // // ==========================================
 // const adminWorkerRouter: Router = Router();
 
